@@ -8,8 +8,10 @@ import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { formatCurrency } from "@/lib/format";
-import { Calculator as CalcIcon, Save, Loader2, RefreshCw } from "lucide-react";
+import { Calculator as CalcIcon, Save, Loader2, AlertTriangle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+
+const COUNCIL_HEIGHT_M = 1.0;
 
 export default function Calculator() {
   const [, setLocation] = useLocation();
@@ -34,6 +36,8 @@ export default function Calculator() {
   const [quoteTitle, setQuoteTitle] = useState("New Deck Quote");
   const [customerId, setCustomerId] = useState("");
   const [dialogOpen, setDialogOpen] = useState(false);
+
+  const councilWarning = spec.heightM >= COUNCIL_HEIGHT_M;
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -72,6 +76,19 @@ export default function Calculator() {
         <h1 className="text-3xl font-black uppercase tracking-tight">Deck Calculator</h1>
       </div>
 
+      {councilWarning && (
+        <div className="flex items-start gap-3 bg-red-600 text-white rounded-lg px-5 py-4 border-2 border-red-700 shadow-lg">
+          <AlertTriangle className="w-6 h-6 shrink-0 mt-0.5" />
+          <div>
+            <div className="font-black uppercase text-sm tracking-wide">Council Certification May Be Required</div>
+            <div className="text-sm mt-0.5 text-red-100">
+              Deck height {spec.heightM.toFixed(2)}m exceeds 1.0m. In most Australian councils, decks over 1m
+              require a building permit and structural engineer sign-off.
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         <div className="lg:col-span-5 space-y-6">
           <Card className="border-2 border-border shadow-sm">
@@ -91,9 +108,19 @@ export default function Calculator() {
                   <Label className="font-bold uppercase text-xs">Width (m)</Label>
                   <Input type="number" step="0.1" name="widthM" value={spec.widthM} onChange={handleChange} className="font-mono text-lg h-12" />
                 </div>
-                <div className="space-y-2">
-                  <Label className="font-bold uppercase text-xs">Height (m)</Label>
-                  <Input type="number" step="0.1" name="heightM" value={spec.heightM} onChange={handleChange} className="font-mono text-lg h-12" />
+                <div className="space-y-2 col-span-2">
+                  <Label className="font-bold uppercase text-xs flex items-center gap-2">
+                    Height (m)
+                    {councilWarning && <span className="text-red-600 text-xs font-bold normal-case">⚠ &gt;1m — permit may be needed</span>}
+                  </Label>
+                  <Input
+                    type="number"
+                    step="0.1"
+                    name="heightM"
+                    value={spec.heightM}
+                    onChange={handleChange}
+                    className={`font-mono text-lg h-12 ${councilWarning ? "border-red-500 focus-visible:ring-red-500" : ""}`}
+                  />
                 </div>
               </div>
             </CardContent>

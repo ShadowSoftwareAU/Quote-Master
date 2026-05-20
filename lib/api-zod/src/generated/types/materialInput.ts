@@ -13,6 +13,7 @@ export interface MaterialInput {
   category: string;
   unit: string;
   unitPrice: number;
+  tradeCost?: number;
   packSize?: number;
   supplier: string;
   notes?: string;

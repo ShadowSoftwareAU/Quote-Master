@@ -1,7 +1,7 @@
 import { useGetDashboardSummary } from "@workspace/api-client-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { formatCurrency } from "@/lib/format";
-import { Hammer, FileText, CheckCircle, Calendar, Users } from "lucide-react";
+import { Hammer, FileText, CheckCircle, Calendar, TrendingUp } from "lucide-react";
 import { Link } from "wouter";
 import { Skeleton } from "@/components/ui/skeleton";
 
@@ -18,6 +18,12 @@ export default function Dashboard() {
       </div>
     );
   }
+
+  const grossProfit = (data as any).grossProfit ?? 0;
+  const totalTradeCost = (data as any).totalTradeCost ?? 0;
+  const margin = grossProfit + totalTradeCost > 0
+    ? Math.round((grossProfit / (grossProfit + totalTradeCost)) * 100)
+    : null;
 
   return (
     <div className="space-y-8">
@@ -73,6 +79,39 @@ export default function Dashboard() {
           </CardContent>
         </Card>
       </div>
+
+      {(grossProfit > 0 || totalTradeCost > 0) && (
+        <Card className="border-2 border-emerald-500/30 bg-emerald-500/5 shadow-sm">
+          <CardHeader className="pb-3">
+            <CardTitle className="font-display font-black uppercase text-lg flex items-center gap-2">
+              <TrendingUp className="w-5 h-5 text-emerald-500" />
+              P&L — Accepted Quotes
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-3 gap-6">
+              <div>
+                <div className="text-xs font-bold uppercase text-muted-foreground mb-1">Retail Revenue</div>
+                <div className="text-2xl font-black text-foreground font-mono">{formatCurrency(grossProfit + totalTradeCost)}</div>
+              </div>
+              <div>
+                <div className="text-xs font-bold uppercase text-muted-foreground mb-1">Trade Cost</div>
+                <div className="text-2xl font-black text-foreground font-mono">{formatCurrency(totalTradeCost)}</div>
+              </div>
+              <div>
+                <div className="text-xs font-bold uppercase text-emerald-600 mb-1">Gross Profit</div>
+                <div className="text-2xl font-black text-emerald-600 font-mono">
+                  {formatCurrency(grossProfit)}
+                  {margin !== null && <span className="text-sm font-bold ml-2 text-emerald-500/80">{margin}%</span>}
+                </div>
+              </div>
+            </div>
+            <p className="text-xs text-muted-foreground mt-3">
+              Trade costs are estimated where not set. Set your trade cost on each material for accurate P&L.
+            </p>
+          </CardContent>
+        </Card>
+      )}
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
         <Card className="shadow-sm border-2">

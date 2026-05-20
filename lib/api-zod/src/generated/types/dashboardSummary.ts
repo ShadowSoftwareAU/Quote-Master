@@ -12,6 +12,10 @@ export interface DashboardSummary {
   activeQuoteCount: number;
   acceptedQuoteCount: number;
   totalQuoteValue: number;
+  /** Total retail quote value minus total trade cost across all accepted quotes */
+  grossProfit?: number;
+  /** Sum of trade costs for all accepted quote materials */
+  totalTradeCost?: number;
   upcomingBookingCount: number;
   customerCount: number;
   recentQuotes: QuoteSummary[];

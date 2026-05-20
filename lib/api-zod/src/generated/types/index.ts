@@ -6,6 +6,7 @@
  * OpenAPI spec version: 0.1.0
  */
 
+export * from './addBookingPhotoInput';
 export * from './booking';
 export * from './bookingInput';
 export * from './bookingUpdate';
@@ -27,3 +28,5 @@ export * from './quoteLineItem';
 export * from './quoteStatusInput';
 export * from './quoteSummary';
 export * from './quoteUpdate';
+export * from './quoteVariationInput';
+export * from './removeBookingPhotoInput';

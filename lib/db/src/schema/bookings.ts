@@ -4,6 +4,7 @@ import {
   text,
   integer,
   timestamp,
+  json,
 } from "drizzle-orm/pg-core";
 
 export const bookingsTable = pgTable("bookings", {
@@ -16,6 +17,7 @@ export const bookingsTable = pgTable("bookings", {
   startAt: timestamp("start_at", { withTimezone: true }).notNull(),
   endAt: timestamp("end_at", { withTimezone: true }).notNull(),
   status: text("status").notNull().default("scheduled"),
+  photos: json("photos").$type<string[]>().default([]),
   createdAt: timestamp("created_at", { withTimezone: true })
     .notNull()
     .defaultNow(),

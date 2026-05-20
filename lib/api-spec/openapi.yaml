@@ -14,6 +14,7 @@ tags:
   - name: quotes
   - name: bookings
   - name: dashboard
+  - name: storage
 paths:
   /healthz:
     get:
@@ -335,6 +336,70 @@ paths:
           schema: { type: integer }
       responses:
         "204": { description: Deleted }
+  /bookings/{id}/photos:
+    post:
+      operationId: addBookingPhoto
+      tags: [bookings]
+      summary: Attach an uploaded object path to a booking's photo evidence list
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: integer }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/AddBookingPhotoInput" }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Booking" }
+    delete:
+      operationId: removeBookingPhoto
+      tags: [bookings]
+      summary: Remove a photo from a booking
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: integer }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/RemoveBookingPhotoInput" }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Booking" }
+
+  /quotes/{id}/variation:
+    post:
+      operationId: createQuoteVariation
+      tags: [quotes]
+      summary: Create a variation quote based on an existing quote
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: integer }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/QuoteVariationInput" }
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Quote" }
+
 
 components:
   schemas:
@@ -389,7 +454,8 @@ components:
         unit:
           type: string
           description: "each | metre | pack | bag"
-        unitPrice: { type: number, description: "AUD price per unit" }
+        unitPrice: { type: number, description: "Retail price per unit (AUD) — shown on client quotes" }
+        tradeCost: { type: ["number", "null"], description: "Your trade/buy price — never shown to clients" }
         packSize: { type: ["integer", "null"], description: "Items per pack, if unit=pack" }
         supplier:
           type: string
@@ -404,6 +470,7 @@ components:
         category: { type: string }
         unit: { type: string }
         unitPrice: { type: number }
+        tradeCost: { type: number }
         packSize: { type: integer }
         supplier: { type: string }
         notes: { type: string }
@@ -415,6 +482,7 @@ components:
         category: { type: string }
         unit: { type: string }
         unitPrice: { type: number }
+        tradeCost: { type: number }
         packSize: { type: integer }
         supplier: { type: string }
         notes: { type: string }
@@ -576,6 +644,10 @@ components:
         status:
           type: string
           description: "scheduled | in_progress | completed | cancelled"
+        photos:
+          type: array
+          items: { type: string }
+          description: "Object paths for site photos"
         createdAt: { type: string, format: date-time }
     BookingInput:
       type: object
@@ -601,6 +673,31 @@ components:
         endAt: { type: string, format: date-time }
         status: { type: string }
 
+    AddBookingPhotoInput:
+      type: object
+      required: [objectPath]
+      properties:
+        objectPath: { type: string, description: "Object path returned from storage upload" }
+
+    RemoveBookingPhotoInput:
+      type: object
+      required: [objectPath]
+      properties:
+        objectPath: { type: string }
+
+    QuoteVariationInput:
+      type: object
+      required: [title]
+      properties:
+        title: { type: string, minLength: 1, description: "Title for the variation quote" }
+        notes: { type: string, description: "Description of what's different in this variation" }
+        lengthM: { type: number }
+        widthM: { type: number }
+        heightM: { type: number }
+        labourHours: { type: number }
+        labourRate: { type: number }
+
+
     DashboardSummary:
       type: object
       required: [activeQuoteCount, acceptedQuoteCount, totalQuoteValue, upcomingBookingCount, customerCount, recentQuotes, upcomingBookings]
@@ -608,6 +705,8 @@ components:
         activeQuoteCount: { type: integer }
         acceptedQuoteCount: { type: integer }
         totalQuoteValue: { type: number }
+        grossProfit: { type: number, description: "Total retail quote value minus total trade cost across all accepted quotes" }
+        totalTradeCost: { type: number, description: "Sum of trade costs for all accepted quote materials" }
         upcomingBookingCount: { type: integer }
         customerCount: { type: integer }
         recentQuotes:

@@ -20,6 +20,7 @@ import type {
 } from '@tanstack/react-query';
 
 import type {
+  AddBookingPhotoInput,
   Booking,
   BookingInput,
   BookingUpdate,
@@ -38,7 +39,9 @@ import type {
   QuoteInput,
   QuoteStatusInput,
   QuoteSummary,
-  QuoteUpdate
+  QuoteUpdate,
+  QuoteVariationInput,
+  RemoveBookingPhotoInput
 } from './api.schemas';
 
 import { customFetch } from '../custom-fetch';
@@ -1555,5 +1558,221 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
         TContext
       > => {
       return useMutation(getDeleteBookingMutationOptions(options));
+    }
+
+export const getAddBookingPhotoUrl = (id: number,) => {
+
+
+
+
+  return `/api/bookings/${id}/photos`
+}
+
+/**
+ * @summary Attach an uploaded object path to a booking's photo evidence list
+ */
+export const addBookingPhoto = async (id: number,
+    addBookingPhotoInput: AddBookingPhotoInput, options?: RequestInit): Promise<Booking> => {
+
+  return customFetch<Booking>(getAddBookingPhotoUrl(id),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      addBookingPhotoInput,)
+  }
+);}
+
+
+
+
+export const getAddBookingPhotoMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof addBookingPhoto>>, TError,{id: number;data: BodyType<AddBookingPhotoInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof addBookingPhoto>>, TError,{id: number;data: BodyType<AddBookingPhotoInput>}, TContext> => {
+
+const mutationKey = ['addBookingPhoto'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof addBookingPhoto>>, {id: number;data: BodyType<AddBookingPhotoInput>}> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  addBookingPhoto(id,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type AddBookingPhotoMutationResult = NonNullable<Awaited<ReturnType<typeof addBookingPhoto>>>
+    export type AddBookingPhotoMutationBody = BodyType<AddBookingPhotoInput>
+    export type AddBookingPhotoMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Attach an uploaded object path to a booking's photo evidence list
+ */
+export const useAddBookingPhoto = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof addBookingPhoto>>, TError,{id: number;data: BodyType<AddBookingPhotoInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof addBookingPhoto>>,
+        TError,
+        {id: number;data: BodyType<AddBookingPhotoInput>},
+        TContext
+      > => {
+      return useMutation(getAddBookingPhotoMutationOptions(options));
+    }
+
+export const getRemoveBookingPhotoUrl = (id: number,) => {
+
+
+
+
+  return `/api/bookings/${id}/photos`
+}
+
+/**
+ * @summary Remove a photo from a booking
+ */
+export const removeBookingPhoto = async (id: number,
+    removeBookingPhotoInput: RemoveBookingPhotoInput, options?: RequestInit): Promise<Booking> => {
+
+  return customFetch<Booking>(getRemoveBookingPhotoUrl(id),
+  {
+    ...options,
+    method: 'DELETE',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      removeBookingPhotoInput,)
+  }
+);}
+
+
+
+
+export const getRemoveBookingPhotoMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof removeBookingPhoto>>, TError,{id: number;data: BodyType<RemoveBookingPhotoInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof removeBookingPhoto>>, TError,{id: number;data: BodyType<RemoveBookingPhotoInput>}, TContext> => {
+
+const mutationKey = ['removeBookingPhoto'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof removeBookingPhoto>>, {id: number;data: BodyType<RemoveBookingPhotoInput>}> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  removeBookingPhoto(id,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type RemoveBookingPhotoMutationResult = NonNullable<Awaited<ReturnType<typeof removeBookingPhoto>>>
+    export type RemoveBookingPhotoMutationBody = BodyType<RemoveBookingPhotoInput>
+    export type RemoveBookingPhotoMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Remove a photo from a booking
+ */
+export const useRemoveBookingPhoto = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof removeBookingPhoto>>, TError,{id: number;data: BodyType<RemoveBookingPhotoInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof removeBookingPhoto>>,
+        TError,
+        {id: number;data: BodyType<RemoveBookingPhotoInput>},
+        TContext
+      > => {
+      return useMutation(getRemoveBookingPhotoMutationOptions(options));
+    }
+
+export const getCreateQuoteVariationUrl = (id: number,) => {
+
+
+
+
+  return `/api/quotes/${id}/variation`
+}
+
+/**
+ * @summary Create a variation quote based on an existing quote
+ */
+export const createQuoteVariation = async (id: number,
+    quoteVariationInput: QuoteVariationInput, options?: RequestInit): Promise<Quote> => {
+
+  return customFetch<Quote>(getCreateQuoteVariationUrl(id),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      quoteVariationInput,)
+  }
+);}
+
+
+
+
+export const getCreateQuoteVariationMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createQuoteVariation>>, TError,{id: number;data: BodyType<QuoteVariationInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createQuoteVariation>>, TError,{id: number;data: BodyType<QuoteVariationInput>}, TContext> => {
+
+const mutationKey = ['createQuoteVariation'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createQuoteVariation>>, {id: number;data: BodyType<QuoteVariationInput>}> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  createQuoteVariation(id,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreateQuoteVariationMutationResult = NonNullable<Awaited<ReturnType<typeof createQuoteVariation>>>
+    export type CreateQuoteVariationMutationBody = BodyType<QuoteVariationInput>
+    export type CreateQuoteVariationMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Create a variation quote based on an existing quote
+ */
+export const useCreateQuoteVariation = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createQuoteVariation>>, TError,{id: number;data: BodyType<QuoteVariationInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof createQuoteVariation>>,
+        TError,
+        {id: number;data: BodyType<QuoteVariationInput>},
+        TContext
+      > => {
+      return useMutation(getCreateQuoteVariationMutationOptions(options));
     }
 

@@ -54,8 +54,13 @@ export interface Material {
   category: string;
   /** each | metre | pack | bag */
   unit: string;
-  /** AUD price per unit */
+  /** Retail price per unit (AUD) — shown on client quotes */
   unitPrice: number;
+  /**
+     * Your trade/buy price — never shown to clients
+     * @nullable
+     */
+  tradeCost?: number | null;
   /**
      * Items per pack, if unit=pack
      * @nullable
@@ -74,6 +79,7 @@ export interface MaterialInput {
   category: string;
   unit: string;
   unitPrice: number;
+  tradeCost?: number;
   packSize?: number;
   supplier: string;
   notes?: string;
@@ -86,6 +92,7 @@ export interface MaterialUpdate {
   category?: string;
   unit?: string;
   unitPrice?: number;
+  tradeCost?: number;
   packSize?: number;
   supplier?: string;
   notes?: string;
@@ -249,6 +256,8 @@ export interface Booking {
   endAt: string;
   /** scheduled | in_progress | completed | cancelled */
   status: string;
+  /** Object paths for site photos */
+  photos?: string[];
   createdAt: string;
 }
 
@@ -276,10 +285,38 @@ export interface BookingUpdate {
   status?: string;
 }
 
+export interface AddBookingPhotoInput {
+  /** Object path returned from storage upload */
+  objectPath: string;
+}
+
+export interface RemoveBookingPhotoInput {
+  objectPath: string;
+}
+
+export interface QuoteVariationInput {
+  /**
+     * Title for the variation quote
+     * @minLength 1
+     */
+  title: string;
+  /** Description of what's different in this variation */
+  notes?: string;
+  lengthM?: number;
+  widthM?: number;
+  heightM?: number;
+  labourHours?: number;
+  labourRate?: number;
+}
+
 export interface DashboardSummary {
   activeQuoteCount: number;
   acceptedQuoteCount: number;
   totalQuoteValue: number;
+  /** Total retail quote value minus total trade cost across all accepted quotes */
+  grossProfit?: number;
+  /** Sum of trade costs for all accepted quote materials */
+  totalTradeCost?: number;
   upcomingBookingCount: number;
   customerCount: number;
   recentQuotes: QuoteSummary[];

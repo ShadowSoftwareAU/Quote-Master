@@ -14,6 +14,7 @@ export const materialsTable = pgTable("materials", {
   category: text("category").notNull(),
   unit: text("unit").notNull(),
   unitPrice: numeric("unit_price", { precision: 12, scale: 2 }).notNull(),
+  tradeCost: numeric("trade_cost", { precision: 12, scale: 2 }),
   packSize: integer("pack_size"),
   supplier: text("supplier").notNull(),
   notes: text("notes"),

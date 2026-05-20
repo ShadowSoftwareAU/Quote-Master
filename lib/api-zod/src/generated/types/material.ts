@@ -15,8 +15,13 @@ export interface Material {
   category: string;
   /** each | metre | pack | bag */
   unit: string;
-  /** AUD price per unit */
+  /** Retail price per unit (AUD) — shown on client quotes */
   unitPrice: number;
+  /**
+     * Your trade/buy price — never shown to clients
+     * @nullable
+     */
+  tradeCost?: number | null;
   /**
      * Items per pack, if unit=pack
      * @nullable

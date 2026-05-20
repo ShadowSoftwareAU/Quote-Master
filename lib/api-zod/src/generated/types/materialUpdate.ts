@@ -13,6 +13,7 @@ export interface MaterialUpdate {
   category?: string;
   unit?: string;
   unitPrice?: number;
+  tradeCost?: number;
   packSize?: number;
   supplier?: string;
   notes?: string;

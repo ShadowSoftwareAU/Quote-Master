@@ -1,10 +1,12 @@
 import { Router, type IRouter } from "express";
-import { sql, eq, desc, asc, gte, ne } from "drizzle-orm";
+import { sql, eq, desc, asc, gte } from "drizzle-orm";
 import {
   db,
   quotesTable,
+  quoteLineItemsTable,
   bookingsTable,
   customersTable,
+  materialsTable,
 } from "@workspace/db";
 
 const router: IRouter = Router();
@@ -58,12 +60,60 @@ router.get("/dashboard/summary", async (_req, res): Promise<void> => {
     .where(gte(bookingsTable.startAt, now))
     .orderBy(asc(bookingsTable.startAt))
     .limit(5);
-  void ne;
+
+  const acceptedQuoteIds = await db
+    .select({ id: quotesTable.id })
+    .from(quotesTable)
+    .where(sql`status = 'accepted'`);
+
+  let grossProfit = 0;
+  let totalTradeCost = 0;
+
+  if (acceptedQuoteIds.length > 0) {
+    const ids = acceptedQuoteIds.map((q) => q.id);
+    const lineItems = await db
+      .select({
+        lineTotal: quoteLineItemsTable.lineTotal,
+        materialId: quoteLineItemsTable.materialId,
+        quantity: quoteLineItemsTable.quantity,
+      })
+      .from(quoteLineItemsTable)
+      .where(sql`quote_id = ANY(${ids})`);
+
+    const materialIds = lineItems
+      .map((l) => l.materialId)
+      .filter((id): id is number => id !== null);
+
+    const materialsWithCost = materialIds.length > 0
+      ? await db
+          .select({ id: materialsTable.id, tradeCost: materialsTable.tradeCost })
+          .from(materialsTable)
+          .where(sql`id = ANY(${materialIds})`)
+      : [];
+
+    const tradeCostMap = new Map(
+      materialsWithCost.map((m) => [m.id, m.tradeCost ? Number(m.tradeCost) : null]),
+    );
+
+    const totalRetail = lineItems.reduce((sum, l) => sum + Number(l.lineTotal), 0);
+    const tradeCostSum = lineItems.reduce((sum, l) => {
+      const tc = l.materialId !== null ? tradeCostMap.get(l.materialId) : null;
+      if (tc !== null && tc !== undefined) {
+        return sum + tc * Number(l.quantity);
+      }
+      return sum + Number(l.lineTotal) * 0.7;
+    }, 0);
+
+    totalTradeCost = Math.round(tradeCostSum * 100) / 100;
+    grossProfit = Math.round((totalRetail - tradeCostSum) * 100) / 100;
+  }
 
   res.json({
     activeQuoteCount: counts.active,
     acceptedQuoteCount: counts.accepted,
     totalQuoteValue: Number(counts.value),
+    grossProfit,
+    totalTradeCost,
     upcomingBookingCount: bookingCount.upcoming,
     customerCount: customerCount.c,
     recentQuotes: recentQuotesRows.map((r) => ({
@@ -88,6 +138,7 @@ router.get("/dashboard/summary", async (_req, res): Promise<void> => {
       startAt: r.b.startAt.toISOString(),
       endAt: r.b.endAt.toISOString(),
       status: r.b.status,
+      photos: (r.b.photos as string[]) ?? [],
       createdAt: r.b.createdAt.toISOString(),
     })),
   });

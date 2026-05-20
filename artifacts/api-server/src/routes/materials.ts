@@ -19,6 +19,7 @@ function rowToJson(row: typeof materialsTable.$inferSelect) {
     category: row.category,
     unit: row.unit,
     unitPrice: Number(row.unitPrice),
+    tradeCost: row.tradeCost !== null ? Number(row.tradeCost) : null,
     packSize: row.packSize,
     supplier: row.supplier,
     notes: row.notes,
@@ -43,10 +44,14 @@ router.post("/materials", async (req, res): Promise<void> => {
     res.status(400).json({ error: parsed.error.message });
     return;
   }
-  const { unitPrice, ...rest } = parsed.data;
+  const { unitPrice, tradeCost, ...rest } = parsed.data;
   const [row] = await db
     .insert(materialsTable)
-    .values({ ...rest, unitPrice: String(unitPrice) })
+    .values({
+      ...rest,
+      unitPrice: String(unitPrice),
+      tradeCost: tradeCost !== undefined ? String(tradeCost) : null,
+    })
     .returning();
   res.status(201).json(rowToJson(row));
 });
@@ -62,9 +67,10 @@ router.patch("/materials/:id", async (req, res): Promise<void> => {
     res.status(400).json({ error: body.error.message });
     return;
   }
-  const { unitPrice, ...rest } = body.data;
+  const { unitPrice, tradeCost, ...rest } = body.data;
   const update: Record<string, unknown> = { ...rest };
   if (unitPrice !== undefined) update.unitPrice = String(unitPrice);
+  if (tradeCost !== undefined) update.tradeCost = String(tradeCost);
   const [row] = await db
     .update(materialsTable)
     .set(update)

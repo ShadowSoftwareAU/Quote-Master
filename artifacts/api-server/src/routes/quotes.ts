@@ -16,6 +16,8 @@ import {
   SetQuoteStatusBody,
   SetQuoteStatusParams,
   EstimateDeckBody,
+  CreateQuoteVariationBody,
+  CreateQuoteVariationParams,
 } from "@workspace/api-zod";
 import { estimateDeck, calcTotals, type DeckSpec } from "../lib/estimator";
 
@@ -357,6 +359,82 @@ router.patch("/quotes/:id/status", async (req, res): Promise<void> => {
   const json = await loadQuoteJson(params.data.id);
   res.json(json);
   void quoteSummaryRow; // silence unused
+});
+
+router.post("/quotes/:id/variation", async (req, res): Promise<void> => {
+  const params = CreateQuoteVariationParams.safeParse(req.params);
+  if (!params.success) {
+    res.status(400).json({ error: params.error.message });
+    return;
+  }
+  const body = CreateQuoteVariationBody.safeParse(req.body);
+  if (!body.success) {
+    res.status(400).json({ error: body.error.message });
+    return;
+  }
+  const original = await loadQuoteJson(params.data.id);
+  if (!original) {
+    res.status(404).json({ error: "Quote not found" });
+    return;
+  }
+  const b = body.data;
+  const spec = specFromQuoteInput({
+    lengthM: b.lengthM ?? original.lengthM,
+    widthM: b.widthM ?? original.widthM,
+    heightM: b.heightM ?? original.heightM,
+    boardWidthMm: original.boardWidthMm,
+    joistSpacingMm: original.joistSpacingMm,
+    bearerSpacingMm: original.bearerSpacingMm,
+    postSpacingMm: original.postSpacingMm,
+    wastageFactor: original.wastageFactor,
+  });
+  const materials = await db.select().from(materialsTable);
+  const { lines, materialsSubtotal } = estimateDeck(spec, materials);
+  const labourHours = b.labourHours ?? original.labourHours;
+  const labourRate = b.labourRate ?? original.labourRate;
+  const { labourCost, gst, total } = calcTotals({ materialsSubtotal, labourHours, labourRate });
+
+  const [created] = await db
+    .insert(quotesTable)
+    .values({
+      title: b.title,
+      customerId: original.customerId,
+      siteAddress: original.siteAddress ?? null,
+      notes: b.notes ?? `Variation of: ${original.title}`,
+      lengthM: String(spec.lengthM),
+      widthM: String(spec.widthM),
+      heightM: String(spec.heightM),
+      boardWidthMm: spec.boardWidthMm,
+      joistSpacingMm: spec.joistSpacingMm,
+      bearerSpacingMm: spec.bearerSpacingMm,
+      postSpacingMm: spec.postSpacingMm,
+      wastageFactor: String(spec.wastageFactor),
+      labourHours: String(labourHours),
+      labourRate: String(labourRate),
+      materialsSubtotal: String(materialsSubtotal),
+      labourCost: String(labourCost),
+      gst: String(gst),
+      total: String(total),
+    })
+    .returning();
+
+  if (lines.length > 0) {
+    await db.insert(quoteLineItemsTable).values(
+      lines.map((l) => ({
+        quoteId: created.id,
+        materialId: l.materialId,
+        description: l.description,
+        category: l.category,
+        quantity: String(l.quantity),
+        unit: l.unit,
+        unitPrice: String(l.unitPrice),
+        lineTotal: String(l.lineTotal),
+      })),
+    );
+  }
+
+  const json = await loadQuoteJson(created.id);
+  res.status(201).json(json);
 });
 
 router.delete("/quotes/:id", async (req, res): Promise<void> => {

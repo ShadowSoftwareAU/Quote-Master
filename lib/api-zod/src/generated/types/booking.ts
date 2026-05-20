@@ -23,5 +23,7 @@ export interface Booking {
   endAt: Date;
   /** scheduled | in_progress | completed | cancelled */
   status: string;
+  /** Object paths for site photos */
+  photos?: string[];
   createdAt: Date;
 }

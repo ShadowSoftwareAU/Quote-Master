@@ -23,6 +23,8 @@ export const GetDashboardSummaryResponse = zod.object({
   "activeQuoteCount": zod.number(),
   "acceptedQuoteCount": zod.number(),
   "totalQuoteValue": zod.number(),
+  "grossProfit": zod.number().optional().describe('Total retail quote value minus total trade cost across all accepted quotes'),
+  "totalTradeCost": zod.number().optional().describe('Sum of trade costs for all accepted quote materials'),
   "upcomingBookingCount": zod.number(),
   "customerCount": zod.number(),
   "recentQuotes": zod.array(zod.object({
@@ -47,6 +49,7 @@ export const GetDashboardSummaryResponse = zod.object({
   "startAt": zod.coerce.date(),
   "endAt": zod.coerce.date(),
   "status": zod.string().describe('scheduled | in_progress | completed | cancelled'),
+  "photos": zod.array(zod.string()).optional().describe('Object paths for site photos'),
   "createdAt": zod.coerce.date()
 }))
 })
@@ -137,7 +140,8 @@ export const ListMaterialsResponseItem = zod.object({
   "sku": zod.string().nullish(),
   "category": zod.string().describe('decking | joist | bearer | post | stump | screw | nail | bracket | sealant | other'),
   "unit": zod.string().describe('each | metre | pack | bag'),
-  "unitPrice": zod.number().describe('AUD price per unit'),
+  "unitPrice": zod.number().describe('Retail price per unit (AUD) — shown on client quotes'),
+  "tradeCost": zod.number().nullish().describe('Your trade\/buy price — never shown to clients'),
   "packSize": zod.number().nullish().describe('Items per pack, if unit=pack'),
   "supplier": zod.string().describe('bunnings | mitre10 | local | other'),
   "notes": zod.string().nullish()
@@ -154,6 +158,7 @@ export const CreateMaterialBody = zod.object({
   "category": zod.string(),
   "unit": zod.string(),
   "unitPrice": zod.number(),
+  "tradeCost": zod.number().optional(),
   "packSize": zod.number().optional(),
   "supplier": zod.string(),
   "notes": zod.string().optional()
@@ -173,6 +178,7 @@ export const UpdateMaterialBody = zod.object({
   "category": zod.string().optional(),
   "unit": zod.string().optional(),
   "unitPrice": zod.number().optional(),
+  "tradeCost": zod.number().optional(),
   "packSize": zod.number().optional(),
   "supplier": zod.string().optional(),
   "notes": zod.string().optional()
@@ -184,7 +190,8 @@ export const UpdateMaterialResponse = zod.object({
   "sku": zod.string().nullish(),
   "category": zod.string().describe('decking | joist | bearer | post | stump | screw | nail | bracket | sealant | other'),
   "unit": zod.string().describe('each | metre | pack | bag'),
-  "unitPrice": zod.number().describe('AUD price per unit'),
+  "unitPrice": zod.number().describe('Retail price per unit (AUD) — shown on client quotes'),
+  "tradeCost": zod.number().nullish().describe('Your trade\/buy price — never shown to clients'),
   "packSize": zod.number().nullish().describe('Items per pack, if unit=pack'),
   "supplier": zod.string().describe('bunnings | mitre10 | local | other'),
   "notes": zod.string().nullish()
@@ -461,6 +468,7 @@ export const ListBookingsResponseItem = zod.object({
   "startAt": zod.coerce.date(),
   "endAt": zod.coerce.date(),
   "status": zod.string().describe('scheduled | in_progress | completed | cancelled'),
+  "photos": zod.array(zod.string()).optional().describe('Object paths for site photos'),
   "createdAt": zod.coerce.date()
 })
 export const ListBookingsResponse = zod.array(ListBookingsResponseItem)
@@ -510,12 +518,88 @@ export const UpdateBookingResponse = zod.object({
   "startAt": zod.coerce.date(),
   "endAt": zod.coerce.date(),
   "status": zod.string().describe('scheduled | in_progress | completed | cancelled'),
+  "photos": zod.array(zod.string()).optional().describe('Object paths for site photos'),
   "createdAt": zod.coerce.date()
 })
 
 
 export const DeleteBookingParams = zod.object({
   "id": zod.coerce.number()
+})
+
+
+/**
+ * @summary Attach an uploaded object path to a booking's photo evidence list
+ */
+export const AddBookingPhotoParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+export const AddBookingPhotoBody = zod.object({
+  "objectPath": zod.string().describe('Object path returned from storage upload')
+})
+
+export const AddBookingPhotoResponse = zod.object({
+  "id": zod.number(),
+  "title": zod.string(),
+  "customerId": zod.number().nullish(),
+  "customerName": zod.string().nullish(),
+  "quoteId": zod.number().nullish(),
+  "siteAddress": zod.string().nullish(),
+  "notes": zod.string().nullish(),
+  "startAt": zod.coerce.date(),
+  "endAt": zod.coerce.date(),
+  "status": zod.string().describe('scheduled | in_progress | completed | cancelled'),
+  "photos": zod.array(zod.string()).optional().describe('Object paths for site photos'),
+  "createdAt": zod.coerce.date()
+})
+
+
+/**
+ * @summary Remove a photo from a booking
+ */
+export const RemoveBookingPhotoParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+export const RemoveBookingPhotoBody = zod.object({
+  "objectPath": zod.string()
+})
+
+export const RemoveBookingPhotoResponse = zod.object({
+  "id": zod.number(),
+  "title": zod.string(),
+  "customerId": zod.number().nullish(),
+  "customerName": zod.string().nullish(),
+  "quoteId": zod.number().nullish(),
+  "siteAddress": zod.string().nullish(),
+  "notes": zod.string().nullish(),
+  "startAt": zod.coerce.date(),
+  "endAt": zod.coerce.date(),
+  "status": zod.string().describe('scheduled | in_progress | completed | cancelled'),
+  "photos": zod.array(zod.string()).optional().describe('Object paths for site photos'),
+  "createdAt": zod.coerce.date()
+})
+
+
+/**
+ * @summary Create a variation quote based on an existing quote
+ */
+export const CreateQuoteVariationParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+
+
+
+export const CreateQuoteVariationBody = zod.object({
+  "title": zod.string().min(1).describe('Title for the variation quote'),
+  "notes": zod.string().optional().describe('Description of what\'s different in this variation'),
+  "lengthM": zod.number().optional(),
+  "widthM": zod.number().optional(),
+  "heightM": zod.number().optional(),
+  "labourHours": zod.number().optional(),
+  "labourRate": zod.number().optional()
 })
 
 

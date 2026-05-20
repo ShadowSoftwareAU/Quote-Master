@@ -6,12 +6,13 @@ import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { formatCurrency } from "@/lib/format";
-import { Box, Plus, MoreVertical, Edit2, Trash2 } from "lucide-react";
+import { Box, Plus, MoreVertical, Edit2, Trash2, TrendingUp } from "lucide-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import type { Material } from "@workspace/api-client-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
+import { Badge } from "@/components/ui/badge";
 
 export default function Materials() {
   const { data: materials, isLoading } = useListMaterials();
@@ -29,6 +30,7 @@ export default function Materials() {
     category: "decking",
     unit: "metre",
     unitPrice: 0,
+    tradeCost: "" as number | "",
     packSize: 1,
     supplier: "bunnings",
     notes: ""
@@ -37,7 +39,7 @@ export default function Materials() {
   const handleOpenCreate = () => {
     setEditingId(null);
     setForm({
-      name: "", sku: "", category: "decking", unit: "metre", unitPrice: 0, packSize: 1, supplier: "bunnings", notes: ""
+      name: "", sku: "", category: "decking", unit: "metre", unitPrice: 0, tradeCost: "", packSize: 1, supplier: "bunnings", notes: ""
     });
     setOpen(true);
   };
@@ -50,6 +52,7 @@ export default function Materials() {
       category: m.category,
       unit: m.unit,
       unitPrice: m.unitPrice,
+      tradeCost: (m as any).tradeCost ?? "",
       packSize: m.packSize || 1,
       supplier: m.supplier,
       notes: m.notes || ""
@@ -58,8 +61,12 @@ export default function Materials() {
   };
 
   const handleSave = () => {
+    const payload = {
+      ...form,
+      tradeCost: form.tradeCost === "" ? undefined : Number(form.tradeCost),
+    };
     if (editingId) {
-      updateMaterial.mutate({ id: editingId, data: form }, {
+      updateMaterial.mutate({ id: editingId, data: payload }, {
         onSuccess: () => {
           queryClient.invalidateQueries({ queryKey: getListMaterialsQueryKey() });
           setOpen(false);
@@ -67,7 +74,7 @@ export default function Materials() {
         }
       });
     } else {
-      createMaterial.mutate({ data: form }, {
+      createMaterial.mutate({ data: payload }, {
         onSuccess: () => {
           queryClient.invalidateQueries({ queryKey: getListMaterialsQueryKey() });
           setOpen(false);
@@ -88,6 +95,13 @@ export default function Materials() {
     }
   };
 
+  const getMargin = (m: Material) => {
+    const tc = (m as any).tradeCost;
+    if (!tc || !m.unitPrice) return null;
+    const margin = ((m.unitPrice - tc) / m.unitPrice) * 100;
+    return Math.round(margin);
+  };
+
   const grouped = materials?.reduce((acc, m) => {
     if (!acc[m.category]) acc[m.category] = [];
     acc[m.category].push(m);
@@ -99,7 +113,7 @@ export default function Materials() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-black uppercase tracking-tight">Materials</h1>
-          <p className="text-muted-foreground font-medium">Catalogue pricing</p>
+          <p className="text-muted-foreground font-medium">Catalogue pricing — trade cost is internal only</p>
         </div>
         <Dialog open={open} onOpenChange={setOpen}>
           <Button onClick={handleOpenCreate} className="font-bold uppercase">
@@ -127,6 +141,7 @@ export default function Materials() {
                     <SelectItem value="post">Post</SelectItem>
                     <SelectItem value="screw">Screw</SelectItem>
                     <SelectItem value="bracket">Bracket</SelectItem>
+                    <SelectItem value="sealant">Sealant</SelectItem>
                     <SelectItem value="other">Other</SelectItem>
                   </SelectContent>
                 </Select>
@@ -144,8 +159,22 @@ export default function Materials() {
                 </Select>
               </div>
               <div className="space-y-2">
-                <Label>Unit Price (AUD)</Label>
+                <Label>Retail Price (AUD) <span className="text-xs text-muted-foreground">— shown to clients</span></Label>
                 <Input type="number" step="0.01" value={form.unitPrice} onChange={e => setForm({...form, unitPrice: parseFloat(e.target.value) || 0})} />
+              </div>
+              <div className="space-y-2">
+                <Label className="flex items-center gap-1">
+                  Trade Cost (AUD)
+                  <span className="text-xs text-emerald-600 font-bold">🔒 internal</span>
+                </Label>
+                <Input
+                  type="number"
+                  step="0.01"
+                  placeholder="Your buy price"
+                  value={form.tradeCost}
+                  onChange={e => setForm({...form, tradeCost: e.target.value === "" ? "" : parseFloat(e.target.value)})}
+                  className="border-emerald-500/40 focus-visible:ring-emerald-500"
+                />
               </div>
               <div className="space-y-2">
                 <Label>Supplier</Label>
@@ -189,31 +218,51 @@ export default function Materials() {
               </CardHeader>
               <CardContent className="p-0">
                 <div className="divide-y">
-                  {items.map(m => (
-                    <div key={m.id} className="p-4 flex justify-between items-center hover:bg-muted/20 group">
-                      <div>
-                        <div className="font-bold">{m.name}</div>
-                        <div className="text-xs text-muted-foreground font-medium uppercase mt-1">
-                          {m.supplier} {m.sku && `• ${m.sku}`}
+                  {items.map(m => {
+                    const margin = getMargin(m);
+                    const tc = (m as any).tradeCost;
+                    return (
+                      <div key={m.id} className="p-4 flex justify-between items-center hover:bg-muted/20 group">
+                        <div>
+                          <div className="font-bold">{m.name}</div>
+                          <div className="text-xs text-muted-foreground font-medium uppercase mt-1">
+                            {m.supplier} {m.sku && `• ${m.sku}`}
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-6">
+                          <div className="text-right">
+                            <div className="font-mono font-black text-lg">{formatCurrency(m.unitPrice)}</div>
+                            <div className="text-xs text-muted-foreground">retail / {m.unit}</div>
+                          </div>
+                          {tc != null ? (
+                            <div className="text-right hidden md:block">
+                              <div className="font-mono font-bold text-sm text-emerald-600">{formatCurrency(tc)}</div>
+                              <div className="text-xs text-muted-foreground">trade cost</div>
+                              {margin !== null && (
+                                <Badge variant="outline" className="text-xs mt-1 text-emerald-600 border-emerald-500/30">
+                                  <TrendingUp className="w-3 h-3 mr-1" />
+                                  {margin}% margin
+                                </Badge>
+                              )}
+                            </div>
+                          ) : (
+                            <div className="text-right hidden md:block">
+                              <div className="text-xs text-muted-foreground italic">no trade cost set</div>
+                            </div>
+                          )}
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button variant="ghost" size="icon" className="opacity-0 group-hover:opacity-100"><MoreVertical className="w-4 h-4" /></Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              <DropdownMenuItem onClick={() => handleOpenEdit(m)}><Edit2 className="w-4 h-4 mr-2" /> Edit</DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => handleDelete(m.id)} className="text-destructive"><Trash2 className="w-4 h-4 mr-2" /> Delete</DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
                         </div>
                       </div>
-                      <div className="flex items-center gap-4">
-                        <div className="text-right">
-                          <div className="font-mono font-black text-lg">{formatCurrency(m.unitPrice)}</div>
-                          <div className="text-xs text-muted-foreground">per {m.unit}</div>
-                        </div>
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="icon" className="opacity-0 group-hover:opacity-100"><MoreVertical className="w-4 h-4" /></Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            <DropdownMenuItem onClick={() => handleOpenEdit(m)}><Edit2 className="w-4 h-4 mr-2" /> Edit</DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => handleDelete(m.id)} className="text-destructive"><Trash2 className="w-4 h-4 mr-2" /> Delete</DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </CardContent>
             </Card>
