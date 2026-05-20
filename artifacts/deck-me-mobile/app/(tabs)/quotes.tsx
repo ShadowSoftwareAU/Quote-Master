@@ -1,0 +1,134 @@
+import { useListQuotes } from "@workspace/api-client-react";
+import { router } from "expo-router";
+import React from "react";
+import {
+  ActivityIndicator,
+  FlatList,
+  Platform,
+  Text,
+  View,
+} from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+
+import {
+  Card,
+  EmptyState,
+  ScreenHeader,
+  StatusBadge,
+  StripedBar,
+  formatAUD,
+} from "@/components/ui";
+import { useColors } from "@/hooks/useColors";
+
+export default function QuotesScreen() {
+  const colors = useColors();
+  const insets = useSafeAreaInsets();
+  const { data, isLoading, refetch, isRefetching } = useListQuotes();
+  const topPad =
+    Platform.OS === "web" ? Math.max(insets.top, 67) : insets.top;
+
+  return (
+    <View style={{ flex: 1, backgroundColor: colors.background }}>
+      <View style={{ backgroundColor: colors.sidebar, paddingTop: topPad }}>
+        <View
+          style={{
+            paddingHorizontal: 20,
+            paddingTop: 12,
+            paddingBottom: 16,
+          }}
+        >
+          <Text
+            style={{
+              fontFamily: "Inter_700Bold",
+              color: colors.primary,
+              fontSize: 11,
+              letterSpacing: 1.4,
+            }}
+          >
+            ON THE BOOKS
+          </Text>
+          <Text
+            style={{
+              fontFamily: "Chivo_900Black",
+              color: "#fff",
+              fontSize: 28,
+              letterSpacing: -0.5,
+              marginTop: 4,
+            }}
+          >
+            QUOTES
+          </Text>
+        </View>
+        <StripedBar height={6} />
+      </View>
+
+      {isLoading ? (
+        <ActivityIndicator color={colors.primary} style={{ marginTop: 40 }} />
+      ) : !data || data.length === 0 ? (
+        <EmptyState
+          icon="file-text"
+          title="No quotes yet"
+          body="Open the Calc tab to size a job and save it as a quote."
+          action={{ label: "New quote", onPress: () => router.push("/calculator") }}
+        />
+      ) : (
+        <FlatList
+          data={data}
+          keyExtractor={(item) => String(item.id)}
+          refreshing={isRefetching}
+          onRefresh={refetch}
+          contentContainerStyle={{
+            padding: 20,
+            paddingBottom: insets.bottom + 100,
+            gap: 10,
+          }}
+          renderItem={({ item }) => (
+            <Card onPress={() => router.push(`/quote/${item.id}`)}>
+              <View
+                style={{
+                  flexDirection: "row",
+                  justifyContent: "space-between",
+                  alignItems: "flex-start",
+                }}
+              >
+                <View style={{ flex: 1, marginRight: 12 }}>
+                  <Text
+                    style={{
+                      fontFamily: "Chivo_700Bold",
+                      fontSize: 16,
+                      color: colors.foreground,
+                    }}
+                  >
+                    {item.title}
+                  </Text>
+                  <Text
+                    style={{
+                      fontFamily: "Inter_500Medium",
+                      fontSize: 12,
+                      color: colors.mutedForeground,
+                      marginTop: 2,
+                    }}
+                  >
+                    {item.customerName ?? "—"} · {item.lengthM}×{item.widthM}m
+                  </Text>
+                </View>
+                <View style={{ alignItems: "flex-end", gap: 6 }}>
+                  <Text
+                    style={{
+                      fontFamily: "Chivo_900Black",
+                      fontSize: 18,
+                      color: colors.primary,
+                    }}
+                  >
+                    {formatAUD(item.total)}
+                  </Text>
+                  <StatusBadge status={item.status} />
+                </View>
+              </View>
+            </Card>
+          )}
+        />
+      )}
+    </View>
+  );
+}

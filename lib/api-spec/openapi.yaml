@@ -3,34 +3,616 @@ info:
   # Do not change the title, if the title changes, the import paths will be broken
   title: Api
   version: 0.1.0
-  description: API specification
+  description: Deck Me API — decking quotes, materials, customers, and bookings.
 servers:
   - url: /api
     description: Base API path
 tags:
   - name: health
-    description: Health operations
+  - name: customers
+  - name: materials
+  - name: quotes
+  - name: bookings
+  - name: dashboard
 paths:
   /healthz:
     get:
       operationId: healthCheck
       tags: [health]
       summary: Health check
-      description: Returns server health status
       responses:
         "200":
           description: Healthy
           content:
             application/json:
+              schema: { $ref: "#/components/schemas/HealthStatus" }
+
+  /dashboard/summary:
+    get:
+      operationId: getDashboardSummary
+      tags: [dashboard]
+      summary: Headline numbers for the home screen
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/DashboardSummary" }
+
+  /customers:
+    get:
+      operationId: listCustomers
+      tags: [customers]
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
               schema:
-                $ref: "#/components/schemas/HealthStatus"
+                type: array
+                items: { $ref: "#/components/schemas/Customer" }
+    post:
+      operationId: createCustomer
+      tags: [customers]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/CustomerInput" }
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Customer" }
+  /customers/{id}:
+    get:
+      operationId: getCustomer
+      tags: [customers]
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: integer }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Customer" }
+    patch:
+      operationId: updateCustomer
+      tags: [customers]
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: integer }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/CustomerUpdate" }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Customer" }
+    delete:
+      operationId: deleteCustomer
+      tags: [customers]
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: integer }
+      responses:
+        "204": { description: Deleted }
+
+  /materials:
+    get:
+      operationId: listMaterials
+      tags: [materials]
+      parameters:
+        - in: query
+          name: category
+          required: false
+          schema: { type: string }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/Material" }
+    post:
+      operationId: createMaterial
+      tags: [materials]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/MaterialInput" }
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Material" }
+  /materials/{id}:
+    patch:
+      operationId: updateMaterial
+      tags: [materials]
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: integer }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/MaterialUpdate" }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Material" }
+    delete:
+      operationId: deleteMaterial
+      tags: [materials]
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: integer }
+      responses:
+        "204": { description: Deleted }
+
+  /quotes:
+    get:
+      operationId: listQuotes
+      tags: [quotes]
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/QuoteSummary" }
+    post:
+      operationId: createQuote
+      tags: [quotes]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/QuoteInput" }
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Quote" }
+  /quotes/{id}:
+    get:
+      operationId: getQuote
+      tags: [quotes]
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: integer }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Quote" }
+    patch:
+      operationId: updateQuote
+      tags: [quotes]
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: integer }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/QuoteUpdate" }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Quote" }
+    delete:
+      operationId: deleteQuote
+      tags: [quotes]
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: integer }
+      responses:
+        "204": { description: Deleted }
+  /quotes/{id}/status:
+    patch:
+      operationId: setQuoteStatus
+      tags: [quotes]
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: integer }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/QuoteStatusInput" }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Quote" }
+  /quotes/estimate:
+    post:
+      operationId: estimateDeck
+      tags: [quotes]
+      summary: Calculate a bill of materials from deck dimensions without saving
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/DeckSpecInput" }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/QuoteEstimate" }
+
+  /bookings:
+    get:
+      operationId: listBookings
+      tags: [bookings]
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/Booking" }
+    post:
+      operationId: createBooking
+      tags: [bookings]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/BookingInput" }
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Booking" }
+  /bookings/{id}:
+    patch:
+      operationId: updateBooking
+      tags: [bookings]
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: integer }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/BookingUpdate" }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Booking" }
+    delete:
+      operationId: deleteBooking
+      tags: [bookings]
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: integer }
+      responses:
+        "204": { description: Deleted }
+
 components:
   schemas:
     HealthStatus:
       type: object
+      required: [status]
       properties:
+        status: { type: string }
+
+    Customer:
+      type: object
+      required: [id, name, createdAt]
+      properties:
+        id: { type: integer }
+        name: { type: string }
+        company: { type: ["string", "null"] }
+        email: { type: ["string", "null"] }
+        phone: { type: ["string", "null"] }
+        address: { type: ["string", "null"] }
+        notes: { type: ["string", "null"] }
+        createdAt: { type: string, format: date-time }
+    CustomerInput:
+      type: object
+      required: [name]
+      properties:
+        name: { type: string, minLength: 1 }
+        company: { type: string }
+        email: { type: string }
+        phone: { type: string }
+        address: { type: string }
+        notes: { type: string }
+    CustomerUpdate:
+      type: object
+      properties:
+        name: { type: string, minLength: 1 }
+        company: { type: string }
+        email: { type: string }
+        phone: { type: string }
+        address: { type: string }
+        notes: { type: string }
+
+    Material:
+      type: object
+      required: [id, name, category, unit, unitPrice, supplier]
+      properties:
+        id: { type: integer }
+        name: { type: string }
+        sku: { type: ["string", "null"] }
+        category:
+          type: string
+          description: "decking | joist | bearer | post | stump | screw | nail | bracket | sealant | other"
+        unit:
+          type: string
+          description: "each | metre | pack | bag"
+        unitPrice: { type: number, description: "AUD price per unit" }
+        packSize: { type: ["integer", "null"], description: "Items per pack, if unit=pack" }
+        supplier:
+          type: string
+          description: "bunnings | mitre10 | local | other"
+        notes: { type: ["string", "null"] }
+    MaterialInput:
+      type: object
+      required: [name, category, unit, unitPrice, supplier]
+      properties:
+        name: { type: string, minLength: 1 }
+        sku: { type: string }
+        category: { type: string }
+        unit: { type: string }
+        unitPrice: { type: number }
+        packSize: { type: integer }
+        supplier: { type: string }
+        notes: { type: string }
+    MaterialUpdate:
+      type: object
+      properties:
+        name: { type: string, minLength: 1 }
+        sku: { type: string }
+        category: { type: string }
+        unit: { type: string }
+        unitPrice: { type: number }
+        packSize: { type: integer }
+        supplier: { type: string }
+        notes: { type: string }
+
+    DeckSpecInput:
+      type: object
+      required: [lengthM, widthM]
+      properties:
+        lengthM: { type: number, description: "Deck length in metres" }
+        widthM: { type: number, description: "Deck width in metres" }
+        heightM: { type: number, description: "Sub-floor height in metres", default: 0.6 }
+        boardWidthMm: { type: integer, description: "Decking board width in mm", default: 90 }
+        joistSpacingMm: { type: integer, description: "Joist centres in mm", default: 450 }
+        bearerSpacingMm: { type: integer, description: "Bearer centres in mm", default: 1800 }
+        postSpacingMm: { type: integer, description: "Post centres in mm", default: 1800 }
+        wastageFactor: { type: number, description: "Multiplier for cuts and offcuts", default: 1.1 }
+        labourHours: { type: number, description: "Labour hours for the job", default: 0 }
+        labourRate: { type: number, description: "AUD per hour labour rate", default: 85 }
+
+    QuoteLineItem:
+      type: object
+      required: [id, quoteId, description, category, quantity, unit, unitPrice, lineTotal]
+      properties:
+        id: { type: integer }
+        quoteId: { type: integer }
+        materialId: { type: ["integer", "null"] }
+        description: { type: string }
+        category: { type: string }
+        quantity: { type: number }
+        unit: { type: string }
+        unitPrice: { type: number }
+        lineTotal: { type: number }
+
+    QuoteEstimateLine:
+      type: object
+      required: [description, category, quantity, unit, unitPrice, lineTotal]
+      properties:
+        materialId: { type: ["integer", "null"] }
+        description: { type: string }
+        category: { type: string }
+        quantity: { type: number }
+        unit: { type: string }
+        unitPrice: { type: number }
+        lineTotal: { type: number }
+
+    QuoteEstimate:
+      type: object
+      required: [spec, lines, materialsSubtotal, labourCost, gst, total]
+      properties:
+        spec: { $ref: "#/components/schemas/DeckSpecInput" }
+        deckAreaM2: { type: number }
+        lines:
+          type: array
+          items: { $ref: "#/components/schemas/QuoteEstimateLine" }
+        materialsSubtotal: { type: number }
+        labourCost: { type: number }
+        gst: { type: number }
+        total: { type: number }
+
+    Quote:
+      type: object
+      required: [id, title, status, customerId, lengthM, widthM, heightM, materialsSubtotal, labourCost, gst, total, lineItems, createdAt, updatedAt]
+      properties:
+        id: { type: integer }
+        title: { type: string }
         status:
           type: string
-      required:
-        - status
+          description: "draft | sent | accepted | rejected"
+        customerId: { type: integer }
+        customerName: { type: ["string", "null"] }
+        siteAddress: { type: ["string", "null"] }
+        notes: { type: ["string", "null"] }
+        lengthM: { type: number }
+        widthM: { type: number }
+        heightM: { type: number }
+        boardWidthMm: { type: integer }
+        joistSpacingMm: { type: integer }
+        bearerSpacingMm: { type: integer }
+        postSpacingMm: { type: integer }
+        wastageFactor: { type: number }
+        labourHours: { type: number }
+        labourRate: { type: number }
+        materialsSubtotal: { type: number }
+        labourCost: { type: number }
+        gst: { type: number }
+        total: { type: number }
+        lineItems:
+          type: array
+          items: { $ref: "#/components/schemas/QuoteLineItem" }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+    QuoteSummary:
+      type: object
+      required: [id, title, status, customerId, total, createdAt]
+      properties:
+        id: { type: integer }
+        title: { type: string }
+        status: { type: string }
+        customerId: { type: integer }
+        customerName: { type: ["string", "null"] }
+        lengthM: { type: number }
+        widthM: { type: number }
+        total: { type: number }
+        createdAt: { type: string, format: date-time }
+    QuoteInput:
+      type: object
+      required: [title, customerId, lengthM, widthM]
+      properties:
+        title: { type: string, minLength: 1 }
+        customerId: { type: integer }
+        siteAddress: { type: string }
+        notes: { type: string }
+        lengthM: { type: number }
+        widthM: { type: number }
+        heightM: { type: number }
+        boardWidthMm: { type: integer }
+        joistSpacingMm: { type: integer }
+        bearerSpacingMm: { type: integer }
+        postSpacingMm: { type: integer }
+        wastageFactor: { type: number }
+        labourHours: { type: number }
+        labourRate: { type: number }
+    QuoteUpdate:
+      type: object
+      properties:
+        title: { type: string, minLength: 1 }
+        customerId: { type: integer }
+        siteAddress: { type: string }
+        notes: { type: string }
+        lengthM: { type: number }
+        widthM: { type: number }
+        heightM: { type: number }
+        boardWidthMm: { type: integer }
+        joistSpacingMm: { type: integer }
+        bearerSpacingMm: { type: integer }
+        postSpacingMm: { type: integer }
+        wastageFactor: { type: number }
+        labourHours: { type: number }
+        labourRate: { type: number }
+    QuoteStatusInput:
+      type: object
+      required: [status]
+      properties:
+        status: { type: string }
 
+    Booking:
+      type: object
+      required: [id, title, startAt, endAt, status, createdAt]
+      properties:
+        id: { type: integer }
+        title: { type: string }
+        customerId: { type: ["integer", "null"] }
+        customerName: { type: ["string", "null"] }
+        quoteId: { type: ["integer", "null"] }
+        siteAddress: { type: ["string", "null"] }
+        notes: { type: ["string", "null"] }
+        startAt: { type: string, format: date-time }
+        endAt: { type: string, format: date-time }
+        status:
+          type: string
+          description: "scheduled | in_progress | completed | cancelled"
+        createdAt: { type: string, format: date-time }
+    BookingInput:
+      type: object
+      required: [title, startAt, endAt]
+      properties:
+        title: { type: string, minLength: 1 }
+        customerId: { type: integer }
+        quoteId: { type: integer }
+        siteAddress: { type: string }
+        notes: { type: string }
+        startAt: { type: string, format: date-time }
+        endAt: { type: string, format: date-time }
+        status: { type: string }
+    BookingUpdate:
+      type: object
+      properties:
+        title: { type: string, minLength: 1 }
+        customerId: { type: integer }
+        quoteId: { type: integer }
+        siteAddress: { type: string }
+        notes: { type: string }
+        startAt: { type: string, format: date-time }
+        endAt: { type: string, format: date-time }
+        status: { type: string }
+
+    DashboardSummary:
+      type: object
+      required: [activeQuoteCount, acceptedQuoteCount, totalQuoteValue, upcomingBookingCount, customerCount, recentQuotes, upcomingBookings]
+      properties:
+        activeQuoteCount: { type: integer }
+        acceptedQuoteCount: { type: integer }
+        totalQuoteValue: { type: number }
+        upcomingBookingCount: { type: integer }
+        customerCount: { type: integer }
+        recentQuotes:
+          type: array
+          items: { $ref: "#/components/schemas/QuoteSummary" }
+        upcomingBookings:
+          type: array
+          items: { $ref: "#/components/schemas/Booking" }
