@@ -567,8 +567,8 @@ export default function DashboardScreen() {
                   accent
                 />
                 <QuickAction
-                  icon="tag"
-                  label={"CHECK\nPRICES"}
+                  icon="layers"
+                  label={"MATERIALS\nLIST"}
                   onPress={() => router.push("/materials")}
                 />
               </View>

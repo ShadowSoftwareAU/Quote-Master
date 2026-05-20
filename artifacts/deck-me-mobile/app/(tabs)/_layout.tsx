@@ -76,12 +76,7 @@ export default function TabLayout() {
       />
       <Tabs.Screen
         name="materials"
-        options={{
-          title: "PRICES",
-          tabBarIcon: ({ color }) => (
-            <Feather name="tag" size={22} color={color} />
-          ),
-        }}
+        options={{ href: null }}
       />
       <Tabs.Screen
         name="customers"
