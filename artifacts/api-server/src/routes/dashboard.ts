@@ -1,5 +1,5 @@
 import { Router, type IRouter } from "express";
-import { sql, eq, desc, asc, gte } from "drizzle-orm";
+import { sql, eq, desc, asc, gte, inArray } from "drizzle-orm";
 import {
   db,
   quotesTable,
@@ -78,7 +78,7 @@ router.get("/dashboard/summary", async (_req, res): Promise<void> => {
         quantity: quoteLineItemsTable.quantity,
       })
       .from(quoteLineItemsTable)
-      .where(sql`quote_id = ANY(${ids})`);
+      .where(inArray(quoteLineItemsTable.quoteId, ids));
 
     const materialIds = lineItems
       .map((l) => l.materialId)
@@ -88,7 +88,7 @@ router.get("/dashboard/summary", async (_req, res): Promise<void> => {
       ? await db
           .select({ id: materialsTable.id, tradeCost: materialsTable.tradeCost })
           .from(materialsTable)
-          .where(sql`id = ANY(${materialIds})`)
+          .where(inArray(materialsTable.id, materialIds))
       : [];
 
     const tradeCostMap = new Map(
