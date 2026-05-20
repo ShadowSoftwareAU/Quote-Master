@@ -1,0 +1,47 @@
+# Project Overview: "Quote-to-Site" Builder MVP
+Build a mobile-responsive web application (PWA) designed for carpenters. It acts as an end-to-end platform for material estimation, dual-pricing P&L, client quoting, deposit collection, and site logistics. 
+
+## Constraint: Cost-Effective, Free-Tier Friendly Stack
+Please scaffold this app using tools that have generous free tiers so we can build and test the MVP without server costs:
+- **Frontend / Framework:** Next.js (App Router, React) with Tailwind CSS (Mobile-first, dark mode preferred UI).
+- **Backend / Database:** Supabase (PostgreSQL) for auth, database, and photo storage.
+- **Payments:** Stripe (Start in Test Mode).
+- **Email:** Nodemailer (or Resend free tier) for supplier orders.
+- **Scraper:** Use a simple Cheerio script on a Next.js Cron Route (avoid paid API scraping tools for now).
+
+## App Architecture & Features (Build in Phases)
+
+### Phase 1: The Parametric Math Engine
+Build the estimation calculator that takes user inputs and outputs a Master Bill of Materials (BOM).
+- **Deck Logic:** Inputs: Length (m), Width (m), Height (mm). Outputs: Decking boards (LM + 10% waste), Subfloor framing (LM at 450mm centers), Post count, Concrete bags per hole, Screw count.
+- **Ramp Logic:** Inputs: Rise (mm), Width (mm), Gradient Ratio (e.g., 1:14). Outputs: Sloping surface length (Trig), framing, decking, posts.
+- **Modifiers:** Boolean checkboxes to toggle structural elements (e.g., "Decking Only" bypasses framing math).
+- **Compliance Flag:** If Deck Height > 1000mm, show a red warning UI: "Council Certification May Be Required."
+
+### Phase 2: Dual-Pricing Database & P&L Engine
+The app must track two prices for every material to hide margins from the client.
+- **Mock Database:** Seed the Supabase DB with 5 standard materials (140mm Kwila, 90x45 H3 Pine, Posts, Concrete, Screws).
+- **Data Columns:** Each item needs a `Trade_Cost` (simulating a CSV upload) and a `Retail_Price` (simulating scraped public data).
+- **Builder Dashboard:** An internal UI that calculates and displays Gross Profit for a quote (Total Retail Quote - Total Trade Cost).
+
+### Phase 3: Smart Quoting & Stripe Gateway
+- **Quote Export Engine:** Generate a quote view with a toggle:
+  - *Simple:* One lump sum ("Deck Materials & Labor").
+  - *Detailed:* Itemized list of materials, but STRICTLY only displaying the `Retail_Price`. `Trade_Cost` must never render on the client side.
+- **Variations:** A button inside active jobs to quickly generate a mini-quote for scope creep (e.g., "Add Handrail").
+- **Client Payment Link:** Generate a hosted client view with a Stripe "Pay 50% Deposit" button. 
+
+### Phase 4: Logistics & Operations Calendar
+The system restricts scheduling until the Stripe deposit webhook confirms payment.
+- **Job Unlock:** Once paid, move the job to an "Active" state.
+- **Calendar UI:** A weekly view where Active jobs can be assigned a date.
+- **Digital Job Card:** Clicking a scheduled job opens a drawer containing:
+  - The finalized Master BOM.
+  - A Site Camera module (upload photos to Supabase Storage for pre-work CYA evidence).
+- **Automated Procurement:** A UI button "Email Supplier" that takes the Master BOM, formats it into a clean list, and triggers a mock email draft to the hardware store.
+
+## Instructions for AI Agent
+Do not attempt to build the entire app in one shot. 
+1. Scaffold the Next.js / Tailwind project.
+2. Build the UI and logic for **Phase 1 (The Math Engine)** using local React state first so I can test the calculator math.
+Please acknowledge these instructions and let me know when Phase 1 is ready to preview.
