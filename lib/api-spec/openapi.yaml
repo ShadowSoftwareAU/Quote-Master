@@ -15,6 +15,10 @@ tags:
   - name: bookings
   - name: dashboard
   - name: storage
+  - name: team
+  - name: time
+  - name: portfolio
+  - name: referrals
 paths:
   /healthz:
     get:
@@ -401,6 +405,364 @@ paths:
               schema: { $ref: "#/components/schemas/Quote" }
 
 
+  # ── Team Members ───────────────────────────────────────────────────────
+  /team:
+    get:
+      operationId: listTeamMembers
+      tags: [team]
+      summary: List all team members
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/TeamMember" }
+    post:
+      operationId: createTeamMember
+      tags: [team]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/TeamMemberInput" }
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/TeamMember" }
+
+  /team/{id}:
+    patch:
+      operationId: updateTeamMember
+      tags: [team]
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: integer }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/TeamMemberUpdate" }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/TeamMember" }
+    delete:
+      operationId: deleteTeamMember
+      tags: [team]
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: integer }
+      responses:
+        "204":
+          description: Deactivated
+
+  /team/{memberId}/assign/{jobId}:
+    post:
+      operationId: assignTeamMemberToJob
+      tags: [team]
+      parameters:
+        - in: path
+          name: memberId
+          required: true
+          schema: { type: integer }
+        - in: path
+          name: jobId
+          required: true
+          schema: { type: integer }
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/AssignJobInput" }
+      responses:
+        "201":
+          description: Assigned
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/JobAssignment" }
+
+  /bookings/{jobId}/assignments:
+    get:
+      operationId: listJobAssignments
+      tags: [team]
+      parameters:
+        - in: path
+          name: jobId
+          required: true
+          schema: { type: integer }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/JobAssignment" }
+    delete:
+      operationId: removeJobAssignment
+      tags: [team]
+      parameters:
+        - in: path
+          name: jobId
+          required: true
+          schema: { type: integer }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/RemoveAssignmentInput" }
+      responses:
+        "204":
+          description: Removed
+
+  # ── Time Tracking ───────────────────────────────────────────────────────
+  /time/clock-on:
+    post:
+      operationId: clockOn
+      tags: [time]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ClockOnInput" }
+      responses:
+        "201":
+          description: Clocked on
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/TimeEntry" }
+
+  /time/clock-off:
+    post:
+      operationId: clockOff
+      tags: [time]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ClockOffInput" }
+      responses:
+        "200":
+          description: Clocked off
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/TimeEntry" }
+
+  /time/manual:
+    post:
+      operationId: addManualTimeEntry
+      tags: [time]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ManualTimeEntryInput" }
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/TimeEntry" }
+
+  /time/job/{jobId}:
+    get:
+      operationId: listTimeEntriesForJob
+      tags: [time]
+      parameters:
+        - in: path
+          name: jobId
+          required: true
+          schema: { type: integer }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/TimeEntry" }
+
+  /time/member/{memberId}:
+    get:
+      operationId: listTimeEntriesForMember
+      tags: [time]
+      parameters:
+        - in: path
+          name: memberId
+          required: true
+          schema: { type: integer }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/TimeEntry" }
+
+  # ── Portfolio ───────────────────────────────────────────────────────────
+  /portfolio:
+    get:
+      operationId: listPortfolioEntries
+      tags: [portfolio]
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/PortfolioEntry" }
+    post:
+      operationId: createPortfolioEntry
+      tags: [portfolio]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/PortfolioEntryInput" }
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PortfolioEntry" }
+
+  /portfolio/{id}:
+    patch:
+      operationId: updatePortfolioEntry
+      tags: [portfolio]
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: integer }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/PortfolioEntryInput" }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PortfolioEntry" }
+    delete:
+      operationId: deletePortfolioEntry
+      tags: [portfolio]
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: integer }
+      responses:
+        "204":
+          description: Deleted
+
+  /portfolio/{id}/photos:
+    post:
+      operationId: addPortfolioPhoto
+      tags: [portfolio]
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: integer }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/AddPortfolioPhotoInput" }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PortfolioEntry" }
+
+  # ── Referrals ───────────────────────────────────────────────────────────
+  /referrals/sources:
+    get:
+      operationId: listReferralSources
+      tags: [referrals]
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/ReferralSource" }
+    post:
+      operationId: createReferralSource
+      tags: [referrals]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ReferralSourceInput" }
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ReferralSource" }
+
+  /referrals/sources/{code}/qr:
+    get:
+      operationId: getReferralQrCode
+      tags: [referrals]
+      parameters:
+        - in: path
+          name: code
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: QR code PNG image
+          content:
+            image/png:
+              schema: { type: string, format: binary }
+
+  /referrals/leads:
+    get:
+      operationId: listSignUpLeads
+      tags: [referrals]
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/SignUpLead" }
+    post:
+      operationId: createSignUpLead
+      tags: [referrals]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/SignUpLeadInput" }
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/SignUpLead" }
+
+
 components:
   schemas:
     HealthStatus:
@@ -715,3 +1077,198 @@ components:
         upcomingBookings:
           type: array
           items: { $ref: "#/components/schemas/Booking" }
+
+    TeamMember:
+      type: object
+      required: [id, name, role, active, createdAt]
+      properties:
+        id: { type: integer }
+        name: { type: string }
+        email: { type: ["string", "null"] }
+        phone: { type: ["string", "null"] }
+        role: { type: string, description: "owner | employee | subcontractor" }
+        active: { type: boolean }
+        createdAt: { type: string, format: date-time }
+
+    TeamMemberInput:
+      type: object
+      required: [name]
+      properties:
+        name: { type: string, minLength: 1 }
+        email: { type: string }
+        phone: { type: string }
+        role: { type: string }
+        pin: { type: string }
+
+    TeamMemberUpdate:
+      type: object
+      properties:
+        name: { type: string, minLength: 1 }
+        email: { type: string }
+        phone: { type: string }
+        role: { type: string }
+        pin: { type: string }
+        active: { type: boolean }
+
+    JobAssignment:
+      type: object
+      required: [id, jobId, teamMemberId, assignedAt]
+      properties:
+        id: { type: integer }
+        jobId: { type: integer }
+        teamMemberId: { type: integer }
+        memberName: { type: ["string", "null"] }
+        roleOnJob: { type: ["string", "null"] }
+        assignedAt: { type: string, format: date-time }
+
+    TimeEntry:
+      type: object
+      required: [id, teamMemberId, jobId, manualEntry, createdAt]
+      properties:
+        id: { type: integer }
+        teamMemberId: { type: integer }
+        memberName: { type: ["string", "null"] }
+        jobId: { type: integer }
+        jobTitle: { type: ["string", "null"] }
+        clockOn: { type: ["string", "null"], format: date-time }
+        clockOff: { type: ["string", "null"], format: date-time }
+        durationMinutes: { type: ["integer", "null"] }
+        manualEntry: { type: boolean }
+        notes: { type: ["string", "null"] }
+        createdAt: { type: string, format: date-time }
+
+    ManualTimeEntryInput:
+      type: object
+      required: [teamMemberId, jobId, durationMinutes]
+      properties:
+        teamMemberId: { type: integer }
+        jobId: { type: integer }
+        durationMinutes: { type: integer }
+        clockOn: { type: string, format: date-time }
+        clockOff: { type: string, format: date-time }
+        notes: { type: string }
+
+    PortfolioEntry:
+      type: object
+      required: [id, title, beforePhotos, afterPhotos, isPublic, createdAt]
+      properties:
+        id: { type: integer }
+        bookingId: { type: ["integer", "null"] }
+        title: { type: string }
+        description: { type: ["string", "null"] }
+        deckType: { type: ["string", "null"] }
+        dimensionText: { type: ["string", "null"] }
+        materialsText: { type: ["string", "null"] }
+        beforePhotos:
+          type: array
+          items: { type: string }
+        afterPhotos:
+          type: array
+          items: { type: string }
+        testimonial: { type: ["string", "null"] }
+        customerName: { type: ["string", "null"] }
+        rating: { type: ["integer", "null"] }
+        isPublic: { type: boolean }
+        completedAt: { type: ["string", "null"], format: date-time }
+        createdAt: { type: string, format: date-time }
+
+    PortfolioEntryInput:
+      type: object
+      required: [title]
+      properties:
+        bookingId: { type: integer }
+        title: { type: string, minLength: 1 }
+        description: { type: string }
+        deckType: { type: string }
+        dimensionText: { type: string }
+        materialsText: { type: string }
+        testimonial: { type: string }
+        customerName: { type: string }
+        rating: { type: integer, minimum: 1, maximum: 5 }
+        isPublic: { type: boolean }
+        completedAt: { type: string, format: date-time }
+
+    ReferralSource:
+      type: object
+      required: [id, code, name, type, createdAt]
+      properties:
+        id: { type: integer }
+        code: { type: string }
+        name: { type: string }
+        type: { type: string, description: "supplier | training | word_of_mouth | direct | other" }
+        description: { type: ["string", "null"] }
+        leadCount: { type: integer }
+        createdAt: { type: string, format: date-time }
+
+    ReferralSourceInput:
+      type: object
+      required: [code, name]
+      properties:
+        code: { type: string, minLength: 1 }
+        name: { type: string, minLength: 1 }
+        type: { type: string }
+        description: { type: string }
+
+    SignUpLead:
+      type: object
+      required: [id, name, createdAt]
+      properties:
+        id: { type: integer }
+        name: { type: string }
+        email: { type: ["string", "null"] }
+        phone: { type: ["string", "null"] }
+        company: { type: ["string", "null"] }
+        referralCode: { type: ["string", "null"] }
+        utmSource: { type: ["string", "null"] }
+        utmMedium: { type: ["string", "null"] }
+        utmCampaign: { type: ["string", "null"] }
+        notes: { type: ["string", "null"] }
+        createdAt: { type: string, format: date-time }
+
+    SignUpLeadInput:
+      type: object
+      required: [name]
+      properties:
+        name: { type: string, minLength: 1 }
+        email: { type: string }
+        phone: { type: string }
+        company: { type: string }
+        referralCode: { type: string }
+        utmSource: { type: string }
+        utmMedium: { type: string }
+        utmCampaign: { type: string }
+        notes: { type: string }
+
+    AssignJobInput:
+      type: object
+      properties:
+        roleOnJob: { type: string }
+
+    RemoveAssignmentInput:
+      type: object
+      required: [teamMemberId]
+      properties:
+        teamMemberId: { type: integer }
+
+    ClockOnInput:
+      type: object
+      required: [teamMemberId, jobId]
+      properties:
+        teamMemberId: { type: integer }
+        jobId: { type: integer }
+        notes: { type: string }
+
+    ClockOffInput:
+      type: object
+      required: [teamMemberId, jobId]
+      properties:
+        teamMemberId: { type: integer }
+        jobId: { type: integer }
+        notes: { type: string }
+
+    AddPortfolioPhotoInput:
+      type: object
+      required: [objectPath, photoType]
+      properties:
+        objectPath: { type: string }
+        photoType: { type: string, description: "before | after" }

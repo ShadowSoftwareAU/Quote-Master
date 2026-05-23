@@ -603,3 +603,350 @@ export const CreateQuoteVariationBody = zod.object({
 })
 
 
+/**
+ * @summary List all team members
+ */
+export const ListTeamMembersResponseItem = zod.object({
+  "id": zod.number(),
+  "name": zod.string(),
+  "email": zod.string().nullish(),
+  "phone": zod.string().nullish(),
+  "role": zod.string().describe('owner | employee | subcontractor'),
+  "active": zod.boolean(),
+  "createdAt": zod.coerce.date()
+})
+export const ListTeamMembersResponse = zod.array(ListTeamMembersResponseItem)
+
+
+
+
+
+export const CreateTeamMemberBody = zod.object({
+  "name": zod.string().min(1),
+  "email": zod.string().optional(),
+  "phone": zod.string().optional(),
+  "role": zod.string().optional(),
+  "pin": zod.string().optional()
+})
+
+
+export const UpdateTeamMemberParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+
+
+
+export const UpdateTeamMemberBody = zod.object({
+  "name": zod.string().min(1).optional(),
+  "email": zod.string().optional(),
+  "phone": zod.string().optional(),
+  "role": zod.string().optional(),
+  "pin": zod.string().optional(),
+  "active": zod.boolean().optional()
+})
+
+export const UpdateTeamMemberResponse = zod.object({
+  "id": zod.number(),
+  "name": zod.string(),
+  "email": zod.string().nullish(),
+  "phone": zod.string().nullish(),
+  "role": zod.string().describe('owner | employee | subcontractor'),
+  "active": zod.boolean(),
+  "createdAt": zod.coerce.date()
+})
+
+
+export const DeleteTeamMemberParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+
+export const AssignTeamMemberToJobParams = zod.object({
+  "memberId": zod.coerce.number(),
+  "jobId": zod.coerce.number()
+})
+
+export const AssignTeamMemberToJobBody = zod.object({
+  "roleOnJob": zod.string().optional()
+})
+
+
+export const ListJobAssignmentsParams = zod.object({
+  "jobId": zod.coerce.number()
+})
+
+export const ListJobAssignmentsResponseItem = zod.object({
+  "id": zod.number(),
+  "jobId": zod.number(),
+  "teamMemberId": zod.number(),
+  "memberName": zod.string().nullish(),
+  "roleOnJob": zod.string().nullish(),
+  "assignedAt": zod.coerce.date()
+})
+export const ListJobAssignmentsResponse = zod.array(ListJobAssignmentsResponseItem)
+
+
+export const RemoveJobAssignmentParams = zod.object({
+  "jobId": zod.coerce.number()
+})
+
+export const RemoveJobAssignmentBody = zod.object({
+  "teamMemberId": zod.number()
+})
+
+
+export const ClockOnBody = zod.object({
+  "teamMemberId": zod.number(),
+  "jobId": zod.number(),
+  "notes": zod.string().optional()
+})
+
+
+export const ClockOffBody = zod.object({
+  "teamMemberId": zod.number(),
+  "jobId": zod.number(),
+  "notes": zod.string().optional()
+})
+
+export const ClockOffResponse = zod.object({
+  "id": zod.number(),
+  "teamMemberId": zod.number(),
+  "memberName": zod.string().nullish(),
+  "jobId": zod.number(),
+  "jobTitle": zod.string().nullish(),
+  "clockOn": zod.coerce.date().nullish(),
+  "clockOff": zod.coerce.date().nullish(),
+  "durationMinutes": zod.number().nullish(),
+  "manualEntry": zod.boolean(),
+  "notes": zod.string().nullish(),
+  "createdAt": zod.coerce.date()
+})
+
+
+export const AddManualTimeEntryBody = zod.object({
+  "teamMemberId": zod.number(),
+  "jobId": zod.number(),
+  "durationMinutes": zod.number(),
+  "clockOn": zod.coerce.date().optional(),
+  "clockOff": zod.coerce.date().optional(),
+  "notes": zod.string().optional()
+})
+
+
+export const ListTimeEntriesForJobParams = zod.object({
+  "jobId": zod.coerce.number()
+})
+
+export const ListTimeEntriesForJobResponseItem = zod.object({
+  "id": zod.number(),
+  "teamMemberId": zod.number(),
+  "memberName": zod.string().nullish(),
+  "jobId": zod.number(),
+  "jobTitle": zod.string().nullish(),
+  "clockOn": zod.coerce.date().nullish(),
+  "clockOff": zod.coerce.date().nullish(),
+  "durationMinutes": zod.number().nullish(),
+  "manualEntry": zod.boolean(),
+  "notes": zod.string().nullish(),
+  "createdAt": zod.coerce.date()
+})
+export const ListTimeEntriesForJobResponse = zod.array(ListTimeEntriesForJobResponseItem)
+
+
+export const ListTimeEntriesForMemberParams = zod.object({
+  "memberId": zod.coerce.number()
+})
+
+export const ListTimeEntriesForMemberResponseItem = zod.object({
+  "id": zod.number(),
+  "teamMemberId": zod.number(),
+  "memberName": zod.string().nullish(),
+  "jobId": zod.number(),
+  "jobTitle": zod.string().nullish(),
+  "clockOn": zod.coerce.date().nullish(),
+  "clockOff": zod.coerce.date().nullish(),
+  "durationMinutes": zod.number().nullish(),
+  "manualEntry": zod.boolean(),
+  "notes": zod.string().nullish(),
+  "createdAt": zod.coerce.date()
+})
+export const ListTimeEntriesForMemberResponse = zod.array(ListTimeEntriesForMemberResponseItem)
+
+
+export const ListPortfolioEntriesResponseItem = zod.object({
+  "id": zod.number(),
+  "bookingId": zod.number().nullish(),
+  "title": zod.string(),
+  "description": zod.string().nullish(),
+  "deckType": zod.string().nullish(),
+  "dimensionText": zod.string().nullish(),
+  "materialsText": zod.string().nullish(),
+  "beforePhotos": zod.array(zod.string()),
+  "afterPhotos": zod.array(zod.string()),
+  "testimonial": zod.string().nullish(),
+  "customerName": zod.string().nullish(),
+  "rating": zod.number().nullish(),
+  "isPublic": zod.boolean(),
+  "completedAt": zod.coerce.date().nullish(),
+  "createdAt": zod.coerce.date()
+})
+export const ListPortfolioEntriesResponse = zod.array(ListPortfolioEntriesResponseItem)
+
+
+
+export const createPortfolioEntryBodyRatingMax = 5;
+
+
+
+export const CreatePortfolioEntryBody = zod.object({
+  "bookingId": zod.number().optional(),
+  "title": zod.string().min(1),
+  "description": zod.string().optional(),
+  "deckType": zod.string().optional(),
+  "dimensionText": zod.string().optional(),
+  "materialsText": zod.string().optional(),
+  "testimonial": zod.string().optional(),
+  "customerName": zod.string().optional(),
+  "rating": zod.number().min(1).max(createPortfolioEntryBodyRatingMax).optional(),
+  "isPublic": zod.boolean().optional(),
+  "completedAt": zod.coerce.date().optional()
+})
+
+
+export const UpdatePortfolioEntryParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+
+export const updatePortfolioEntryBodyRatingMax = 5;
+
+
+
+export const UpdatePortfolioEntryBody = zod.object({
+  "bookingId": zod.number().optional(),
+  "title": zod.string().min(1),
+  "description": zod.string().optional(),
+  "deckType": zod.string().optional(),
+  "dimensionText": zod.string().optional(),
+  "materialsText": zod.string().optional(),
+  "testimonial": zod.string().optional(),
+  "customerName": zod.string().optional(),
+  "rating": zod.number().min(1).max(updatePortfolioEntryBodyRatingMax).optional(),
+  "isPublic": zod.boolean().optional(),
+  "completedAt": zod.coerce.date().optional()
+})
+
+export const UpdatePortfolioEntryResponse = zod.object({
+  "id": zod.number(),
+  "bookingId": zod.number().nullish(),
+  "title": zod.string(),
+  "description": zod.string().nullish(),
+  "deckType": zod.string().nullish(),
+  "dimensionText": zod.string().nullish(),
+  "materialsText": zod.string().nullish(),
+  "beforePhotos": zod.array(zod.string()),
+  "afterPhotos": zod.array(zod.string()),
+  "testimonial": zod.string().nullish(),
+  "customerName": zod.string().nullish(),
+  "rating": zod.number().nullish(),
+  "isPublic": zod.boolean(),
+  "completedAt": zod.coerce.date().nullish(),
+  "createdAt": zod.coerce.date()
+})
+
+
+export const DeletePortfolioEntryParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+
+export const AddPortfolioPhotoParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+export const AddPortfolioPhotoBody = zod.object({
+  "objectPath": zod.string(),
+  "photoType": zod.string().describe('before | after')
+})
+
+export const AddPortfolioPhotoResponse = zod.object({
+  "id": zod.number(),
+  "bookingId": zod.number().nullish(),
+  "title": zod.string(),
+  "description": zod.string().nullish(),
+  "deckType": zod.string().nullish(),
+  "dimensionText": zod.string().nullish(),
+  "materialsText": zod.string().nullish(),
+  "beforePhotos": zod.array(zod.string()),
+  "afterPhotos": zod.array(zod.string()),
+  "testimonial": zod.string().nullish(),
+  "customerName": zod.string().nullish(),
+  "rating": zod.number().nullish(),
+  "isPublic": zod.boolean(),
+  "completedAt": zod.coerce.date().nullish(),
+  "createdAt": zod.coerce.date()
+})
+
+
+export const ListReferralSourcesResponseItem = zod.object({
+  "id": zod.number(),
+  "code": zod.string(),
+  "name": zod.string(),
+  "type": zod.string().describe('supplier | training | word_of_mouth | direct | other'),
+  "description": zod.string().nullish(),
+  "leadCount": zod.number().optional(),
+  "createdAt": zod.coerce.date()
+})
+export const ListReferralSourcesResponse = zod.array(ListReferralSourcesResponseItem)
+
+
+
+
+
+
+export const CreateReferralSourceBody = zod.object({
+  "code": zod.string().min(1),
+  "name": zod.string().min(1),
+  "type": zod.string().optional(),
+  "description": zod.string().optional()
+})
+
+
+export const GetReferralQrCodeParams = zod.object({
+  "code": zod.coerce.string()
+})
+
+
+export const ListSignUpLeadsResponseItem = zod.object({
+  "id": zod.number(),
+  "name": zod.string(),
+  "email": zod.string().nullish(),
+  "phone": zod.string().nullish(),
+  "company": zod.string().nullish(),
+  "referralCode": zod.string().nullish(),
+  "utmSource": zod.string().nullish(),
+  "utmMedium": zod.string().nullish(),
+  "utmCampaign": zod.string().nullish(),
+  "notes": zod.string().nullish(),
+  "createdAt": zod.coerce.date()
+})
+export const ListSignUpLeadsResponse = zod.array(ListSignUpLeadsResponseItem)
+
+
+
+
+
+export const CreateSignUpLeadBody = zod.object({
+  "name": zod.string().min(1),
+  "email": zod.string().optional(),
+  "phone": zod.string().optional(),
+  "company": zod.string().optional(),
+  "referralCode": zod.string().optional(),
+  "utmSource": zod.string().optional(),
+  "utmMedium": zod.string().optional(),
+  "utmCampaign": zod.string().optional(),
+  "notes": zod.string().optional()
+})
+
+

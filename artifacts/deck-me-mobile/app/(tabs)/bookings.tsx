@@ -4,6 +4,10 @@ import {
   useListBookings,
   useAddBookingPhoto,
   useRemoveBookingPhoto,
+  useListTeamMembers,
+  useListJobAssignments,
+  useClockOn,
+  useClockOff,
   getListBookingsQueryKey,
 } from "@workspace/api-client-react";
 import * as ImagePicker from "expo-image-picker";
@@ -18,6 +22,7 @@ import {
   Pressable,
   ScrollView,
   Text,
+  TouchableOpacity,
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -53,16 +58,22 @@ export default function BookingsScreen() {
   const insets = useSafeAreaInsets();
   const qc = useQueryClient();
   const { data, isLoading, refetch, isRefetching } = useListBookings();
+  const { data: teamMembers } = useListTeamMembers();
   const addPhoto = useAddBookingPhoto();
   const removePhoto = useRemoveBookingPhoto();
+  const clockOn = useClockOn();
+  const clockOff = useClockOff();
 
   const [selectedBookingId, setSelectedBookingId] = useState<number | null>(null);
   const [uploading, setUploading] = useState(false);
+  const [clockBookingId, setClockBookingId] = useState<number | null>(null);
+  const [clockLoading, setClockLoading] = useState(false);
 
   const topPad = Platform.OS === "web" ? Math.max(insets.top, 67) : insets.top;
 
   const selectedBooking = data?.find(b => b.id === selectedBookingId) as AnyBooking | undefined;
   const photos: string[] = (selectedBooking?.photos as string[]) ?? [];
+  const clockBooking = data?.find(b => b.id === clockBookingId) as AnyBooking | undefined;
 
   async function pickAndUpload(source: "camera" | "library") {
     if (!selectedBookingId) return;
@@ -132,6 +143,26 @@ export default function BookingsScreen() {
     ]);
   }
 
+  async function handleClockAction(memberId: number, action: "on" | "off") {
+    if (!clockBookingId) return;
+    setClockLoading(true);
+    try {
+      if (action === "on") {
+        await clockOn.mutateAsync({ data: { teamMemberId: memberId, jobId: clockBookingId } });
+        Alert.alert("Clocked On", "Time tracking started.");
+      } else {
+        await clockOff.mutateAsync({ data: { teamMemberId: memberId, jobId: clockBookingId } });
+        Alert.alert("Clocked Off", "Time entry saved.");
+      }
+      setClockBookingId(null);
+    } catch (err: any) {
+      const msg = err?.message ?? "Something went wrong";
+      Alert.alert("Error", msg.includes("Already clocked on") ? "Already clocked on for this job." : msg.includes("No open") ? "Not currently clocked on for this job." : msg);
+    } finally {
+      setClockLoading(false);
+    }
+  }
+
   const domain = process.env.EXPO_PUBLIC_DOMAIN ?? "";
   const apiBase = domain ? `https://${domain}` : "";
 
@@ -198,18 +229,38 @@ export default function BookingsScreen() {
                     ) : null}
                     <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginTop: 10 }}>
                       <StatusBadge status={item.status} />
+                    </View>
+                    {/* Action buttons */}
+                    <View style={{ flexDirection: "row", gap: 8, marginTop: 10 }}>
                       <Pressable
                         onPress={() => setSelectedBookingId(item.id)}
                         style={({ pressed }) => ({
-                          flexDirection: "row", alignItems: "center", gap: 5,
+                          flex: 1,
+                          flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 5,
                           backgroundColor: colors.muted, borderRadius: 4,
-                          paddingHorizontal: 10, paddingVertical: 6,
+                          paddingVertical: 7,
                           opacity: pressed ? 0.7 : 1,
                         })}
                       >
                         <Feather name="camera" size={13} color={colors.primary} />
                         <Text style={{ fontFamily: "Inter_700Bold", fontSize: 11, color: colors.primary, letterSpacing: 0.6 }}>
                           {bPhotos.length > 0 ? `PHOTOS (${bPhotos.length})` : "PHOTOS"}
+                        </Text>
+                      </Pressable>
+                      <Pressable
+                        onPress={() => setClockBookingId(item.id)}
+                        style={({ pressed }) => ({
+                          flex: 1,
+                          flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 5,
+                          backgroundColor: "#ff7a0015", borderRadius: 4,
+                          borderWidth: 1, borderColor: colors.primary,
+                          paddingVertical: 7,
+                          opacity: pressed ? 0.7 : 1,
+                        })}
+                      >
+                        <Feather name="clock" size={13} color={colors.primary} />
+                        <Text style={{ fontFamily: "Inter_700Bold", fontSize: 11, color: colors.primary, letterSpacing: 0.6 }}>
+                          TIME
                         </Text>
                       </Pressable>
                     </View>
@@ -220,6 +271,123 @@ export default function BookingsScreen() {
           }}
         />
       )}
+
+      {/* Clock-on/off modal */}
+      <Modal
+        visible={clockBookingId !== null}
+        animationType="slide"
+        presentationStyle="pageSheet"
+        onRequestClose={() => setClockBookingId(null)}
+      >
+        <View style={{ flex: 1, backgroundColor: colors.background }}>
+          <View style={{
+            backgroundColor: colors.sidebar,
+            paddingTop: insets.top + 12,
+            paddingBottom: 16,
+            paddingHorizontal: 20,
+            flexDirection: "row",
+            alignItems: "center",
+            justifyContent: "space-between",
+          }}>
+            <View>
+              <Text style={{ fontFamily: "Inter_700Bold", color: colors.primary, fontSize: 11, letterSpacing: 1.4 }}>CLOCK ON / OFF</Text>
+              <Text style={{ fontFamily: "Chivo_900Black", color: "#fff", fontSize: 20, marginTop: 2 }}>
+                {(clockBooking?.title as string) ?? ""}
+              </Text>
+            </View>
+            <Pressable onPress={() => setClockBookingId(null)} style={{ padding: 8 }}>
+              <Feather name="x" size={24} color="#fff" />
+            </Pressable>
+          </View>
+          <StripedBar height={4} />
+
+          <ScrollView contentContainerStyle={{ padding: 20, paddingBottom: insets.bottom + 40 }}>
+            <Text style={{ fontFamily: "Inter_700Bold", color: colors.mutedForeground, fontSize: 11, letterSpacing: 1.2, marginBottom: 16 }}>
+              SELECT CREW MEMBER
+            </Text>
+
+            {!teamMembers || teamMembers.length === 0 ? (
+              <View style={{ alignItems: "center", paddingVertical: 40 }}>
+                <Feather name="users" size={36} color={colors.mutedForeground} />
+                <Text style={{ fontFamily: "Chivo_700Bold", color: colors.foreground, fontSize: 16, marginTop: 12 }}>
+                  No team members
+                </Text>
+                <Text style={{ fontFamily: "Inter_400Regular", color: colors.mutedForeground, fontSize: 13, marginTop: 4, textAlign: "center" }}>
+                  Add team members from the web app first.
+                </Text>
+              </View>
+            ) : (
+              teamMembers.filter(m => m.active).map((member) => (
+                <View key={member.id} style={{
+                  backgroundColor: colors.card,
+                  borderRadius: 8,
+                  borderWidth: 1,
+                  borderColor: colors.border,
+                  padding: 14,
+                  marginBottom: 10,
+                }}>
+                  <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
+                    <View>
+                      <Text style={{ fontFamily: "Chivo_700Bold", color: colors.foreground, fontSize: 15 }}>
+                        {member.name}
+                      </Text>
+                      {member.role && (
+                        <Text style={{ fontFamily: "Inter_500Medium", color: colors.mutedForeground, fontSize: 12, marginTop: 2, textTransform: "capitalize" }}>
+                          {member.role}
+                        </Text>
+                      )}
+                    </View>
+                  </View>
+                  <View style={{ flexDirection: "row", gap: 8 }}>
+                    <TouchableOpacity
+                      disabled={clockLoading}
+                      onPress={() => handleClockAction(member.id, "on")}
+                      style={{
+                        flex: 1,
+                        backgroundColor: colors.primary,
+                        borderRadius: 6,
+                        paddingVertical: 10,
+                        alignItems: "center",
+                        flexDirection: "row",
+                        justifyContent: "center",
+                        gap: 6,
+                        opacity: clockLoading ? 0.5 : 1,
+                      }}
+                    >
+                      <Feather name="play" size={13} color="#fff" />
+                      <Text style={{ fontFamily: "Inter_700Bold", color: "#fff", fontSize: 12, letterSpacing: 0.6 }}>
+                        CLOCK ON
+                      </Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      disabled={clockLoading}
+                      onPress={() => handleClockAction(member.id, "off")}
+                      style={{
+                        flex: 1,
+                        backgroundColor: colors.muted,
+                        borderRadius: 6,
+                        borderWidth: 1,
+                        borderColor: colors.border,
+                        paddingVertical: 10,
+                        alignItems: "center",
+                        flexDirection: "row",
+                        justifyContent: "center",
+                        gap: 6,
+                        opacity: clockLoading ? 0.5 : 1,
+                      }}
+                    >
+                      <Feather name="square" size={13} color={colors.foreground} />
+                      <Text style={{ fontFamily: "Inter_700Bold", color: colors.foreground, fontSize: 12, letterSpacing: 0.6 }}>
+                        CLOCK OFF
+                      </Text>
+                    </TouchableOpacity>
+                  </View>
+                </View>
+              ))
+            )}
+          </ScrollView>
+        </View>
+      </Modal>
 
       {/* Photo modal */}
       <Modal

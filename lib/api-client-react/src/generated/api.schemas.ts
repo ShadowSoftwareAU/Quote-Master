@@ -323,6 +323,206 @@ export interface DashboardSummary {
   upcomingBookings: Booking[];
 }
 
+export interface TeamMember {
+  id: number;
+  name: string;
+  /** @nullable */
+  email?: string | null;
+  /** @nullable */
+  phone?: string | null;
+  /** owner | employee | subcontractor */
+  role: string;
+  active: boolean;
+  createdAt: string;
+}
+
+export interface TeamMemberInput {
+  /** @minLength 1 */
+  name: string;
+  email?: string;
+  phone?: string;
+  role?: string;
+  pin?: string;
+}
+
+export interface TeamMemberUpdate {
+  /** @minLength 1 */
+  name?: string;
+  email?: string;
+  phone?: string;
+  role?: string;
+  pin?: string;
+  active?: boolean;
+}
+
+export interface JobAssignment {
+  id: number;
+  jobId: number;
+  teamMemberId: number;
+  /** @nullable */
+  memberName?: string | null;
+  /** @nullable */
+  roleOnJob?: string | null;
+  assignedAt: string;
+}
+
+export interface TimeEntry {
+  id: number;
+  teamMemberId: number;
+  /** @nullable */
+  memberName?: string | null;
+  jobId: number;
+  /** @nullable */
+  jobTitle?: string | null;
+  /** @nullable */
+  clockOn?: string | null;
+  /** @nullable */
+  clockOff?: string | null;
+  /** @nullable */
+  durationMinutes?: number | null;
+  manualEntry: boolean;
+  /** @nullable */
+  notes?: string | null;
+  createdAt: string;
+}
+
+export interface ManualTimeEntryInput {
+  teamMemberId: number;
+  jobId: number;
+  durationMinutes: number;
+  clockOn?: string;
+  clockOff?: string;
+  notes?: string;
+}
+
+export interface PortfolioEntry {
+  id: number;
+  /** @nullable */
+  bookingId?: number | null;
+  title: string;
+  /** @nullable */
+  description?: string | null;
+  /** @nullable */
+  deckType?: string | null;
+  /** @nullable */
+  dimensionText?: string | null;
+  /** @nullable */
+  materialsText?: string | null;
+  beforePhotos: string[];
+  afterPhotos: string[];
+  /** @nullable */
+  testimonial?: string | null;
+  /** @nullable */
+  customerName?: string | null;
+  /** @nullable */
+  rating?: number | null;
+  isPublic: boolean;
+  /** @nullable */
+  completedAt?: string | null;
+  createdAt: string;
+}
+
+export interface PortfolioEntryInput {
+  bookingId?: number;
+  /** @minLength 1 */
+  title: string;
+  description?: string;
+  deckType?: string;
+  dimensionText?: string;
+  materialsText?: string;
+  testimonial?: string;
+  customerName?: string;
+  /**
+     * @minimum 1
+     * @maximum 5
+     */
+  rating?: number;
+  isPublic?: boolean;
+  completedAt?: string;
+}
+
+export interface ReferralSource {
+  id: number;
+  code: string;
+  name: string;
+  /** supplier | training | word_of_mouth | direct | other */
+  type: string;
+  /** @nullable */
+  description?: string | null;
+  leadCount?: number;
+  createdAt: string;
+}
+
+export interface ReferralSourceInput {
+  /** @minLength 1 */
+  code: string;
+  /** @minLength 1 */
+  name: string;
+  type?: string;
+  description?: string;
+}
+
+export interface SignUpLead {
+  id: number;
+  name: string;
+  /** @nullable */
+  email?: string | null;
+  /** @nullable */
+  phone?: string | null;
+  /** @nullable */
+  company?: string | null;
+  /** @nullable */
+  referralCode?: string | null;
+  /** @nullable */
+  utmSource?: string | null;
+  /** @nullable */
+  utmMedium?: string | null;
+  /** @nullable */
+  utmCampaign?: string | null;
+  /** @nullable */
+  notes?: string | null;
+  createdAt: string;
+}
+
+export interface SignUpLeadInput {
+  /** @minLength 1 */
+  name: string;
+  email?: string;
+  phone?: string;
+  company?: string;
+  referralCode?: string;
+  utmSource?: string;
+  utmMedium?: string;
+  utmCampaign?: string;
+  notes?: string;
+}
+
+export interface AssignJobInput {
+  roleOnJob?: string;
+}
+
+export interface RemoveAssignmentInput {
+  teamMemberId: number;
+}
+
+export interface ClockOnInput {
+  teamMemberId: number;
+  jobId: number;
+  notes?: string;
+}
+
+export interface ClockOffInput {
+  teamMemberId: number;
+  jobId: number;
+  notes?: string;
+}
+
+export interface AddPortfolioPhotoInput {
+  objectPath: string;
+  /** before | after */
+  photoType: string;
+}
+
 export type ListMaterialsParams = {
 category?: string;
 };

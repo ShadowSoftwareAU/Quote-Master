@@ -12,6 +12,10 @@ import QuoteDetail from "@/pages/quote-detail";
 import Customers from "@/pages/customers";
 import Materials from "@/pages/materials";
 import Bookings from "@/pages/bookings";
+import TeamPage from "@/pages/team";
+import PlannerPage from "@/pages/planner";
+import PortfolioPage from "@/pages/portfolio";
+import ReferralsPage from "@/pages/referrals";
 
 const queryClient = new QueryClient();
 
@@ -26,6 +30,10 @@ function Router() {
         <Route path="/customers" component={Customers} />
         <Route path="/materials" component={Materials} />
         <Route path="/bookings" component={Bookings} />
+        <Route path="/team" component={TeamPage} />
+        <Route path="/planner" component={PlannerPage} />
+        <Route path="/portfolio" component={PortfolioPage} />
+        <Route path="/referrals" component={ReferralsPage} />
         <Route component={NotFound} />
       </Switch>
     </Layout>
