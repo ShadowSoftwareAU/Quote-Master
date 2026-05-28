@@ -144,4 +144,147 @@ router.get("/dashboard/summary", async (_req, res): Promise<void> => {
   });
 });
 
+router.get("/dashboard/pnl", async (_req, res): Promise<void> => {
+  // Pull all accepted + sent quotes with customer names
+  const quoteRows = await db
+    .select({
+      id: quotesTable.id,
+      title: quotesTable.title,
+      status: quotesTable.status,
+      customerName: customersTable.name,
+      labourCost: quotesTable.labourCost,
+      materialsSubtotal: quotesTable.materialsSubtotal,
+      gst: quotesTable.gst,
+      createdAt: quotesTable.createdAt,
+    })
+    .from(quotesTable)
+    .leftJoin(customersTable, eq(customersTable.id, quotesTable.customerId))
+    .where(sql`${quotesTable.status} in ('accepted', 'sent', 'draft')`)
+    .orderBy(desc(quotesTable.createdAt));
+
+  if (quoteRows.length === 0) {
+    res.json({ jobs: [], monthly: [], totals: { revenue: 0, tradeCost: 0, labourCost: 0, grossProfit: 0, marginPct: 0, jobCount: 0 } });
+    return;
+  }
+
+  const quoteIds = quoteRows.map((q) => q.id);
+
+  // Fetch all line items for these quotes
+  const lineItems = await db
+    .select({
+      quoteId: quoteLineItemsTable.quoteId,
+      materialId: quoteLineItemsTable.materialId,
+      quantity: quoteLineItemsTable.quantity,
+      lineTotal: quoteLineItemsTable.lineTotal,
+    })
+    .from(quoteLineItemsTable)
+    .where(inArray(quoteLineItemsTable.quoteId, quoteIds));
+
+  // Fetch trade costs for all referenced materials
+  const materialIds = [...new Set(lineItems.map((l) => l.materialId).filter((id): id is number => id !== null))];
+  const tradeCostMap = new Map<number, number | null>();
+  if (materialIds.length > 0) {
+    const mats = await db
+      .select({ id: materialsTable.id, tradeCost: materialsTable.tradeCost })
+      .from(materialsTable)
+      .where(inArray(materialsTable.id, materialIds));
+    for (const m of mats) {
+      tradeCostMap.set(m.id, m.tradeCost ? Number(m.tradeCost) : null);
+    }
+  }
+
+  // Group line items by quote
+  const linesByQuote = new Map<number, typeof lineItems>();
+  for (const l of lineItems) {
+    const arr = linesByQuote.get(l.quoteId) ?? [];
+    arr.push(l);
+    linesByQuote.set(l.quoteId, arr);
+  }
+
+  // Build per-job P&L rows
+  const jobs = quoteRows.map((q) => {
+    const lines = linesByQuote.get(q.id) ?? [];
+    const labourCost = Number(q.labourCost);
+    const revenue = Number(q.materialsSubtotal) + labourCost;
+
+    let tradeCostIsEstimated = false;
+    const tradeCostSum = lines.reduce((sum, l) => {
+      const tc = l.materialId !== null ? tradeCostMap.get(l.materialId) ?? null : null;
+      if (tc !== null) {
+        return sum + tc * Number(l.quantity);
+      }
+      tradeCostIsEstimated = true;
+      return sum + Number(l.lineTotal) * 0.7; // 30% margin assumption
+    }, 0);
+
+    const grossProfit = revenue - tradeCostSum - labourCost;
+    const marginPct = revenue > 0 ? Math.round((grossProfit / revenue) * 1000) / 10 : 0;
+
+    return {
+      quoteId: q.id,
+      title: q.title,
+      customerName: q.customerName ?? "Unknown",
+      status: q.status,
+      createdAt: q.createdAt.toISOString(),
+      revenue: Math.round(revenue * 100) / 100,
+      tradeCost: Math.round(tradeCostSum * 100) / 100,
+      labourCost: Math.round(labourCost * 100) / 100,
+      grossProfit: Math.round(grossProfit * 100) / 100,
+      marginPct,
+      tradeCostIsEstimated,
+    };
+  });
+
+  // Monthly rollup (use createdAt month)
+  const monthMap = new Map<string, { revenue: number; tradeCost: number; labourCost: number; grossProfit: number; jobCount: number }>();
+  for (const j of jobs) {
+    const month = j.createdAt.slice(0, 7); // YYYY-MM
+    const existing = monthMap.get(month) ?? { revenue: 0, tradeCost: 0, labourCost: 0, grossProfit: 0, jobCount: 0 };
+    monthMap.set(month, {
+      revenue: existing.revenue + j.revenue,
+      tradeCost: existing.tradeCost + j.tradeCost,
+      labourCost: existing.labourCost + j.labourCost,
+      grossProfit: existing.grossProfit + j.grossProfit,
+      jobCount: existing.jobCount + 1,
+    });
+  }
+
+  const monthly = [...monthMap.entries()]
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([month, d]) => ({
+      month,
+      revenue: Math.round(d.revenue * 100) / 100,
+      tradeCost: Math.round(d.tradeCost * 100) / 100,
+      labourCost: Math.round(d.labourCost * 100) / 100,
+      grossProfit: Math.round(d.grossProfit * 100) / 100,
+      marginPct: d.revenue > 0 ? Math.round((d.grossProfit / d.revenue) * 1000) / 10 : 0,
+      jobCount: d.jobCount,
+    }));
+
+  // Overall totals
+  const totals = jobs.reduce(
+    (acc, j) => ({
+      revenue: acc.revenue + j.revenue,
+      tradeCost: acc.tradeCost + j.tradeCost,
+      labourCost: acc.labourCost + j.labourCost,
+      grossProfit: acc.grossProfit + j.grossProfit,
+      jobCount: acc.jobCount + 1,
+    }),
+    { revenue: 0, tradeCost: 0, labourCost: 0, grossProfit: 0, jobCount: 0 },
+  );
+
+  res.json({
+    jobs,
+    monthly,
+    totals: {
+      ...totals,
+      revenue: Math.round(totals.revenue * 100) / 100,
+      tradeCost: Math.round(totals.tradeCost * 100) / 100,
+      labourCost: Math.round(totals.labourCost * 100) / 100,
+      grossProfit: Math.round(totals.grossProfit * 100) / 100,
+      marginPct: totals.revenue > 0 ? Math.round((totals.grossProfit / totals.revenue) * 1000) / 10 : 0,
+    },
+  });
+});
+
 export default router;

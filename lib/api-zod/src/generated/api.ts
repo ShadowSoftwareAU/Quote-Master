@@ -55,6 +55,43 @@ export const GetDashboardSummaryResponse = zod.object({
 })
 
 
+/**
+ * @summary P&L breakdown per accepted quote and monthly rollup
+ */
+export const GetPnlReportResponse = zod.object({
+  "jobs": zod.array(zod.object({
+  "quoteId": zod.number(),
+  "title": zod.string(),
+  "customerName": zod.string(),
+  "status": zod.string(),
+  "createdAt": zod.coerce.date(),
+  "revenue": zod.number().describe('materialsSubtotal + labourCost (ex-GST)'),
+  "tradeCost": zod.number().describe('Sum of material trade costs (estimated where trade cost unknown)'),
+  "labourCost": zod.number(),
+  "grossProfit": zod.number(),
+  "marginPct": zod.number().describe('grossProfit \/ revenue \* 100'),
+  "tradeCostIsEstimated": zod.boolean().optional()
+})),
+  "monthly": zod.array(zod.object({
+  "month": zod.string().describe('YYYY-MM'),
+  "revenue": zod.number(),
+  "tradeCost": zod.number(),
+  "labourCost": zod.number(),
+  "grossProfit": zod.number(),
+  "marginPct": zod.number(),
+  "jobCount": zod.number()
+})),
+  "totals": zod.object({
+  "revenue": zod.number(),
+  "tradeCost": zod.number(),
+  "labourCost": zod.number(),
+  "grossProfit": zod.number(),
+  "marginPct": zod.number(),
+  "jobCount": zod.number()
+})
+})
+
+
 export const ListCustomersResponseItem = zod.object({
   "id": zod.number(),
   "name": zod.string(),

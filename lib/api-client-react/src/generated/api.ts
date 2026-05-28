@@ -40,6 +40,7 @@ import type {
   Material,
   MaterialInput,
   MaterialUpdate,
+  PnLReport,
   PortfolioEntry,
   PortfolioEntryInput,
   Quote,
@@ -215,6 +216,83 @@ export function useGetDashboardSummary<TData = Awaited<ReturnType<typeof getDash
  ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
 
   const queryOptions = getGetDashboardSummaryQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
+
+export const getGetPnlReportUrl = () => {
+
+
+
+
+  return `/api/dashboard/pnl`
+}
+
+/**
+ * @summary P&L breakdown per accepted quote and monthly rollup
+ */
+export const getPnlReport = async ( options?: RequestInit): Promise<PnLReport> => {
+
+  return customFetch<PnLReport>(getGetPnlReportUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetPnlReportQueryKey = () => {
+    return [
+    `/api/dashboard/pnl`
+    ] as const;
+    }
+
+
+export const getGetPnlReportQueryOptions = <TData = Awaited<ReturnType<typeof getPnlReport>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getPnlReport>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetPnlReportQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getPnlReport>>> = ({ signal }) => getPnlReport({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getPnlReport>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetPnlReportQueryResult = NonNullable<Awaited<ReturnType<typeof getPnlReport>>>
+export type GetPnlReportQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary P&L breakdown per accepted quote and monthly rollup
+ */
+
+export function useGetPnlReport<TData = Awaited<ReturnType<typeof getPnlReport>>, TError = ErrorType<unknown>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getPnlReport>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetPnlReportQueryOptions(options)
 
   const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
 

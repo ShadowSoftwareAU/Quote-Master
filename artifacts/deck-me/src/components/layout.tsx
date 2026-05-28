@@ -1,5 +1,5 @@
 import { Link, useLocation } from "wouter";
-import { Hammer, Calculator, FileText, Users, Box, Calendar, Menu, UserCheck, CalendarDays, Images, TrendingUp } from "lucide-react";
+import { Hammer, Calculator, FileText, Users, Box, Calendar, Menu, UserCheck, CalendarDays, Images, TrendingUp, PieChart } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { ReactNode } from "react";
@@ -15,6 +15,7 @@ const navItems = [
   { href: "/team", label: "Team", icon: UserCheck },
   { href: "/portfolio", label: "Gallery", icon: Images },
   { href: "/referrals", label: "Referrals", icon: TrendingUp },
+  { href: "/finance", label: "Finance", icon: PieChart },
 ];
 
 export function Layout({ children }: { children: ReactNode }) {

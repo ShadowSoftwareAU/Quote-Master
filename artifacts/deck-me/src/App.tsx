@@ -16,6 +16,7 @@ import TeamPage from "@/pages/team";
 import PlannerPage from "@/pages/planner";
 import PortfolioPage from "@/pages/portfolio";
 import ReferralsPage from "@/pages/referrals";
+import FinancePage from "@/pages/finance";
 
 const queryClient = new QueryClient();
 
@@ -34,6 +35,7 @@ function Router() {
         <Route path="/planner" component={PlannerPage} />
         <Route path="/portfolio" component={PortfolioPage} />
         <Route path="/referrals" component={ReferralsPage} />
+        <Route path="/finance" component={FinancePage} />
         <Route component={NotFound} />
       </Switch>
     </Layout>

@@ -44,6 +44,18 @@ paths:
             application/json:
               schema: { $ref: "#/components/schemas/DashboardSummary" }
 
+  /dashboard/pnl:
+    get:
+      operationId: getPnlReport
+      tags: [dashboard]
+      summary: P&L breakdown per accepted quote and monthly rollup
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PnLReport" }
+
   /customers:
     get:
       operationId: listCustomers
@@ -1072,6 +1084,55 @@ components:
         labourHours: { type: number }
         labourRate: { type: number }
 
+
+    PnLJobRow:
+      type: object
+      required: [quoteId, title, customerName, status, createdAt, revenue, tradeCost, labourCost, grossProfit, marginPct]
+      properties:
+        quoteId: { type: integer }
+        title: { type: string }
+        customerName: { type: string }
+        status: { type: string }
+        createdAt: { type: string, format: date-time }
+        revenue: { type: number, description: "materialsSubtotal + labourCost (ex-GST)" }
+        tradeCost: { type: number, description: "Sum of material trade costs (estimated where trade cost unknown)" }
+        labourCost: { type: number }
+        grossProfit: { type: number }
+        marginPct: { type: number, description: "grossProfit / revenue * 100" }
+        tradeCostIsEstimated: { type: boolean }
+
+    PnLMonthRow:
+      type: object
+      required: [month, revenue, tradeCost, labourCost, grossProfit, marginPct, jobCount]
+      properties:
+        month: { type: string, description: "YYYY-MM" }
+        revenue: { type: number }
+        tradeCost: { type: number }
+        labourCost: { type: number }
+        grossProfit: { type: number }
+        marginPct: { type: number }
+        jobCount: { type: integer }
+
+    PnLReport:
+      type: object
+      required: [jobs, monthly, totals]
+      properties:
+        jobs:
+          type: array
+          items: { $ref: "#/components/schemas/PnLJobRow" }
+        monthly:
+          type: array
+          items: { $ref: "#/components/schemas/PnLMonthRow" }
+        totals:
+          type: object
+          required: [revenue, tradeCost, labourCost, grossProfit, marginPct, jobCount]
+          properties:
+            revenue: { type: number }
+            tradeCost: { type: number }
+            labourCost: { type: number }
+            grossProfit: { type: number }
+            marginPct: { type: number }
+            jobCount: { type: integer }
 
     DashboardSummary:
       type: object

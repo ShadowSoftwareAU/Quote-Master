@@ -331,6 +331,49 @@ export interface QuoteVariationInput {
   labourRate?: number;
 }
 
+export interface PnLJobRow {
+  quoteId: number;
+  title: string;
+  customerName: string;
+  status: string;
+  createdAt: string;
+  /** materialsSubtotal + labourCost (ex-GST) */
+  revenue: number;
+  /** Sum of material trade costs (estimated where trade cost unknown) */
+  tradeCost: number;
+  labourCost: number;
+  grossProfit: number;
+  /** grossProfit / revenue * 100 */
+  marginPct: number;
+  tradeCostIsEstimated?: boolean;
+}
+
+export interface PnLMonthRow {
+  /** YYYY-MM */
+  month: string;
+  revenue: number;
+  tradeCost: number;
+  labourCost: number;
+  grossProfit: number;
+  marginPct: number;
+  jobCount: number;
+}
+
+export type PnLReportTotals = {
+  revenue: number;
+  tradeCost: number;
+  labourCost: number;
+  grossProfit: number;
+  marginPct: number;
+  jobCount: number;
+};
+
+export interface PnLReport {
+  jobs: PnLJobRow[];
+  monthly: PnLMonthRow[];
+  totals: PnLReportTotals;
+}
+
 export interface DashboardSummary {
   activeQuoteCount: number;
   acceptedQuoteCount: number;

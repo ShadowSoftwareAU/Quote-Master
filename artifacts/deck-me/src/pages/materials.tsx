@@ -185,8 +185,8 @@ export default function Materials() {
                   <Select value={form.category} onValueChange={v => setForm({ ...form, category: v })}>
                     <SelectTrigger><SelectValue /></SelectTrigger>
                     <SelectContent>
-                      {["decking","joist","bearer","post","screw","bracket","sealant","other"].map(c => (
-                        <SelectItem key={c} value={c}>{c.charAt(0).toUpperCase() + c.slice(1)}</SelectItem>
+                      {["decking","joist","bearer","post","screw","clip","bracket","sealant","handrail","balustrade","stair_stringer","stair_tread","fascia","fencing_post","fencing_rail","fencing_paling","other"].map(c => (
+                        <SelectItem key={c} value={c}>{c.replace(/_/g, " ").replace(/\b\w/g, l => l.toUpperCase())}</SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
