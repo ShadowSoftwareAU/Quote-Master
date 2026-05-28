@@ -1,0 +1,101 @@
+Deck Me - Full Build Prompt for Replit
+Build a full-stack business management platform called "Deck Me" for Australian decking tradespeople. It has two surfaces: a web admin dashboard and a React Native mobile app (Expo, iOS + Android). The platform covers the complete job lifecycle from quoting through to profit tracking.
+
+Tech Stack:
+
+Frontend web: React + TypeScript + Vite + Tailwind CSS + Shadcn/ui + Radix UI + Lucide icons
+Mobile: React Native (Expo) with Expo Go for dev testing
+Backend: Express.js API server
+Database: PostgreSQL (Neon) + Drizzle ORM
+Auth: Replit Auth (or email/password with JWT)
+Payments: Stripe (subscriptions + automated revenue split payouts)
+Forms: React Hook Form + Zod validation
+Data fetching: TanStack Query
+CORE FEATURE: Deck Calculator + BOM Engine
+This is the heart of the app. The calculator takes deck dimensions and specifications, then auto-generates a complete Bill of Materials with line-item quantities and pricing.
+
+Calculator Inputs:
+
+Deck length and width (metres)
+Deck board type (hardwood, composite, treated pine, etc.) with selectable profiles
+Deck board gap spacing (user-adjustable, must appear on BOTH web and mobile)
+Bearer size and spacing
+Joist size and spacing (fix: bearer/joist navigation must work correctly, this was a known bug)
+Subframe type (stumps, concrete slab, existing structure)
+Fastener type (screws, hidden clips, etc.)
+Structure checkboxes: Deck, Wall, Handrails, Stairs
+Guardrails and Handrails options (e.g. "wall light end rails"), factored into the quote
+Fencing: checkbox option with adjustable "fencing side" in specifications
+Awning: checkbox option. If awning is built with the deck, auto-calculate cutouts in deck boards
+Fascia options
+BOM Output:
+
+Full line-item list with quantities, unit prices, and totals
+Multi-supplier price comparison (columns for Bunnings, Mitre 10, trade suppliers)
+Trade cost vs retail cost separation: mobile app shows RETAIL ONLY (protects margin), web dashboard shows full trade cost visibility
+CSV import for trade pricing (so the user can upload their supplier price lists)
+Materials margin control beside the trade CSV import (set markup percentage)
+Deposit Gating:
+
+Itemised BOM/shopping lists are locked until a configurable deposit percentage is paid (e.g. 50%). Client pays deposit via Stripe, then gets access to the full material breakdown.
+SUPPLIER INTEGRATION
+Bunnings price scraping: already running on 24hr cadence. Build the data model to store scraped product prices by SKU, with history.
+Mitre 10 and trade supplier price support (manual CSV upload initially, API integration later)
+Supplier partnership infrastructure: QR code distribution support, referral mechanics, kickback tracking
+Contact/integration with Ausbuild Materials (future supplier partnership)
+QUOTING AND JOB MANAGEMENT
+Generate customer-facing quotes from calculator results (PDF export)
+Job lifecycle: Lead > Quote Sent > Accepted > In Progress > Complete > Invoiced > Paid
+Job scheduling/bookings calendar
+Photo and document attachment per job
+Council certificate auto-warning: flag jobs that exceed the threshold requiring council approval (based on deck height/size)
+CRM (Client Database)
+Customer contact records with job history
+Communication log
+Notes per client
+Quick-add from quote flow
+FINANCIAL TRACKING (P&L)
+Revenue tracking per job
+Cost tracking (materials, labour)
+Profit margin per job and aggregate
+Receipt OCR pipeline (future): photograph receipts, auto-extract amounts and categorise
+MOBILE APP SPECIFICS
+React Native with Expo
+Mobile Privacy Pre-Screen: 4 tile landing screen. Hides all financial data by default. User taps into the section they want. This protects sensitive business info if a client sees the phone.
+Calculator works fully on mobile with all inputs
+Deck board gap input MUST be present on mobile (was previously removed, needs re-adding)
+Retail-only pricing visible on mobile (no trade costs shown)
+Photo capture for job documentation
+Offline-capable for basic calculator use
+WEB ADMIN DASHBOARD
+Full business overview with all features
+Trade cost visibility (the full margin picture)
+Supplier price management and CSV import
+Customer/job management
+P&L reporting and analytics
+Subscription/account management
+SUBSCRIPTION & PAYMENTS (Stripe)
+Subscription tiers:
+Basic: ~$49/month
+Standard: ~$89-97/month
+Professional: ~$99/month
+Premium/AI: ~$200/month (includes AI rendering for quotes, plan upload features)
+Revenue split: 40/30/30 automated via Stripe Connect payouts
+Free trial period (configurable)
+Stripe Customer Portal for self-serve billing management
+FUTURE FEATURES (Build the data model/hooks for these but don't implement fully yet)
+Xero/MYOB accounting integration
+AI rendering for visual quotes (take photo of site, render finished deck)
+Plan upload to 3D to BOM pipeline (upload architectural plans, generate 3D preview + auto BOM)
+Supplier API integrations (replace scraping with direct feeds)
+PRIORITIES FOR 14-DAY DEMO
+Focus the first build on:
+
+Working deck calculator with BOM generation (all inputs listed above)
+Mobile app with privacy pre-screen and retail-only pricing
+Multi-supplier price comparison display
+Basic quoting flow (calculator > quote PDF)
+Stripe subscription setup
+User auth and account creation
+Basic job/client management
+The guardrails/handrails, fencing, awning checkboxes, and deposit gating should be in v1 as they were specifically discussed requirements. Receipt OCR, AI rendering, and accounting integrations are v2.
