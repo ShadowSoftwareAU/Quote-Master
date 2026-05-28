@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { formatCurrency } from "@/lib/format";
-import { CheckCircle, XCircle, Send, Trash2, Copy, AlertTriangle } from "lucide-react";
+import { CheckCircle, XCircle, Send, Trash2, Copy, AlertTriangle, Download } from "lucide-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
@@ -112,6 +112,13 @@ export default function QuoteDetail() {
               <Copy className="w-4 h-4 mr-2" /> Variation
             </Button>
           )}
+          <Button
+            variant="outline"
+            className="font-bold uppercase"
+            onClick={() => window.open(`/api/quotes/${quoteId}/pdf`, "_blank")}
+          >
+            <Download className="w-4 h-4 mr-2" /> PDF
+          </Button>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="outline" size="icon"><MoreVertical className="w-4 h-4" /></Button>

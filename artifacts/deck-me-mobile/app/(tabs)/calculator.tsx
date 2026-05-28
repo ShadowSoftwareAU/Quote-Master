@@ -11,6 +11,7 @@ import {
   Platform,
   ScrollView,
   Text,
+  TouchableOpacity,
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -41,14 +42,14 @@ interface EnrichedLine {
   unit: string;
   unitPrice: number;
   lineTotal: number;
-  supplierPrices: SupplierPrice[]; // sorted cheapest first
-  cheapestTotal: number;           // quantity × cheapest price
+  supplierPrices: SupplierPrice[];
+  cheapestTotal: number;
 }
 
 interface SupplierTotal {
   supplier: string;
   total: number;
-  coveredLines: number; // how many lines had this supplier
+  coveredLines: number;
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────
@@ -98,20 +99,100 @@ function Row({ label, value }: { label: string; value: string }) {
   );
 }
 
+function CheckRow({
+  label,
+  checked,
+  onToggle,
+  colors,
+}: {
+  label: string;
+  checked: boolean;
+  onToggle: () => void;
+  colors: ReturnType<typeof useColors>;
+}) {
+  return (
+    <TouchableOpacity
+      onPress={onToggle}
+      style={{ flexDirection: "row", alignItems: "center", gap: 10, paddingVertical: 6 }}
+      activeOpacity={0.7}
+    >
+      <View
+        style={{
+          width: 22,
+          height: 22,
+          borderRadius: 4,
+          borderWidth: 2,
+          borderColor: checked ? colors.primary : colors.border,
+          backgroundColor: checked ? colors.primary : "transparent",
+          alignItems: "center",
+          justifyContent: "center",
+        }}
+      >
+        {checked && <Feather name="check" size={13} color="#fff" />}
+      </View>
+      <Text style={{ fontFamily: "Inter_600SemiBold", color: colors.foreground, fontSize: 14 }}>
+        {label}
+      </Text>
+    </TouchableOpacity>
+  );
+}
+
+function SegmentedControl({
+  options,
+  value,
+  onChange,
+  colors,
+}: {
+  options: { label: string; value: string }[];
+  value: string;
+  onChange: (v: string) => void;
+  colors: ReturnType<typeof useColors>;
+}) {
+  return (
+    <View
+      style={{
+        flexDirection: "row",
+        borderRadius: 6,
+        borderWidth: 1,
+        borderColor: colors.border,
+        overflow: "hidden",
+      }}
+    >
+      {options.map((opt, i) => (
+        <TouchableOpacity
+          key={opt.value}
+          onPress={() => onChange(opt.value)}
+          style={{
+            flex: 1,
+            paddingVertical: 8,
+            alignItems: "center",
+            backgroundColor: value === opt.value ? colors.primary : colors.card,
+            borderRightWidth: i < options.length - 1 ? 1 : 0,
+            borderRightColor: colors.border,
+          }}
+        >
+          <Text
+            style={{
+              fontFamily: "Inter_700Bold",
+              fontSize: 11,
+              color: value === opt.value ? "#fff" : colors.mutedForeground,
+              letterSpacing: 0.5,
+            }}
+          >
+            {opt.label}
+          </Text>
+        </TouchableOpacity>
+      ))}
+    </View>
+  );
+}
+
 function BomLineItem({ line, colors }: { line: EnrichedLine; colors: ReturnType<typeof useColors> }) {
   const hasPrices = line.supplierPrices.length > 0;
   const cheapest = line.supplierPrices[0] ?? null;
 
   return (
-    <View
-      style={{
-        paddingBottom: 14,
-        borderBottomWidth: 1,
-        borderBottomColor: colors.border,
-        gap: 8,
-      }}
-    >
-      {/* Name + total */}
+    <View style={{ paddingBottom: 14, borderBottomWidth: 1, borderBottomColor: colors.border, gap: 8 }}>
       <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start" }}>
         <View style={{ flex: 1, marginRight: 10 }}>
           <Text style={{ fontFamily: "Inter_600SemiBold", color: colors.foreground, fontSize: 13 }}>
@@ -126,14 +207,10 @@ function BomLineItem({ line, colors }: { line: EnrichedLine; colors: ReturnType<
         </Text>
       </View>
 
-      {/* Supplier price comparison */}
       {hasPrices ? (
         <View style={{ gap: 4 }}>
           {line.supplierPrices.map((p, i) => {
             const isBest = i === 0 && line.supplierPrices.length > 1;
-            const saving = line.supplierPrices.length > 1
-              ? (line.supplierPrices[line.supplierPrices.length - 1].unitPrice - cheapest!.unitPrice) * line.quantity
-              : null;
             return (
               <View
                 key={p.supplier}
@@ -149,49 +226,26 @@ function BomLineItem({ line, colors }: { line: EnrichedLine; colors: ReturnType<
                   paddingVertical: 6,
                 }}
               >
-                {/* Supplier dot */}
                 <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: supplierColor(p.supplier) }} />
-
-                {/* Supplier name */}
-                <Text style={{
-                  fontFamily: "Inter_600SemiBold",
-                  fontSize: 11,
-                  color: isBest ? "#22c55e" : colors.mutedForeground,
-                  flex: 1,
-                }}>
+                <Text style={{ fontFamily: "Inter_600SemiBold", fontSize: 11, color: isBest ? "#22c55e" : colors.mutedForeground, flex: 1 }}>
                   {supplierLabel(p.supplier)}{isBest && line.supplierPrices.length > 1 ? " ✓" : ""}
                   {p.sku ? `  ${p.sku}` : ""}
                 </Text>
-
-                {/* Unit price */}
-                <Text style={{
-                  fontFamily: "Inter_500Medium",
-                  fontSize: 11,
-                  color: colors.mutedForeground,
-                }}>
+                <Text style={{ fontFamily: "Inter_500Medium", fontSize: 11, color: colors.mutedForeground }}>
                   {formatAUD(p.unitPrice)}/{line.unit}
                 </Text>
-
-                {/* Line total at this supplier */}
-                <Text style={{
-                  fontFamily: "Chivo_700Bold",
-                  fontSize: 13,
-                  color: isBest ? "#22c55e" : colors.foreground,
-                  minWidth: 60,
-                  textAlign: "right",
-                }}>
+                <Text style={{ fontFamily: "Chivo_700Bold", fontSize: 13, color: isBest ? "#22c55e" : colors.foreground, minWidth: 60, textAlign: "right" }}>
                   {formatAUD(p.unitPrice * line.quantity)}
                 </Text>
               </View>
             );
           })}
-          {/* Per-item saving note */}
           {line.supplierPrices.length > 1 && (() => {
             const saved = (line.supplierPrices[line.supplierPrices.length - 1].unitPrice - cheapest!.unitPrice) * line.quantity;
             if (saved > 0.005) {
               return (
                 <Text style={{ fontFamily: "Inter_500Medium", fontSize: 10, color: "#22c55e", paddingLeft: 2 }}>
-                  Save {formatAUD(saved)} on this item buying from {supplierLabel(cheapest!.supplier)}
+                  Save {formatAUD(saved)} buying from {supplierLabel(cheapest!.supplier)}
                 </Text>
               );
             }
@@ -199,15 +253,7 @@ function BomLineItem({ line, colors }: { line: EnrichedLine; colors: ReturnType<
           })()}
         </View>
       ) : (
-        <View style={{
-          flexDirection: "row",
-          alignItems: "center",
-          gap: 8,
-          backgroundColor: colors.muted + "44",
-          borderRadius: 5,
-          paddingHorizontal: 10,
-          paddingVertical: 6,
-        }}>
+        <View style={{ flexDirection: "row", alignItems: "center", gap: 8, backgroundColor: colors.muted + "44", borderRadius: 5, paddingHorizontal: 10, paddingVertical: 6 }}>
           <Text style={{ fontFamily: "Inter_500Medium", fontSize: 11, color: colors.mutedForeground }}>
             {formatAUD(line.unitPrice)}/{line.unit}
           </Text>
@@ -224,14 +270,30 @@ export default function CalculatorScreen() {
   const insets = useSafeAreaInsets();
   const topPad = Platform.OS === "web" ? Math.max(insets.top, 67) : insets.top;
 
+  // Dimensions
   const [length, setLength] = useState("6");
   const [width, setWidth] = useState("4");
   const [height, setHeight] = useState("0.6");
+
+  // Decking
   const [boardWidth, setBoardWidth] = useState("90");
+  const [gapSpacing, setGapSpacing] = useState("4");
+  const [deckBoardType, setDeckBoardType] = useState("treated_pine");
+  const [fastenerType, setFastenerType] = useState("screws");
+
+  // Framing
   const [joistSpacing, setJoistSpacing] = useState("450");
-  const [wastage, setWastage] = useState("1.1");
+  const [subframeType, setSubframeType] = useState("stumps");
+
+  // Labour
   const [labourHours, setLabourHours] = useState("16");
   const [labourRate, setLabourRate] = useState("85");
+
+  // Extras
+  const [includeHandrails, setIncludeHandrails] = useState(false);
+  const [includeStairs, setIncludeStairs] = useState(false);
+  const [includeFencing, setIncludeFencing] = useState(false);
+  const [includeAwning, setIncludeAwning] = useState(false);
 
   const [estimate, setEstimate] = useState<QuoteEstimate | null>(null);
   const { mutate, isPending } = useEstimateDeck();
@@ -243,12 +305,25 @@ export default function CalculatorScreen() {
       widthM: parseNum(width, 4),
       heightM: parseNum(height, 0.6),
       boardWidthMm: Math.round(parseNum(boardWidth, 90)),
+      gapSpacingMm: Math.round(parseNum(gapSpacing, 4)),
       joistSpacingMm: Math.round(parseNum(joistSpacing, 450)),
       bearerSpacingMm: 1800,
       postSpacingMm: 1800,
-      wastageFactor: parseNum(wastage, 1.1),
+      wastageFactor: 1.1,
+      deckBoardType,
+      subframeType,
+      fastenerType,
+      fasciaType: "none",
+      includeHandrails,
+      includeStairs,
+      stairFlights: 1,
+      includeFencing,
+      fencingSides: 1,
+      includeAwning,
+      awningWidthM: 3,
+      awningLengthM: 3,
     }),
-    [length, width, height, boardWidth, joistSpacing, wastage],
+    [length, width, height, boardWidth, gapSpacing, joistSpacing, deckBoardType, subframeType, fastenerType, includeHandrails, includeStairs, includeFencing, includeAwning],
   );
 
   useEffect(() => {
@@ -258,81 +333,60 @@ export default function CalculatorScreen() {
     return () => clearTimeout(t);
   }, [spec, mutate]);
 
-  // ── Build material lookup ────────────────────────────────────────────
+  // ── Build material lookup ──────────────────────────────────────────
   const materialById = useMemo(() => {
     if (!materials) return new Map<number, Material>();
     return new Map(materials.map((m) => [m.id, m]));
   }, [materials]);
 
-  const materialsByName = useMemo(() => {
+  const materialsByCategory = useMemo(() => {
     if (!materials) return new Map<string, Material[]>();
     const map = new Map<string, Material[]>();
     for (const m of materials) {
-      const key = m.name.toLowerCase().trim();
-      if (!map.has(key)) map.set(key, []);
-      map.get(key)!.push(m);
+      if (!map.has(m.category)) map.set(m.category, []);
+      map.get(m.category)!.push(m);
     }
     return map;
   }, [materials]);
 
-  // ── Enrich BOM lines with supplier prices ───────────────────────────
+  // ── Enrich BOM lines with supplier prices ─────────────────────────
   const enrichedLines = useMemo<EnrichedLine[]>(() => {
     if (!estimate) return [];
     return estimate.lines.map((l) => {
-      // Find the material group (all suppliers for this material)
       let group: Material[] = [];
       if (l.materialId != null) {
         const m = materialById.get(l.materialId);
-        if (m) group = materialsByName.get(m.name.toLowerCase().trim()) ?? [];
+        if (m) group = materialsByCategory.get(m.category) ?? [];
       }
-      if (group.length === 0) {
-        // fallback: match by description
-        group = materialsByName.get(l.description.toLowerCase().trim()) ?? [];
-      }
+      if (group.length === 0) group = materialsByCategory.get(l.category) ?? [];
 
-      // Deduplicate by supplier — keep cheapest per supplier
       const bySupplier = new Map<string, SupplierPrice>();
       for (const m of group) {
         const existing = bySupplier.get(m.supplier);
-        if (!existing || m.unitPrice < existing.unitPrice) {
-          bySupplier.set(m.supplier, { supplier: m.supplier, unitPrice: m.unitPrice, sku: m.sku ?? null });
+        if (!existing || Number(m.unitPrice) < existing.unitPrice) {
+          bySupplier.set(m.supplier, { supplier: m.supplier, unitPrice: Number(m.unitPrice), sku: m.sku ?? null });
         }
       }
-      const supplierPrices: SupplierPrice[] = Array.from(bySupplier.values())
-        .sort((a, b) => a.unitPrice - b.unitPrice);
-
-      const cheapestTotal = supplierPrices.length > 0
-        ? supplierPrices[0].unitPrice * l.quantity
-        : l.lineTotal;
-
+      const supplierPrices = Array.from(bySupplier.values()).sort((a, b) => a.unitPrice - b.unitPrice);
+      const cheapestTotal = supplierPrices.length > 0 ? supplierPrices[0].unitPrice * l.quantity : l.lineTotal;
       return { ...l, supplierPrices, cheapestTotal };
     });
-  }, [estimate, materialById, materialsByName]);
+  }, [estimate, materialById, materialsByCategory]);
 
-  // ── Total Cart by supplier ───────────────────────────────────────────
+  // ── Total Cart by supplier ─────────────────────────────────────────
   const supplierTotals = useMemo<SupplierTotal[]>(() => {
     if (enrichedLines.length === 0) return [];
-
-    // Collect all unique suppliers
     const supplierSet = new Set<string>();
-    for (const line of enrichedLines) {
-      for (const p of line.supplierPrices) supplierSet.add(p.supplier);
-    }
+    for (const line of enrichedLines) for (const p of line.supplierPrices) supplierSet.add(p.supplier);
     if (supplierSet.size < 2) return [];
-
     return Array.from(supplierSet)
       .map((supplier) => {
         let total = 0;
         let coveredLines = 0;
         for (const line of enrichedLines) {
           const p = line.supplierPrices.find((sp) => sp.supplier === supplier);
-          if (p) {
-            total += p.unitPrice * line.quantity;
-            coveredLines++;
-          } else {
-            // Use best available price for lines not stocked by this supplier
-            total += line.cheapestTotal;
-          }
+          if (p) { total += p.unitPrice * line.quantity; coveredLines++; }
+          else total += line.cheapestTotal;
         }
         return { supplier, total, coveredLines };
       })
@@ -344,12 +398,10 @@ export default function CalculatorScreen() {
   const exGst = subtotal + labour;
   const gst = Math.round(exGst * 0.1 * 100) / 100;
   const total = Math.round((exGst + gst) * 100) / 100;
-
   const cheapestSupplier = supplierTotals[0] ?? null;
   const pricestSupplier = supplierTotals[supplierTotals.length - 1] ?? null;
-  const cartSaving = cheapestSupplier && pricestSupplier
-    ? pricestSupplier.total - cheapestSupplier.total
-    : 0;
+  const cartSaving = cheapestSupplier && pricestSupplier ? pricestSupplier.total - cheapestSupplier.total : 0;
+  const councilWarning = parseNum(height, 0) >= 1.0;
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.background }}>
@@ -365,15 +417,27 @@ export default function CalculatorScreen() {
         <StripedBar height={6} />
       </View>
 
-      <ScrollView
-        contentContainerStyle={{ paddingBottom: insets.bottom + 100 }}
-        keyboardShouldPersistTaps="handled"
-      >
+      <ScrollView contentContainerStyle={{ paddingBottom: insets.bottom + 100 }} keyboardShouldPersistTaps="handled">
         <View style={{ padding: 20, gap: 16 }}>
 
-          {/* ── Inputs ──────────────────────────────────────────── */}
+          {/* Council warning */}
+          {councilWarning && (
+            <View style={{ backgroundColor: "#dc2626", borderRadius: 8, padding: 14, flexDirection: "row", gap: 10 }}>
+              <Feather name="alert-triangle" size={18} color="#fff" style={{ marginTop: 1 }} />
+              <View style={{ flex: 1 }}>
+                <Text style={{ fontFamily: "Inter_700Bold", color: "#fff", fontSize: 12, letterSpacing: 0.5 }}>
+                  COUNCIL PERMIT MAY BE REQUIRED
+                </Text>
+                <Text style={{ fontFamily: "Inter_400Regular", color: "rgba(255,255,255,0.85)", fontSize: 12, marginTop: 3 }}>
+                  Deck height ≥1.0m — most Australian councils require a building permit.
+                </Text>
+              </View>
+            </View>
+          )}
+
+          {/* Dimensions */}
           <Card>
-            <Text style={{ fontFamily: "Chivo_700Bold", fontSize: 14, color: colors.foreground, marginBottom: 12, letterSpacing: 0.4 }}>
+            <Text style={{ fontFamily: "Chivo_700Bold", fontSize: 13, color: colors.foreground, marginBottom: 12, letterSpacing: 0.4 }}>
               DIMENSIONS (METRES)
             </Text>
             <View style={{ flexDirection: "row", gap: 10 }}>
@@ -383,31 +447,101 @@ export default function CalculatorScreen() {
               <LabeledInput label="Width">
                 <TextInputStyled value={width} onChangeText={setWidth} keyboardType="decimal-pad" />
               </LabeledInput>
-              <LabeledInput label="Height">
+              <LabeledInput label={councilWarning ? "⚠ Height" : "Height"}>
                 <TextInputStyled value={height} onChangeText={setHeight} keyboardType="decimal-pad" />
               </LabeledInput>
             </View>
           </Card>
 
+          {/* Decking */}
           <Card>
-            <Text style={{ fontFamily: "Chivo_700Bold", fontSize: 14, color: colors.foreground, marginBottom: 12, letterSpacing: 0.4 }}>
+            <Text style={{ fontFamily: "Chivo_700Bold", fontSize: 13, color: colors.foreground, marginBottom: 12, letterSpacing: 0.4 }}>
+              DECKING
+            </Text>
+            <View style={{ gap: 12 }}>
+              <View>
+                <Text style={{ fontFamily: "Inter_700Bold", color: colors.mutedForeground, fontSize: 10, letterSpacing: 1, marginBottom: 6 }}>
+                  BOARD TYPE
+                </Text>
+                <SegmentedControl
+                  options={[
+                    { label: "PINE", value: "treated_pine" },
+                    { label: "HARDWOOD", value: "hardwood" },
+                    { label: "COMPOSITE", value: "composite" },
+                  ]}
+                  value={deckBoardType}
+                  onChange={setDeckBoardType}
+                  colors={colors}
+                />
+              </View>
+              <View style={{ flexDirection: "row", gap: 10 }}>
+                <LabeledInput label="Board (mm)">
+                  <TextInputStyled value={boardWidth} onChangeText={setBoardWidth} keyboardType="number-pad" />
+                </LabeledInput>
+                <LabeledInput label="Gap (mm) ★">
+                  <TextInputStyled value={gapSpacing} onChangeText={setGapSpacing} keyboardType="number-pad" />
+                </LabeledInput>
+              </View>
+              <View>
+                <Text style={{ fontFamily: "Inter_700Bold", color: colors.mutedForeground, fontSize: 10, letterSpacing: 1, marginBottom: 6 }}>
+                  FASTENER
+                </Text>
+                <SegmentedControl
+                  options={[
+                    { label: "SCREWS", value: "screws" },
+                    { label: "HIDDEN CLIPS", value: "hidden_clips" },
+                  ]}
+                  value={fastenerType}
+                  onChange={setFastenerType}
+                  colors={colors}
+                />
+              </View>
+            </View>
+          </Card>
+
+          {/* Framing */}
+          <Card>
+            <Text style={{ fontFamily: "Chivo_700Bold", fontSize: 13, color: colors.foreground, marginBottom: 12, letterSpacing: 0.4 }}>
               FRAMING
             </Text>
-            <View style={{ flexDirection: "row", gap: 10 }}>
-              <LabeledInput label="Board (mm)">
-                <TextInputStyled value={boardWidth} onChangeText={setBoardWidth} keyboardType="number-pad" />
-              </LabeledInput>
+            <View style={{ gap: 12 }}>
+              <View>
+                <Text style={{ fontFamily: "Inter_700Bold", color: colors.mutedForeground, fontSize: 10, letterSpacing: 1, marginBottom: 6 }}>
+                  SUBFRAME
+                </Text>
+                <SegmentedControl
+                  options={[
+                    { label: "STUMPS", value: "stumps" },
+                    { label: "SLAB", value: "concrete_slab" },
+                    { label: "EXISTING", value: "existing_structure" },
+                  ]}
+                  value={subframeType}
+                  onChange={setSubframeType}
+                  colors={colors}
+                />
+              </View>
               <LabeledInput label="Joists (mm)">
                 <TextInputStyled value={joistSpacing} onChangeText={setJoistSpacing} keyboardType="number-pad" />
-              </LabeledInput>
-              <LabeledInput label="Wastage">
-                <TextInputStyled value={wastage} onChangeText={setWastage} keyboardType="decimal-pad" />
               </LabeledInput>
             </View>
           </Card>
 
+          {/* Extras */}
           <Card>
-            <Text style={{ fontFamily: "Chivo_700Bold", fontSize: 14, color: colors.foreground, marginBottom: 12, letterSpacing: 0.4 }}>
+            <Text style={{ fontFamily: "Chivo_700Bold", fontSize: 13, color: colors.foreground, marginBottom: 10, letterSpacing: 0.4 }}>
+              EXTRAS
+            </Text>
+            <View style={{ gap: 2 }}>
+              <CheckRow label="Handrails / Balustrade" checked={includeHandrails} onToggle={() => setIncludeHandrails(!includeHandrails)} colors={colors} />
+              <CheckRow label="Stairs" checked={includeStairs} onToggle={() => setIncludeStairs(!includeStairs)} colors={colors} />
+              <CheckRow label="Fencing" checked={includeFencing} onToggle={() => setIncludeFencing(!includeFencing)} colors={colors} />
+              <CheckRow label="Awning (cuts boards)" checked={includeAwning} onToggle={() => setIncludeAwning(!includeAwning)} colors={colors} />
+            </View>
+          </Card>
+
+          {/* Labour */}
+          <Card>
+            <Text style={{ fontFamily: "Chivo_700Bold", fontSize: 13, color: colors.foreground, marginBottom: 12, letterSpacing: 0.4 }}>
               LABOUR
             </Text>
             <View style={{ flexDirection: "row", gap: 10 }}>
@@ -420,7 +554,7 @@ export default function CalculatorScreen() {
             </View>
           </Card>
 
-          {/* ── Total summary card ──────────────────────────────── */}
+          {/* Total summary */}
           <View style={{ backgroundColor: colors.sidebar, borderRadius: colors.radius, padding: 18 }}>
             <Text style={{ fontFamily: "Inter_700Bold", color: colors.primary, fontSize: 11, letterSpacing: 1.4 }}>
               TOTAL (INC GST) {isPending ? "· UPDATING…" : ""}
@@ -449,52 +583,29 @@ export default function CalculatorScreen() {
             }}
           />
 
-          {/* ── BOM line items ──────────────────────────────────── */}
+          {/* BOM line items */}
           {estimate && enrichedLines.length > 0 ? (
             <Card>
-              <Text style={{ fontFamily: "Chivo_700Bold", fontSize: 14, color: colors.foreground, marginBottom: 14, letterSpacing: 0.4 }}>
+              <Text style={{ fontFamily: "Chivo_700Bold", fontSize: 13, color: colors.foreground, marginBottom: 14, letterSpacing: 0.4 }}>
                 LINE ITEMS · RETAIL PRICES
               </Text>
               <View style={{ gap: 14 }}>
                 {enrichedLines.map((l, i) => (
-                  <BomLineItem
-                    key={i}
-                    line={l}
-                    colors={colors}
-                  />
+                  <BomLineItem key={i} line={l} colors={colors} />
                 ))}
               </View>
             </Card>
           ) : null}
 
-          {/* ── Total Cart Winner bar ───────────────────────────── */}
+          {/* Total Cart Winner bar */}
           {supplierTotals.length >= 2 ? (
-            <View
-              style={{
-                borderRadius: colors.radius,
-                overflow: "hidden",
-                borderWidth: 1,
-                borderColor: "#15803d55",
-              }}
-            >
-              {/* Header */}
-              <View style={{
-                backgroundColor: "#15803d22",
-                paddingHorizontal: 16,
-                paddingVertical: 10,
-                flexDirection: "row",
-                alignItems: "center",
-                gap: 8,
-                borderBottomWidth: 1,
-                borderBottomColor: "#15803d33",
-              }}>
+            <View style={{ borderRadius: colors.radius, overflow: "hidden", borderWidth: 1, borderColor: "#15803d55" }}>
+              <View style={{ backgroundColor: "#15803d22", paddingHorizontal: 16, paddingVertical: 10, flexDirection: "row", alignItems: "center", gap: 8, borderBottomWidth: 1, borderBottomColor: "#15803d33" }}>
                 <Feather name="shopping-cart" size={14} color="#22c55e" />
                 <Text style={{ fontFamily: "Inter_700Bold", color: "#22c55e", fontSize: 11, letterSpacing: 1.2 }}>
                   TOTAL CART COMPARISON
                 </Text>
               </View>
-
-              {/* Supplier rows */}
               <View style={{ backgroundColor: "#1a1a1a", gap: 1 }}>
                 {supplierTotals.map((st, i) => {
                   const isBest = i === 0;
@@ -503,42 +614,17 @@ export default function CalculatorScreen() {
                     <View
                       key={st.supplier}
                       style={{
-                        flexDirection: "row",
-                        alignItems: "center",
-                        paddingHorizontal: 16,
-                        paddingVertical: 14,
+                        flexDirection: "row", alignItems: "center", paddingHorizontal: 16, paddingVertical: 14,
                         backgroundColor: isBest ? "#15803d15" : "transparent",
-                        borderBottomWidth: i < supplierTotals.length - 1 ? 1 : 0,
-                        borderBottomColor: "#2a2a2a",
-                        gap: 10,
+                        borderBottomWidth: i < supplierTotals.length - 1 ? 1 : 0, borderBottomColor: "#2a2a2a", gap: 10,
                       }}
                     >
-                      {/* Dot */}
-                      <View style={{
-                        width: 8,
-                        height: 8,
-                        borderRadius: 4,
-                        backgroundColor: isBest ? "#22c55e" : supplierColor(st.supplier),
-                      }} />
-
-                      {/* Supplier name */}
-                      <Text style={{
-                        fontFamily: "Chivo_700Bold",
-                        fontSize: 15,
-                        color: isBest ? "#22c55e" : colors.mutedForeground,
-                        flex: 1,
-                      }}>
-                        {supplierLabel(st.supplier)}
-                        {isBest ? "  ✓ CHEAPEST" : ""}
+                      <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: isBest ? "#22c55e" : supplierColor(st.supplier) }} />
+                      <Text style={{ fontFamily: "Chivo_700Bold", fontSize: 15, color: isBest ? "#22c55e" : colors.mutedForeground, flex: 1 }}>
+                        {supplierLabel(st.supplier)}{isBest ? "  ✓ CHEAPEST" : ""}
                       </Text>
-
-                      {/* Price */}
                       <View style={{ alignItems: "flex-end" }}>
-                        <Text style={{
-                          fontFamily: "Chivo_900Black",
-                          fontSize: 20,
-                          color: isBest ? "#22c55e" : colors.foreground,
-                        }}>
+                        <Text style={{ fontFamily: "Chivo_900Black", fontSize: 20, color: isBest ? "#22c55e" : colors.foreground }}>
                           {formatAUD(st.total)}
                         </Text>
                         {!isBest && diff > 0.005 && (
@@ -551,19 +637,8 @@ export default function CalculatorScreen() {
                   );
                 })}
               </View>
-
-              {/* Saving callout */}
               {cartSaving > 0.005 && (
-                <View style={{
-                  backgroundColor: "#15803d22",
-                  paddingHorizontal: 16,
-                  paddingVertical: 10,
-                  flexDirection: "row",
-                  alignItems: "center",
-                  gap: 8,
-                  borderTopWidth: 1,
-                  borderTopColor: "#15803d33",
-                }}>
+                <View style={{ backgroundColor: "#15803d22", paddingHorizontal: 16, paddingVertical: 10, flexDirection: "row", alignItems: "center", gap: 8, borderTopWidth: 1, borderTopColor: "#15803d33" }}>
                   <Feather name="trending-down" size={14} color="#22c55e" />
                   <Text style={{ fontFamily: "Inter_700Bold", color: "#22c55e", fontSize: 12 }}>
                     Buy from {supplierLabel(cheapestSupplier!.supplier)} and save {formatAUD(cartSaving)} on materials

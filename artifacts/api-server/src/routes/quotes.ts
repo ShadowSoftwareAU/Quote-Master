@@ -28,20 +28,46 @@ function specFromQuoteInput(input: {
   widthM: number;
   heightM?: number;
   boardWidthMm?: number;
+  gapSpacingMm?: number;
   joistSpacingMm?: number;
   bearerSpacingMm?: number;
   postSpacingMm?: number;
   wastageFactor?: number;
+  deckBoardType?: string;
+  subframeType?: string;
+  fastenerType?: string;
+  fasciaType?: string;
+  includeHandrails?: boolean;
+  includeStairs?: boolean;
+  stairFlights?: number;
+  includeFencing?: boolean;
+  fencingSides?: number;
+  includeAwning?: boolean;
+  awningWidthM?: number;
+  awningLengthM?: number;
 }): DeckSpec {
   return {
     lengthM: input.lengthM,
     widthM: input.widthM,
     heightM: input.heightM ?? 0.6,
     boardWidthMm: input.boardWidthMm ?? 90,
+    gapSpacingMm: input.gapSpacingMm ?? 4,
     joistSpacingMm: input.joistSpacingMm ?? 450,
     bearerSpacingMm: input.bearerSpacingMm ?? 1800,
     postSpacingMm: input.postSpacingMm ?? 1800,
     wastageFactor: input.wastageFactor ?? 1.1,
+    deckBoardType: input.deckBoardType ?? "treated_pine",
+    subframeType: input.subframeType ?? "stumps",
+    fastenerType: input.fastenerType ?? "screws",
+    fasciaType: input.fasciaType ?? "none",
+    includeHandrails: input.includeHandrails ?? false,
+    includeStairs: input.includeStairs ?? false,
+    stairFlights: input.stairFlights ?? 1,
+    includeFencing: input.includeFencing ?? false,
+    fencingSides: input.fencingSides ?? 1,
+    includeAwning: input.includeAwning ?? false,
+    awningWidthM: input.awningWidthM ?? 3,
+    awningLengthM: input.awningLengthM ?? 3,
   };
 }
 

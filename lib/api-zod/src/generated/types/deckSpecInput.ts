@@ -15,6 +15,8 @@ export interface DeckSpecInput {
   heightM?: number;
   /** Decking board width in mm */
   boardWidthMm?: number;
+  /** Gap between boards in mm */
+  gapSpacingMm?: number;
   /** Joist centres in mm */
   joistSpacingMm?: number;
   /** Bearer centres in mm */
@@ -27,4 +29,24 @@ export interface DeckSpecInput {
   labourHours?: number;
   /** AUD per hour labour rate */
   labourRate?: number;
+  /** hardwood | composite | treated_pine */
+  deckBoardType?: string;
+  /** stumps | concrete_slab | existing_structure */
+  subframeType?: string;
+  /** screws | hidden_clips */
+  fastenerType?: string;
+  /** none | timber | composite */
+  fasciaType?: string;
+  includeHandrails?: boolean;
+  includeStairs?: boolean;
+  /** Number of stair flights */
+  stairFlights?: number;
+  includeFencing?: boolean;
+  /** Number of sides with fencing */
+  fencingSides?: number;
+  includeAwning?: boolean;
+  /** Awning width in metres (creates cutout in boards) */
+  awningWidthM?: number;
+  /** Awning length in metres */
+  awningLengthM?: number;
 }

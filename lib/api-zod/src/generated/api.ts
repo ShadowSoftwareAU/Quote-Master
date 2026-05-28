@@ -398,34 +398,73 @@ export const SetQuoteStatusResponse = zod.object({
  */
 export const estimateDeckBodyHeightMDefault = 0.6;
 export const estimateDeckBodyBoardWidthMmDefault = 90;
+export const estimateDeckBodyGapSpacingMmDefault = 4;
 export const estimateDeckBodyJoistSpacingMmDefault = 450;
 export const estimateDeckBodyBearerSpacingMmDefault = 1800;
 export const estimateDeckBodyPostSpacingMmDefault = 1800;
 export const estimateDeckBodyWastageFactorDefault = 1.1;
 export const estimateDeckBodyLabourHoursDefault = 0;
 export const estimateDeckBodyLabourRateDefault = 85;
+export const estimateDeckBodyDeckBoardTypeDefault = `treated_pine`;
+export const estimateDeckBodySubframeTypeDefault = `stumps`;
+export const estimateDeckBodyFastenerTypeDefault = `screws`;
+export const estimateDeckBodyFasciaTypeDefault = `none`;
+export const estimateDeckBodyIncludeHandrailsDefault = false;
+export const estimateDeckBodyIncludeStairsDefault = false;
+export const estimateDeckBodyStairFlightsDefault = 1;
+export const estimateDeckBodyIncludeFencingDefault = false;
+export const estimateDeckBodyFencingSidesDefault = 1;
+export const estimateDeckBodyIncludeAwningDefault = false;
+export const estimateDeckBodyAwningWidthMDefault = 3;
+export const estimateDeckBodyAwningLengthMDefault = 3;
 
 export const EstimateDeckBody = zod.object({
   "lengthM": zod.number().describe('Deck length in metres'),
   "widthM": zod.number().describe('Deck width in metres'),
   "heightM": zod.number().default(estimateDeckBodyHeightMDefault).describe('Sub-floor height in metres'),
   "boardWidthMm": zod.number().default(estimateDeckBodyBoardWidthMmDefault).describe('Decking board width in mm'),
+  "gapSpacingMm": zod.number().default(estimateDeckBodyGapSpacingMmDefault).describe('Gap between boards in mm'),
   "joistSpacingMm": zod.number().default(estimateDeckBodyJoistSpacingMmDefault).describe('Joist centres in mm'),
   "bearerSpacingMm": zod.number().default(estimateDeckBodyBearerSpacingMmDefault).describe('Bearer centres in mm'),
   "postSpacingMm": zod.number().default(estimateDeckBodyPostSpacingMmDefault).describe('Post centres in mm'),
   "wastageFactor": zod.number().default(estimateDeckBodyWastageFactorDefault).describe('Multiplier for cuts and offcuts'),
   "labourHours": zod.number().default(estimateDeckBodyLabourHoursDefault).describe('Labour hours for the job'),
-  "labourRate": zod.number().default(estimateDeckBodyLabourRateDefault).describe('AUD per hour labour rate')
+  "labourRate": zod.number().default(estimateDeckBodyLabourRateDefault).describe('AUD per hour labour rate'),
+  "deckBoardType": zod.string().default(estimateDeckBodyDeckBoardTypeDefault).describe('hardwood | composite | treated_pine'),
+  "subframeType": zod.string().default(estimateDeckBodySubframeTypeDefault).describe('stumps | concrete_slab | existing_structure'),
+  "fastenerType": zod.string().default(estimateDeckBodyFastenerTypeDefault).describe('screws | hidden_clips'),
+  "fasciaType": zod.string().default(estimateDeckBodyFasciaTypeDefault).describe('none | timber | composite'),
+  "includeHandrails": zod.boolean().default(estimateDeckBodyIncludeHandrailsDefault),
+  "includeStairs": zod.boolean().default(estimateDeckBodyIncludeStairsDefault),
+  "stairFlights": zod.number().default(estimateDeckBodyStairFlightsDefault).describe('Number of stair flights'),
+  "includeFencing": zod.boolean().default(estimateDeckBodyIncludeFencingDefault),
+  "fencingSides": zod.number().default(estimateDeckBodyFencingSidesDefault).describe('Number of sides with fencing'),
+  "includeAwning": zod.boolean().default(estimateDeckBodyIncludeAwningDefault),
+  "awningWidthM": zod.number().default(estimateDeckBodyAwningWidthMDefault).describe('Awning width in metres (creates cutout in boards)'),
+  "awningLengthM": zod.number().default(estimateDeckBodyAwningLengthMDefault).describe('Awning length in metres')
 })
 
 export const estimateDeckResponseSpecHeightMDefault = 0.6;
 export const estimateDeckResponseSpecBoardWidthMmDefault = 90;
+export const estimateDeckResponseSpecGapSpacingMmDefault = 4;
 export const estimateDeckResponseSpecJoistSpacingMmDefault = 450;
 export const estimateDeckResponseSpecBearerSpacingMmDefault = 1800;
 export const estimateDeckResponseSpecPostSpacingMmDefault = 1800;
 export const estimateDeckResponseSpecWastageFactorDefault = 1.1;
 export const estimateDeckResponseSpecLabourHoursDefault = 0;
 export const estimateDeckResponseSpecLabourRateDefault = 85;
+export const estimateDeckResponseSpecDeckBoardTypeDefault = `treated_pine`;
+export const estimateDeckResponseSpecSubframeTypeDefault = `stumps`;
+export const estimateDeckResponseSpecFastenerTypeDefault = `screws`;
+export const estimateDeckResponseSpecFasciaTypeDefault = `none`;
+export const estimateDeckResponseSpecIncludeHandrailsDefault = false;
+export const estimateDeckResponseSpecIncludeStairsDefault = false;
+export const estimateDeckResponseSpecStairFlightsDefault = 1;
+export const estimateDeckResponseSpecIncludeFencingDefault = false;
+export const estimateDeckResponseSpecFencingSidesDefault = 1;
+export const estimateDeckResponseSpecIncludeAwningDefault = false;
+export const estimateDeckResponseSpecAwningWidthMDefault = 3;
+export const estimateDeckResponseSpecAwningLengthMDefault = 3;
 
 export const EstimateDeckResponse = zod.object({
   "spec": zod.object({
@@ -433,12 +472,25 @@ export const EstimateDeckResponse = zod.object({
   "widthM": zod.number().describe('Deck width in metres'),
   "heightM": zod.number().default(estimateDeckResponseSpecHeightMDefault).describe('Sub-floor height in metres'),
   "boardWidthMm": zod.number().default(estimateDeckResponseSpecBoardWidthMmDefault).describe('Decking board width in mm'),
+  "gapSpacingMm": zod.number().default(estimateDeckResponseSpecGapSpacingMmDefault).describe('Gap between boards in mm'),
   "joistSpacingMm": zod.number().default(estimateDeckResponseSpecJoistSpacingMmDefault).describe('Joist centres in mm'),
   "bearerSpacingMm": zod.number().default(estimateDeckResponseSpecBearerSpacingMmDefault).describe('Bearer centres in mm'),
   "postSpacingMm": zod.number().default(estimateDeckResponseSpecPostSpacingMmDefault).describe('Post centres in mm'),
   "wastageFactor": zod.number().default(estimateDeckResponseSpecWastageFactorDefault).describe('Multiplier for cuts and offcuts'),
   "labourHours": zod.number().default(estimateDeckResponseSpecLabourHoursDefault).describe('Labour hours for the job'),
-  "labourRate": zod.number().default(estimateDeckResponseSpecLabourRateDefault).describe('AUD per hour labour rate')
+  "labourRate": zod.number().default(estimateDeckResponseSpecLabourRateDefault).describe('AUD per hour labour rate'),
+  "deckBoardType": zod.string().default(estimateDeckResponseSpecDeckBoardTypeDefault).describe('hardwood | composite | treated_pine'),
+  "subframeType": zod.string().default(estimateDeckResponseSpecSubframeTypeDefault).describe('stumps | concrete_slab | existing_structure'),
+  "fastenerType": zod.string().default(estimateDeckResponseSpecFastenerTypeDefault).describe('screws | hidden_clips'),
+  "fasciaType": zod.string().default(estimateDeckResponseSpecFasciaTypeDefault).describe('none | timber | composite'),
+  "includeHandrails": zod.boolean().default(estimateDeckResponseSpecIncludeHandrailsDefault),
+  "includeStairs": zod.boolean().default(estimateDeckResponseSpecIncludeStairsDefault),
+  "stairFlights": zod.number().default(estimateDeckResponseSpecStairFlightsDefault).describe('Number of stair flights'),
+  "includeFencing": zod.boolean().default(estimateDeckResponseSpecIncludeFencingDefault),
+  "fencingSides": zod.number().default(estimateDeckResponseSpecFencingSidesDefault).describe('Number of sides with fencing'),
+  "includeAwning": zod.boolean().default(estimateDeckResponseSpecIncludeAwningDefault),
+  "awningWidthM": zod.number().default(estimateDeckResponseSpecAwningWidthMDefault).describe('Awning width in metres (creates cutout in boards)'),
+  "awningLengthM": zod.number().default(estimateDeckResponseSpecAwningLengthMDefault).describe('Awning length in metres')
 }),
   "deckAreaM2": zod.number().optional(),
   "lines": zod.array(zod.object({

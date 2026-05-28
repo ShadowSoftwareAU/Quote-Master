@@ -857,12 +857,25 @@ components:
         widthM: { type: number, description: "Deck width in metres" }
         heightM: { type: number, description: "Sub-floor height in metres", default: 0.6 }
         boardWidthMm: { type: integer, description: "Decking board width in mm", default: 90 }
+        gapSpacingMm: { type: integer, description: "Gap between boards in mm", default: 4 }
         joistSpacingMm: { type: integer, description: "Joist centres in mm", default: 450 }
         bearerSpacingMm: { type: integer, description: "Bearer centres in mm", default: 1800 }
         postSpacingMm: { type: integer, description: "Post centres in mm", default: 1800 }
         wastageFactor: { type: number, description: "Multiplier for cuts and offcuts", default: 1.1 }
         labourHours: { type: number, description: "Labour hours for the job", default: 0 }
         labourRate: { type: number, description: "AUD per hour labour rate", default: 85 }
+        deckBoardType: { type: string, description: "hardwood | composite | treated_pine", default: "treated_pine" }
+        subframeType: { type: string, description: "stumps | concrete_slab | existing_structure", default: "stumps" }
+        fastenerType: { type: string, description: "screws | hidden_clips", default: "screws" }
+        fasciaType: { type: string, description: "none | timber | composite", default: "none" }
+        includeHandrails: { type: boolean, default: false }
+        includeStairs: { type: boolean, default: false }
+        stairFlights: { type: integer, description: "Number of stair flights", default: 1 }
+        includeFencing: { type: boolean, default: false }
+        fencingSides: { type: integer, description: "Number of sides with fencing", default: 1 }
+        includeAwning: { type: boolean, default: false }
+        awningWidthM: { type: number, description: "Awning width in metres (creates cutout in boards)", default: 3 }
+        awningLengthM: { type: number, description: "Awning length in metres", default: 3 }
 
     QuoteLineItem:
       type: object

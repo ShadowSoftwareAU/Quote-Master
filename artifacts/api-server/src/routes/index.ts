@@ -10,6 +10,7 @@ import teamRouter from "./team";
 import timeRouter from "./time";
 import portfolioRouter from "./portfolio";
 import referralsRouter from "./referrals";
+import pdfRouter from "./pdf";
 
 const router: IRouter = Router();
 
@@ -24,5 +25,6 @@ router.use(teamRouter);
 router.use(timeRouter);
 router.use(portfolioRouter);
 router.use(referralsRouter);
+router.use(pdfRouter);
 
 export default router;
