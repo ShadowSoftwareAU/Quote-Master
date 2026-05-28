@@ -38,12 +38,24 @@ export interface DeckSpecInput {
   /** none | timber | composite */
   fasciaType?: string;
   includeHandrails?: boolean;
+  /** Handrail height in mm */
+  handrailHeightMm?: number;
+  /** timber | stainless_cable */
+  balustradeType?: string;
+  /** Gap between timber pickets in mm */
+  timberGapMm?: number;
+  /** Stainless cable wire spacing in mm */
+  wireSpacingMm?: number;
   includeStairs?: boolean;
   /** Number of stair flights */
   stairFlights?: number;
   includeFencing?: boolean;
   /** Number of sides with fencing */
   fencingSides?: number;
+  /** Fence height in metres */
+  fencingHeightM?: number;
+  /** Fence bay/panel width in metres */
+  fencingWidthM?: number;
   includeAwning?: boolean;
   /** Awning width in metres (creates cutout in boards) */
   awningWidthM?: number;

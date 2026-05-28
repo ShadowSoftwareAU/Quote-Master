@@ -1,0 +1,35 @@
+Feature Update: Expand Fencing, Advanced Balustrades, & New Suppliers
+
+Please update the Estimator API logic, Web Calculator, and Mobile Calculator with the following advanced quoting features:
+
+1. Fencing Section Expansion
+
+Update the "Fencing" section in the UI and data schema.
+
+Keep the existing "Sides with Fencing" input, but add two new numeric inputs: Fencing Height (m) and Fencing Width (m).
+
+Update the math engine to automatically calculate required fence posts, rails, and palings based on these specific dimensions rather than a generic linear run.
+
+2. Advanced Handrails & Balustrade Logic
+
+Auto-Calculation: Automatically calculate the required handrail linear meters based on the selected sides of the deck and the number of stair flights.
+
+New Handrail Inputs: Add an input for Handrail Height (mm) (default to 1000mm).
+
+Balustrade Type Toggle: Add a selection option for the balustrade infill: "Timber" or "Stainless Cable".
+
+Conditional Spacing Inputs: * If "Timber" is selected, auto-populate an input field for "Timber Gap (mm)" (default to 15mm) to account for natural airflow. Calculate the required timber linear meterage based on this gap.
+
+If "Stainless Cable" is selected, auto-populate an input field for "Wire Spacing (mm)" (default to 100mm). Calculate the total meters of stainless wire needed based on the handrail height and wire spacing.
+
+3. Supplier Pricing Expansion (Bretts Trade & Finlaysons)
+
+Update the multi-supplier database and the Bill of Materials (BOM) comparison table in the UI.
+
+Add Bretts Trade to represent true trade pricing.
+
+Add Finlaysons to serve as an alternative RRP/retail reference.
+
+Ensure both the web and mobile apps show columns for Bunnings, Mitre 10, Bretts Trade, and Finlaysons, calculating the cheapest overall supplier just as it currently does.
+
+Please ensure the React Native mobile app strictly adheres to conditional rendering for the new inputs so the UI remains clean. Let me know when you've updated the API schemas, math engine, and both frontends!

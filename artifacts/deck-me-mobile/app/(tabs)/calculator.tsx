@@ -59,6 +59,8 @@ const SUPPLIER_LABELS: Record<string, string> = {
   "bunnings warehouse": "Bunnings",
   mitre10: "Mitre 10",
   "mitre 10": "Mitre 10",
+  bretts_trade: "Bretts Trade",
+  finlaysons: "Finlaysons",
   local: "Local Yard",
   other: "Other",
 };
@@ -68,6 +70,8 @@ const SUPPLIER_COLORS: Record<string, string> = {
   "bunnings warehouse": "#d41f1f",
   mitre10: "#007a3d",
   "mitre 10": "#007a3d",
+  bretts_trade: "#1d4ed8",
+  finlaysons: "#7c3aed",
   local: "#b45309",
   other: "#6b7280",
 };
@@ -289,10 +293,20 @@ export default function CalculatorScreen() {
   const [labourHours, setLabourHours] = useState("16");
   const [labourRate, setLabourRate] = useState("85");
 
-  // Extras
+  // Extras — handrails
   const [includeHandrails, setIncludeHandrails] = useState(false);
+  const [handrailHeightMm, setHandrailHeightMm] = useState("1000");
+  const [balustradeType, setBalustradeType] = useState("timber");
+  const [timberGapMm, setTimberGapMm] = useState("15");
+  const [wireSpacingMm, setWireSpacingMm] = useState("100");
+  // Extras — stairs
   const [includeStairs, setIncludeStairs] = useState(false);
+  // Extras — fencing
   const [includeFencing, setIncludeFencing] = useState(false);
+  const [fencingSides, setFencingSides] = useState("1");
+  const [fencingHeightM, setFencingHeightM] = useState("1.8");
+  const [fencingWidthM, setFencingWidthM] = useState("1.8");
+  // Extras — awning
   const [includeAwning, setIncludeAwning] = useState(false);
 
   const [estimate, setEstimate] = useState<QuoteEstimate | null>(null);
@@ -315,15 +329,23 @@ export default function CalculatorScreen() {
       fastenerType,
       fasciaType: "none",
       includeHandrails,
+      handrailHeightMm: Math.round(parseNum(handrailHeightMm, 1000)),
+      balustradeType,
+      timberGapMm: Math.round(parseNum(timberGapMm, 15)),
+      wireSpacingMm: Math.round(parseNum(wireSpacingMm, 100)),
       includeStairs,
       stairFlights: 1,
       includeFencing,
-      fencingSides: 1,
+      fencingSides: Math.round(parseNum(fencingSides, 1)),
+      fencingHeightM: parseNum(fencingHeightM, 1.8),
+      fencingWidthM: parseNum(fencingWidthM, 1.8),
       includeAwning,
       awningWidthM: 3,
       awningLengthM: 3,
     }),
-    [length, width, height, boardWidth, gapSpacing, joistSpacing, deckBoardType, subframeType, fastenerType, includeHandrails, includeStairs, includeFencing, includeAwning],
+    [length, width, height, boardWidth, gapSpacing, joistSpacing, deckBoardType, subframeType, fastenerType,
+     includeHandrails, handrailHeightMm, balustradeType, timberGapMm, wireSpacingMm,
+     includeStairs, includeFencing, fencingSides, fencingHeightM, fencingWidthM, includeAwning],
   );
 
   useEffect(() => {
@@ -531,10 +553,63 @@ export default function CalculatorScreen() {
             <Text style={{ fontFamily: "Chivo_700Bold", fontSize: 13, color: colors.foreground, marginBottom: 10, letterSpacing: 0.4 }}>
               EXTRAS
             </Text>
-            <View style={{ gap: 2 }}>
+            <View style={{ gap: 4 }}>
+
+              {/* Handrails */}
               <CheckRow label="Handrails / Balustrade" checked={includeHandrails} onToggle={() => setIncludeHandrails(!includeHandrails)} colors={colors} />
+              {includeHandrails && (
+                <View style={{ marginLeft: 32, gap: 12, paddingVertical: 8, paddingHorizontal: 4 }}>
+                  <LabeledInput label={`Height (mm)`}>
+                    <TextInputStyled value={handrailHeightMm} onChangeText={setHandrailHeightMm} keyboardType="number-pad" />
+                  </LabeledInput>
+                  <View>
+                    <Text style={{ fontFamily: "Inter_700Bold", color: colors.mutedForeground, fontSize: 10, letterSpacing: 1, marginBottom: 6 }}>
+                      BALUSTRADE INFILL
+                    </Text>
+                    <SegmentedControl
+                      options={[
+                        { label: "TIMBER", value: "timber" },
+                        { label: "STAINLESS CABLE", value: "stainless_cable" },
+                      ]}
+                      value={balustradeType}
+                      onChange={setBalustradeType}
+                      colors={colors}
+                    />
+                  </View>
+                  {balustradeType === "timber" ? (
+                    <LabeledInput label="Timber Gap (mm)">
+                      <TextInputStyled value={timberGapMm} onChangeText={setTimberGapMm} keyboardType="number-pad" />
+                    </LabeledInput>
+                  ) : (
+                    <LabeledInput label="Wire Spacing (mm)">
+                      <TextInputStyled value={wireSpacingMm} onChangeText={setWireSpacingMm} keyboardType="number-pad" />
+                    </LabeledInput>
+                  )}
+                </View>
+              )}
+
+              {/* Stairs */}
               <CheckRow label="Stairs" checked={includeStairs} onToggle={() => setIncludeStairs(!includeStairs)} colors={colors} />
+
+              {/* Fencing */}
               <CheckRow label="Fencing" checked={includeFencing} onToggle={() => setIncludeFencing(!includeFencing)} colors={colors} />
+              {includeFencing && (
+                <View style={{ marginLeft: 32, gap: 12, paddingVertical: 8, paddingHorizontal: 4 }}>
+                  <LabeledInput label="Sides">
+                    <TextInputStyled value={fencingSides} onChangeText={setFencingSides} keyboardType="number-pad" />
+                  </LabeledInput>
+                  <View style={{ flexDirection: "row", gap: 10 }}>
+                    <LabeledInput label="Height (m)">
+                      <TextInputStyled value={fencingHeightM} onChangeText={setFencingHeightM} keyboardType="decimal-pad" />
+                    </LabeledInput>
+                    <LabeledInput label="Bay Width (m)">
+                      <TextInputStyled value={fencingWidthM} onChangeText={setFencingWidthM} keyboardType="decimal-pad" />
+                    </LabeledInput>
+                  </View>
+                </View>
+              )}
+
+              {/* Awning */}
               <CheckRow label="Awning (cuts boards)" checked={includeAwning} onToggle={() => setIncludeAwning(!includeAwning)} colors={colors} />
             </View>
           </Card>

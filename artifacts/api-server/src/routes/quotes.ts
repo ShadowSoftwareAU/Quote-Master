@@ -38,10 +38,16 @@ function specFromQuoteInput(input: {
   fastenerType?: string;
   fasciaType?: string;
   includeHandrails?: boolean;
+  handrailHeightMm?: number;
+  balustradeType?: string;
+  timberGapMm?: number;
+  wireSpacingMm?: number;
   includeStairs?: boolean;
   stairFlights?: number;
   includeFencing?: boolean;
   fencingSides?: number;
+  fencingHeightM?: number;
+  fencingWidthM?: number;
   includeAwning?: boolean;
   awningWidthM?: number;
   awningLengthM?: number;
@@ -61,10 +67,16 @@ function specFromQuoteInput(input: {
     fastenerType: input.fastenerType ?? "screws",
     fasciaType: input.fasciaType ?? "none",
     includeHandrails: input.includeHandrails ?? false,
+    handrailHeightMm: input.handrailHeightMm ?? 1000,
+    balustradeType: input.balustradeType ?? "timber",
+    timberGapMm: input.timberGapMm ?? 15,
+    wireSpacingMm: input.wireSpacingMm ?? 100,
     includeStairs: input.includeStairs ?? false,
     stairFlights: input.stairFlights ?? 1,
     includeFencing: input.includeFencing ?? false,
     fencingSides: input.fencingSides ?? 1,
+    fencingHeightM: input.fencingHeightM ?? 1.8,
+    fencingWidthM: input.fencingWidthM ?? 1.8,
     includeAwning: input.includeAwning ?? false,
     awningWidthM: input.awningWidthM ?? 3,
     awningLengthM: input.awningLengthM ?? 3,

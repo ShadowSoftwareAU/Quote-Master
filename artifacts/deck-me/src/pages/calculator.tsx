@@ -33,12 +33,16 @@ const COUNCIL_HEIGHT_M = 1.0;
 const SUPPLIER_LABELS: Record<string, string> = {
   bunnings: "Bunnings",
   mitre10: "Mitre 10",
+  bretts_trade: "Bretts Trade",
+  finlaysons: "Finlaysons",
   local: "Local Yard",
   other: "Other",
 };
 const SUPPLIER_COLORS: Record<string, string> = {
   bunnings: "#d41f1f",
   mitre10: "#007a3d",
+  bretts_trade: "#1d4ed8",
+  finlaysons: "#7c3aed",
   local: "#b45309",
   other: "#6b7280",
 };
@@ -84,10 +88,16 @@ const DEFAULT_SPEC = {
   fastenerType: "screws",
   fasciaType: "none",
   includeHandrails: false,
+  handrailHeightMm: 1000,
+  balustradeType: "timber",
+  timberGapMm: 15,
+  wireSpacingMm: 100,
   includeStairs: false,
   stairFlights: 1,
   includeFencing: false,
   fencingSides: 1,
+  fencingHeightM: 1.8,
+  fencingWidthM: 1.8,
   includeAwning: false,
   awningWidthM: 3,
   awningLengthM: 3,
@@ -376,19 +386,62 @@ export default function Calculator() {
             <CardContent className="p-5 space-y-4">
 
               {/* Handrails */}
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <Checkbox
-                    id="includeHandrails"
-                    checked={spec.includeHandrails}
-                    onCheckedChange={(v) => setBool("includeHandrails", !!v)}
-                  />
-                  <Label htmlFor="includeHandrails" className="font-bold cursor-pointer">
-                    Handrails / Balustrade
-                  </Label>
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Checkbox
+                      id="includeHandrails"
+                      checked={spec.includeHandrails}
+                      onCheckedChange={(v) => setBool("includeHandrails", !!v)}
+                    />
+                    <Label htmlFor="includeHandrails" className="font-bold cursor-pointer">
+                      Handrails / Balustrade
+                    </Label>
+                  </div>
+                  {spec.includeHandrails && (
+                    <Badge variant="secondary" className="text-xs">Auto-calc 3 sides + stairs</Badge>
+                  )}
                 </div>
                 {spec.includeHandrails && (
-                  <Badge variant="secondary" className="text-xs">3-side run</Badge>
+                  <div className="pl-7 space-y-3">
+                    <div className="space-y-1.5">
+                      <Label className="font-bold uppercase text-xs">Handrail Height (mm)</Label>
+                      <Input
+                        type="number" min="600" max="1200" step="50" name="handrailHeightMm"
+                        value={spec.handrailHeightMm} onChange={handleChange}
+                        className="font-mono h-9 w-28"
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label className="font-bold uppercase text-xs">Balustrade Infill</Label>
+                      <Select value={spec.balustradeType} onValueChange={(v) => setStr("balustradeType", v)}>
+                        <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="timber">Timber Pickets</SelectItem>
+                          <SelectItem value="stainless_cable">Stainless Cable</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    {spec.balustradeType === "timber" ? (
+                      <div className="space-y-1.5">
+                        <Label className="font-bold uppercase text-xs">Timber Gap (mm)</Label>
+                        <Input
+                          type="number" min="5" max="50" name="timberGapMm"
+                          value={spec.timberGapMm} onChange={handleChange}
+                          className="font-mono h-9 w-28"
+                        />
+                      </div>
+                    ) : (
+                      <div className="space-y-1.5">
+                        <Label className="font-bold uppercase text-xs">Wire Spacing (mm)</Label>
+                        <Input
+                          type="number" min="50" max="150" step="10" name="wireSpacingMm"
+                          value={spec.wireSpacingMm} onChange={handleChange}
+                          className="font-mono h-9 w-28"
+                        />
+                      </div>
+                    )}
+                  </div>
                 )}
               </div>
 
@@ -425,13 +478,33 @@ export default function Calculator() {
                   <Label htmlFor="includeFencing" className="font-bold cursor-pointer">Fencing</Label>
                 </div>
                 {spec.includeFencing && (
-                  <div className="pl-7 space-y-1.5">
-                    <Label className="font-bold uppercase text-xs">Sides with Fencing</Label>
-                    <Input
-                      type="number" min="1" max="4" name="fencingSides"
-                      value={spec.fencingSides} onChange={handleChange}
-                      className="font-mono h-9 w-24"
-                    />
+                  <div className="pl-7 space-y-3">
+                    <div className="space-y-1.5">
+                      <Label className="font-bold uppercase text-xs">Sides with Fencing</Label>
+                      <Input
+                        type="number" min="1" max="4" name="fencingSides"
+                        value={spec.fencingSides} onChange={handleChange}
+                        className="font-mono h-9 w-24"
+                      />
+                    </div>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="space-y-1.5">
+                        <Label className="font-bold uppercase text-xs">Fence Height (m)</Label>
+                        <Input
+                          type="number" min="0.9" max="2.4" step="0.1" name="fencingHeightM"
+                          value={spec.fencingHeightM} onChange={handleChange}
+                          className="font-mono h-9"
+                        />
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label className="font-bold uppercase text-xs">Bay Width (m)</Label>
+                        <Input
+                          type="number" min="0.9" max="3.0" step="0.1" name="fencingWidthM"
+                          value={spec.fencingWidthM} onChange={handleChange}
+                          className="font-mono h-9"
+                        />
+                      </div>
+                    </div>
                   </div>
                 )}
               </div>

@@ -447,10 +447,16 @@ export const estimateDeckBodySubframeTypeDefault = `stumps`;
 export const estimateDeckBodyFastenerTypeDefault = `screws`;
 export const estimateDeckBodyFasciaTypeDefault = `none`;
 export const estimateDeckBodyIncludeHandrailsDefault = false;
+export const estimateDeckBodyHandrailHeightMmDefault = 1000;
+export const estimateDeckBodyBalustradeTypeDefault = `timber`;
+export const estimateDeckBodyTimberGapMmDefault = 15;
+export const estimateDeckBodyWireSpacingMmDefault = 100;
 export const estimateDeckBodyIncludeStairsDefault = false;
 export const estimateDeckBodyStairFlightsDefault = 1;
 export const estimateDeckBodyIncludeFencingDefault = false;
 export const estimateDeckBodyFencingSidesDefault = 1;
+export const estimateDeckBodyFencingHeightMDefault = 1.8;
+export const estimateDeckBodyFencingWidthMDefault = 1.8;
 export const estimateDeckBodyIncludeAwningDefault = false;
 export const estimateDeckBodyAwningWidthMDefault = 3;
 export const estimateDeckBodyAwningLengthMDefault = 3;
@@ -472,10 +478,16 @@ export const EstimateDeckBody = zod.object({
   "fastenerType": zod.string().default(estimateDeckBodyFastenerTypeDefault).describe('screws | hidden_clips'),
   "fasciaType": zod.string().default(estimateDeckBodyFasciaTypeDefault).describe('none | timber | composite'),
   "includeHandrails": zod.boolean().default(estimateDeckBodyIncludeHandrailsDefault),
+  "handrailHeightMm": zod.number().default(estimateDeckBodyHandrailHeightMmDefault).describe('Handrail height in mm'),
+  "balustradeType": zod.string().default(estimateDeckBodyBalustradeTypeDefault).describe('timber | stainless_cable'),
+  "timberGapMm": zod.number().default(estimateDeckBodyTimberGapMmDefault).describe('Gap between timber pickets in mm'),
+  "wireSpacingMm": zod.number().default(estimateDeckBodyWireSpacingMmDefault).describe('Stainless cable wire spacing in mm'),
   "includeStairs": zod.boolean().default(estimateDeckBodyIncludeStairsDefault),
   "stairFlights": zod.number().default(estimateDeckBodyStairFlightsDefault).describe('Number of stair flights'),
   "includeFencing": zod.boolean().default(estimateDeckBodyIncludeFencingDefault),
   "fencingSides": zod.number().default(estimateDeckBodyFencingSidesDefault).describe('Number of sides with fencing'),
+  "fencingHeightM": zod.number().default(estimateDeckBodyFencingHeightMDefault).describe('Fence height in metres'),
+  "fencingWidthM": zod.number().default(estimateDeckBodyFencingWidthMDefault).describe('Fence bay\/panel width in metres'),
   "includeAwning": zod.boolean().default(estimateDeckBodyIncludeAwningDefault),
   "awningWidthM": zod.number().default(estimateDeckBodyAwningWidthMDefault).describe('Awning width in metres (creates cutout in boards)'),
   "awningLengthM": zod.number().default(estimateDeckBodyAwningLengthMDefault).describe('Awning length in metres')
@@ -495,10 +507,16 @@ export const estimateDeckResponseSpecSubframeTypeDefault = `stumps`;
 export const estimateDeckResponseSpecFastenerTypeDefault = `screws`;
 export const estimateDeckResponseSpecFasciaTypeDefault = `none`;
 export const estimateDeckResponseSpecIncludeHandrailsDefault = false;
+export const estimateDeckResponseSpecHandrailHeightMmDefault = 1000;
+export const estimateDeckResponseSpecBalustradeTypeDefault = `timber`;
+export const estimateDeckResponseSpecTimberGapMmDefault = 15;
+export const estimateDeckResponseSpecWireSpacingMmDefault = 100;
 export const estimateDeckResponseSpecIncludeStairsDefault = false;
 export const estimateDeckResponseSpecStairFlightsDefault = 1;
 export const estimateDeckResponseSpecIncludeFencingDefault = false;
 export const estimateDeckResponseSpecFencingSidesDefault = 1;
+export const estimateDeckResponseSpecFencingHeightMDefault = 1.8;
+export const estimateDeckResponseSpecFencingWidthMDefault = 1.8;
 export const estimateDeckResponseSpecIncludeAwningDefault = false;
 export const estimateDeckResponseSpecAwningWidthMDefault = 3;
 export const estimateDeckResponseSpecAwningLengthMDefault = 3;
@@ -521,10 +539,16 @@ export const EstimateDeckResponse = zod.object({
   "fastenerType": zod.string().default(estimateDeckResponseSpecFastenerTypeDefault).describe('screws | hidden_clips'),
   "fasciaType": zod.string().default(estimateDeckResponseSpecFasciaTypeDefault).describe('none | timber | composite'),
   "includeHandrails": zod.boolean().default(estimateDeckResponseSpecIncludeHandrailsDefault),
+  "handrailHeightMm": zod.number().default(estimateDeckResponseSpecHandrailHeightMmDefault).describe('Handrail height in mm'),
+  "balustradeType": zod.string().default(estimateDeckResponseSpecBalustradeTypeDefault).describe('timber | stainless_cable'),
+  "timberGapMm": zod.number().default(estimateDeckResponseSpecTimberGapMmDefault).describe('Gap between timber pickets in mm'),
+  "wireSpacingMm": zod.number().default(estimateDeckResponseSpecWireSpacingMmDefault).describe('Stainless cable wire spacing in mm'),
   "includeStairs": zod.boolean().default(estimateDeckResponseSpecIncludeStairsDefault),
   "stairFlights": zod.number().default(estimateDeckResponseSpecStairFlightsDefault).describe('Number of stair flights'),
   "includeFencing": zod.boolean().default(estimateDeckResponseSpecIncludeFencingDefault),
   "fencingSides": zod.number().default(estimateDeckResponseSpecFencingSidesDefault).describe('Number of sides with fencing'),
+  "fencingHeightM": zod.number().default(estimateDeckResponseSpecFencingHeightMDefault).describe('Fence height in metres'),
+  "fencingWidthM": zod.number().default(estimateDeckResponseSpecFencingWidthMDefault).describe('Fence bay\/panel width in metres'),
   "includeAwning": zod.boolean().default(estimateDeckResponseSpecIncludeAwningDefault),
   "awningWidthM": zod.number().default(estimateDeckResponseSpecAwningWidthMDefault).describe('Awning width in metres (creates cutout in boards)'),
   "awningLengthM": zod.number().default(estimateDeckResponseSpecAwningLengthMDefault).describe('Awning length in metres')

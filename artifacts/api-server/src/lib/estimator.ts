@@ -14,11 +14,21 @@ export interface DeckSpec {
   subframeType: string;
   fastenerType: string;
   fasciaType: string;
+  // Handrails
   includeHandrails: boolean;
+  handrailHeightMm: number;
+  balustradeType: string;
+  timberGapMm: number;
+  wireSpacingMm: number;
+  // Stairs
   includeStairs: boolean;
   stairFlights: number;
+  // Fencing
   includeFencing: boolean;
   fencingSides: number;
+  fencingHeightM: number;
+  fencingWidthM: number;
+  // Awning
   includeAwning: boolean;
   awningWidthM: number;
   awningLengthM: number;
@@ -103,7 +113,6 @@ export function estimateDeck(
   // ── Awning cutout: subtract awning footprint from deck area for board count ──
   let effectiveDeckWidthM = spec.widthM;
   if (spec.includeAwning && spec.awningWidthM > 0 && spec.awningLengthM > 0) {
-    // Awning sits along one end — remove that strip from board count
     effectiveDeckWidthM = Math.max(0, spec.widthM - spec.awningWidthM);
   }
 
@@ -171,18 +180,38 @@ export function estimateDeck(
     make("fascia", perimeter * wastage, `${fasciaLabel} board (perimeter ${perimeter.toFixed(1)}m)`);
   }
 
-  // ── Handrails ──
+  // ── Handrails & Balustrade ──
   if (spec.includeHandrails) {
-    // Handrail along 3 exposed sides (not the house side)
-    const railLength = (spec.lengthM * 2 + spec.widthM) * wastage;
-    make("handrail", railLength, `Handrail 3 sides (${railLength.toFixed(1)}m)`);
-    make("balustrade", railLength, `Balustrade system (${railLength.toFixed(1)}m)`);
+    const handrailHeightMm = spec.handrailHeightMm || 1000;
+    const handrailHeightM = handrailHeightMm / 1000;
+    // Auto-calc: 3 exposed deck sides + stair flight handrails (2 sides per flight, ~1.5m run)
+    const deckRailM = spec.lengthM * 2 + spec.widthM;
+    const stairRailM = spec.includeStairs ? (spec.stairFlights || 0) * 1.5 * 2 : 0;
+    const railLength = round2((deckRailM + stairRailM) * wastage);
+
+    make("handrail", railLength, `Handrail ${handrailHeightMm}mm, 3 sides${stairRailM > 0 ? " + stairs" : ""} (${railLength}m)`);
+
+    const baluType = spec.balustradeType || "timber";
+    if (baluType === "stainless_cable") {
+      // Horizontal wire runs: from 100mm to handrail height, spaced at wireSpacingMm
+      const wireSpacingMm = spec.wireSpacingMm || 100;
+      const wireRuns = Math.ceil((handrailHeightMm - 100) / wireSpacingMm);
+      const wireMetres = round2(wireRuns * railLength * 1.05); // 5% for termination loops
+      make("balustrade", wireMetres, `Stainless cable ${wireRuns} runs × ${railLength}m (${wireSpacingMm}mm spacing)`);
+    } else {
+      // Timber picket infill
+      const timberGapMm = spec.timberGapMm || 15;
+      const baluWidthMm = 42; // typical 42×42 baluster
+      const picketsPerMetre = 1000 / (baluWidthMm + timberGapMm);
+      const totalPickets = Math.ceil(railLength * picketsPerMetre);
+      const timberLinearM = round2(totalPickets * handrailHeightM);
+      make("balustrade", timberLinearM, `Timber infill ${totalPickets} pickets (${timberGapMm}mm gap, ${handrailHeightMm}mm high)`);
+    }
   }
 
   // ── Stairs ──
   if (spec.includeStairs && spec.stairFlights > 0) {
     const flights = spec.stairFlights;
-    // Typical flight: 2 stringers, ~8 treads
     make("stair_stringer", flights * 2, `Stair stringers (${flights} flight${flights > 1 ? "s" : ""})`);
     make("stair_tread", flights * 8, `Stair treads (${flights * 8} treads)`);
   }
@@ -190,16 +219,22 @@ export function estimateDeck(
   // ── Fencing ──
   if (spec.includeFencing && spec.fencingSides > 0) {
     const sides = spec.fencingSides;
-    // Assume alternating long/short sides
     const avgSideLen = (spec.lengthM + spec.widthM) / 2;
     const fenceLen = sides * avgSideLen;
-    const postSpacing = 1.8;
-    const fencePostCount = Math.ceil(fenceLen / postSpacing) + sides;
-    const fenceRailM = fenceLen * 3 * wastage; // 3 rails per run
-    const palingCount = Math.ceil((fenceLen * 1000) / 110); // 100mm palings, 10mm gap
-    make("fencing_post", fencePostCount, `Fence posts (${sides} side${sides > 1 ? "s" : ""})`);
-    make("fencing_rail", fenceRailM, `Fence rails (3 per run)`);
-    make("fencing_paling", palingCount, `Fence palings (${palingCount})`);
+    const bayWidthM = spec.fencingWidthM || 1.8;
+    const fenceHeightM = spec.fencingHeightM || 1.8;
+
+    // Posts: one per bay boundary + one at each end per side
+    const fencePostCount = Math.ceil(fenceLen / bayWidthM) + sides;
+    // Rails: height-dependent — 2 rails ≤1.2m, 3 rails ≤1.8m, 4 rails >1.8m
+    const railsPerRun = fenceHeightM <= 1.2 ? 2 : fenceHeightM <= 1.8 ? 3 : 4;
+    const fenceRailM = round2(fenceLen * railsPerRun * wastage);
+    // Palings: 100mm paling + 10mm gap = 110mm per paling, full fence height
+    const palingCount = Math.ceil((fenceLen * 1000) / 110);
+
+    make("fencing_post", fencePostCount, `Fence posts @ ${bayWidthM}m bays, ${sides} side${sides > 1 ? "s" : ""}`);
+    make("fencing_rail", fenceRailM, `Fence rails (${railsPerRun} per run, ${fenceLen.toFixed(1)}m total run)`);
+    make("fencing_paling", palingCount, `Fence palings ${Math.round(fenceHeightM * 1000)}mm high (${palingCount} off)`);
   }
 
   const materialsSubtotal = round2(lines.reduce((sum, l) => sum + l.lineTotal, 0));

@@ -881,10 +881,16 @@ components:
         fastenerType: { type: string, description: "screws | hidden_clips", default: "screws" }
         fasciaType: { type: string, description: "none | timber | composite", default: "none" }
         includeHandrails: { type: boolean, default: false }
+        handrailHeightMm: { type: integer, description: "Handrail height in mm", default: 1000 }
+        balustradeType: { type: string, description: "timber | stainless_cable", default: "timber" }
+        timberGapMm: { type: integer, description: "Gap between timber pickets in mm", default: 15 }
+        wireSpacingMm: { type: integer, description: "Stainless cable wire spacing in mm", default: 100 }
         includeStairs: { type: boolean, default: false }
         stairFlights: { type: integer, description: "Number of stair flights", default: 1 }
         includeFencing: { type: boolean, default: false }
         fencingSides: { type: integer, description: "Number of sides with fencing", default: 1 }
+        fencingHeightM: { type: number, description: "Fence height in metres", default: 1.8 }
+        fencingWidthM: { type: number, description: "Fence bay/panel width in metres", default: 1.8 }
         includeAwning: { type: boolean, default: false }
         awningWidthM: { type: number, description: "Awning width in metres (creates cutout in boards)", default: 3 }
         awningLengthM: { type: number, description: "Awning length in metres", default: 3 }
