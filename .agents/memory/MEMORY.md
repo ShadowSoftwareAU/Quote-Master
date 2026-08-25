@@ -1,0 +1,1 @@
+- [Clerk web client compatibility](clerk-web-client-compatibility.md) — keep Master Project authorisation server-side while the workspace uses React 19.1.0.

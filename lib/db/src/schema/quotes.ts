@@ -7,12 +7,18 @@ import {
   jsonb,
   timestamp,
 } from "drizzle-orm/pg-core";
+import { masterProjectsTable } from "./master-projects";
 
 export const quotesTable = pgTable("quotes", {
   id: serial("id").primaryKey(),
   title: text("title").notNull(),
   status: text("status").notNull().default("draft"),
   customerId: integer("customer_id").notNull(),
+  masterProjectId: integer("master_project_id").references(
+    () => masterProjectsTable.id,
+    { onDelete: "set null" },
+  ),
+  tradeType: text("trade_type").notNull().default("decking"),
   siteAddress: text("site_address"),
   notes: text("notes"),
   lengthM: numeric("length_m", { precision: 10, scale: 3 }).notNull(),

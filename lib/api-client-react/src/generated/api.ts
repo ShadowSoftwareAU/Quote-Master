@@ -37,6 +37,11 @@ import type {
   JobAssignment,
   ListMaterialsParams,
   ManualTimeEntryInput,
+  MasterProject,
+  MasterProjectInput,
+  MasterProjectQuoteSelection,
+  MasterProjectSummary,
+  MasterProjectUpdate,
   Material,
   MaterialInput,
   MaterialUpdate,
@@ -1465,6 +1470,409 @@ export const useEstimateDeck = <TError = ErrorType<unknown>,
         TContext
       > => {
       return useMutation(getEstimateDeckMutationOptions(options));
+    }
+
+export const getListMasterProjectsUrl = () => {
+
+
+
+
+  return `/api/master-projects`
+}
+
+export const listMasterProjects = async ( options?: RequestInit): Promise<MasterProjectSummary[]> => {
+
+  return customFetch<MasterProjectSummary[]>(getListMasterProjectsUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListMasterProjectsQueryKey = () => {
+    return [
+    `/api/master-projects`
+    ] as const;
+    }
+
+
+export const getListMasterProjectsQueryOptions = <TData = Awaited<ReturnType<typeof listMasterProjects>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listMasterProjects>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListMasterProjectsQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listMasterProjects>>> = ({ signal }) => listMasterProjects({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listMasterProjects>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListMasterProjectsQueryResult = NonNullable<Awaited<ReturnType<typeof listMasterProjects>>>
+export type ListMasterProjectsQueryError = ErrorType<unknown>
+
+
+
+export function useListMasterProjects<TData = Awaited<ReturnType<typeof listMasterProjects>>, TError = ErrorType<unknown>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listMasterProjects>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListMasterProjectsQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
+
+export const getCreateMasterProjectUrl = () => {
+
+
+
+
+  return `/api/master-projects`
+}
+
+export const createMasterProject = async (masterProjectInput: MasterProjectInput, options?: RequestInit): Promise<MasterProject> => {
+
+  return customFetch<MasterProject>(getCreateMasterProjectUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      masterProjectInput,)
+  }
+);}
+
+
+
+
+export const getCreateMasterProjectMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createMasterProject>>, TError,{data: BodyType<MasterProjectInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createMasterProject>>, TError,{data: BodyType<MasterProjectInput>}, TContext> => {
+
+const mutationKey = ['createMasterProject'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createMasterProject>>, {data: BodyType<MasterProjectInput>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  createMasterProject(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreateMasterProjectMutationResult = NonNullable<Awaited<ReturnType<typeof createMasterProject>>>
+    export type CreateMasterProjectMutationBody = BodyType<MasterProjectInput>
+    export type CreateMasterProjectMutationError = ErrorType<unknown>
+
+    export const useCreateMasterProject = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createMasterProject>>, TError,{data: BodyType<MasterProjectInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof createMasterProject>>,
+        TError,
+        {data: BodyType<MasterProjectInput>},
+        TContext
+      > => {
+      return useMutation(getCreateMasterProjectMutationOptions(options));
+    }
+
+export const getGetMasterProjectUrl = (id: number,) => {
+
+
+
+
+  return `/api/master-projects/${id}`
+}
+
+export const getMasterProject = async (id: number, options?: RequestInit): Promise<MasterProject> => {
+
+  return customFetch<MasterProject>(getGetMasterProjectUrl(id),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetMasterProjectQueryKey = (id: number,) => {
+    return [
+    `/api/master-projects/${id}`
+    ] as const;
+    }
+
+
+export const getGetMasterProjectQueryOptions = <TData = Awaited<ReturnType<typeof getMasterProject>>, TError = ErrorType<unknown>>(id: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getMasterProject>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetMasterProjectQueryKey(id);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getMasterProject>>> = ({ signal }) => getMasterProject(id, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: !!(id), ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getMasterProject>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetMasterProjectQueryResult = NonNullable<Awaited<ReturnType<typeof getMasterProject>>>
+export type GetMasterProjectQueryError = ErrorType<unknown>
+
+
+
+export function useGetMasterProject<TData = Awaited<ReturnType<typeof getMasterProject>>, TError = ErrorType<unknown>>(
+ id: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getMasterProject>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetMasterProjectQueryOptions(id,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
+
+export const getUpdateMasterProjectUrl = (id: number,) => {
+
+
+
+
+  return `/api/master-projects/${id}`
+}
+
+export const updateMasterProject = async (id: number,
+    masterProjectUpdate: MasterProjectUpdate, options?: RequestInit): Promise<MasterProject> => {
+
+  return customFetch<MasterProject>(getUpdateMasterProjectUrl(id),
+  {
+    ...options,
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      masterProjectUpdate,)
+  }
+);}
+
+
+
+
+export const getUpdateMasterProjectMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateMasterProject>>, TError,{id: number;data: BodyType<MasterProjectUpdate>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updateMasterProject>>, TError,{id: number;data: BodyType<MasterProjectUpdate>}, TContext> => {
+
+const mutationKey = ['updateMasterProject'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateMasterProject>>, {id: number;data: BodyType<MasterProjectUpdate>}> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  updateMasterProject(id,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdateMasterProjectMutationResult = NonNullable<Awaited<ReturnType<typeof updateMasterProject>>>
+    export type UpdateMasterProjectMutationBody = BodyType<MasterProjectUpdate>
+    export type UpdateMasterProjectMutationError = ErrorType<unknown>
+
+    export const useUpdateMasterProject = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateMasterProject>>, TError,{id: number;data: BodyType<MasterProjectUpdate>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof updateMasterProject>>,
+        TError,
+        {id: number;data: BodyType<MasterProjectUpdate>},
+        TContext
+      > => {
+      return useMutation(getUpdateMasterProjectMutationOptions(options));
+    }
+
+export const getDeleteMasterProjectUrl = (id: number,) => {
+
+
+
+
+  return `/api/master-projects/${id}`
+}
+
+export const deleteMasterProject = async (id: number, options?: RequestInit): Promise<void> => {
+
+  return customFetch<void>(getDeleteMasterProjectUrl(id),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+);}
+
+
+
+
+export const getDeleteMasterProjectMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteMasterProject>>, TError,{id: number}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof deleteMasterProject>>, TError,{id: number}, TContext> => {
+
+const mutationKey = ['deleteMasterProject'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof deleteMasterProject>>, {id: number}> = (props) => {
+          const {id} = props ?? {};
+
+          return  deleteMasterProject(id,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type DeleteMasterProjectMutationResult = NonNullable<Awaited<ReturnType<typeof deleteMasterProject>>>
+
+    export type DeleteMasterProjectMutationError = ErrorType<unknown>
+
+    export const useDeleteMasterProject = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteMasterProject>>, TError,{id: number}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof deleteMasterProject>>,
+        TError,
+        {id: number},
+        TContext
+      > => {
+      return useMutation(getDeleteMasterProjectMutationOptions(options));
+    }
+
+export const getSetMasterProjectQuotesUrl = (id: number,) => {
+
+
+
+
+  return `/api/master-projects/${id}/quotes`
+}
+
+export const setMasterProjectQuotes = async (id: number,
+    masterProjectQuoteSelection: MasterProjectQuoteSelection, options?: RequestInit): Promise<MasterProject> => {
+
+  return customFetch<MasterProject>(getSetMasterProjectQuotesUrl(id),
+  {
+    ...options,
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      masterProjectQuoteSelection,)
+  }
+);}
+
+
+
+
+export const getSetMasterProjectQuotesMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof setMasterProjectQuotes>>, TError,{id: number;data: BodyType<MasterProjectQuoteSelection>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof setMasterProjectQuotes>>, TError,{id: number;data: BodyType<MasterProjectQuoteSelection>}, TContext> => {
+
+const mutationKey = ['setMasterProjectQuotes'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof setMasterProjectQuotes>>, {id: number;data: BodyType<MasterProjectQuoteSelection>}> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  setMasterProjectQuotes(id,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type SetMasterProjectQuotesMutationResult = NonNullable<Awaited<ReturnType<typeof setMasterProjectQuotes>>>
+    export type SetMasterProjectQuotesMutationBody = BodyType<MasterProjectQuoteSelection>
+    export type SetMasterProjectQuotesMutationError = ErrorType<unknown>
+
+    export const useSetMasterProjectQuotes = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof setMasterProjectQuotes>>, TError,{id: number;data: BodyType<MasterProjectQuoteSelection>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof setMasterProjectQuotes>>,
+        TError,
+        {id: number;data: BodyType<MasterProjectQuoteSelection>},
+        TContext
+      > => {
+      return useMutation(getSetMasterProjectQuotesMutationOptions(options));
     }
 
 export const getListBookingsUrl = () => {

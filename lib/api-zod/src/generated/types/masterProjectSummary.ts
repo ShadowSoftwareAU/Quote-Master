@@ -6,18 +6,20 @@
  * OpenAPI spec version: 0.1.0
  */
 
-export interface QuoteSummary {
+export interface MasterProjectSummary {
   id: number;
   title: string;
   status: string;
   customerId: number;
   /** @nullable */
-  masterProjectId: number | null;
-  tradeType: string;
-  /** @nullable */
   customerName?: string | null;
-  lengthM?: number;
-  widthM?: number;
+  builderMarginPct: number;
+  materialsSubtotal: number;
+  labourSubtotal: number;
+  marginAmount: number;
+  gst: number;
   total: number;
+  quoteCount: number;
   createdAt: Date;
+  updatedAt?: Date;
 }

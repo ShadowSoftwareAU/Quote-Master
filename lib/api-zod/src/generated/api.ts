@@ -32,6 +32,8 @@ export const GetDashboardSummaryResponse = zod.object({
   "title": zod.string(),
   "status": zod.string(),
   "customerId": zod.number(),
+  "masterProjectId": zod.number().nullable(),
+  "tradeType": zod.string(),
   "customerName": zod.string().nullish(),
   "lengthM": zod.number().optional(),
   "widthM": zod.number().optional(),
@@ -245,6 +247,8 @@ export const ListQuotesResponseItem = zod.object({
   "title": zod.string(),
   "status": zod.string(),
   "customerId": zod.number(),
+  "masterProjectId": zod.number().nullable(),
+  "tradeType": zod.string(),
   "customerName": zod.string().nullish(),
   "lengthM": zod.number().optional(),
   "widthM": zod.number().optional(),
@@ -255,11 +259,12 @@ export const ListQuotesResponse = zod.array(ListQuotesResponseItem)
 
 
 
-
+export const createQuoteBodyTradeTypeDefault = `decking`;
 
 export const CreateQuoteBody = zod.object({
   "title": zod.string().min(1),
   "customerId": zod.number(),
+  "tradeType": zod.string().default(createQuoteBodyTradeTypeDefault),
   "siteAddress": zod.string().optional(),
   "notes": zod.string().optional(),
   "lengthM": zod.number(),
@@ -332,6 +337,8 @@ export const GetQuoteResponse = zod.object({
   "title": zod.string(),
   "status": zod.string().describe('draft | sent | accepted | rejected'),
   "customerId": zod.number(),
+  "masterProjectId": zod.number().nullable(),
+  "tradeType": zod.string(),
   "customerName": zod.string().nullish(),
   "siteAddress": zod.string().nullish(),
   "notes": zod.string().nullish(),
@@ -407,6 +414,7 @@ export const UpdateQuoteParams = zod.object({
 export const UpdateQuoteBody = zod.object({
   "title": zod.string().min(1).optional(),
   "customerId": zod.number().optional(),
+  "tradeType": zod.string().optional(),
   "siteAddress": zod.string().optional(),
   "notes": zod.string().optional(),
   "lengthM": zod.number().optional(),
@@ -474,6 +482,8 @@ export const UpdateQuoteResponse = zod.object({
   "title": zod.string(),
   "status": zod.string().describe('draft | sent | accepted | rejected'),
   "customerId": zod.number(),
+  "masterProjectId": zod.number().nullable(),
+  "tradeType": zod.string(),
   "customerName": zod.string().nullish(),
   "siteAddress": zod.string().nullish(),
   "notes": zod.string().nullish(),
@@ -586,6 +596,8 @@ export const SetQuoteStatusResponse = zod.object({
   "title": zod.string(),
   "status": zod.string().describe('draft | sent | accepted | rejected'),
   "customerId": zod.number(),
+  "masterProjectId": zod.number().nullable(),
+  "tradeType": zod.string(),
   "customerName": zod.string().nullish(),
   "siteAddress": zod.string().nullish(),
   "notes": zod.string().nullish(),
@@ -897,6 +909,194 @@ export const EstimateDeckResponse = zod.object({
   "limit": zod.number(),
   "recommendation": zod.string()
 }))
+})
+
+
+export const ListMasterProjectsResponseItem = zod.object({
+  "id": zod.number(),
+  "title": zod.string(),
+  "status": zod.string(),
+  "customerId": zod.number(),
+  "customerName": zod.string().nullish(),
+  "builderMarginPct": zod.number(),
+  "materialsSubtotal": zod.number(),
+  "labourSubtotal": zod.number(),
+  "marginAmount": zod.number(),
+  "gst": zod.number(),
+  "total": zod.number(),
+  "quoteCount": zod.number(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date().optional()
+})
+export const ListMasterProjectsResponse = zod.array(ListMasterProjectsResponseItem)
+
+
+
+export const createMasterProjectBodyBuilderMarginPctDefault = 0;
+export const createMasterProjectBodyBuilderMarginPctMin = 0;
+export const createMasterProjectBodyBuilderMarginPctMax = 99.99;
+
+
+
+export const CreateMasterProjectBody = zod.object({
+  "title": zod.string().min(1),
+  "customerId": zod.number(),
+  "builderMarginPct": zod.number().min(createMasterProjectBodyBuilderMarginPctMin).max(createMasterProjectBodyBuilderMarginPctMax).default(createMasterProjectBodyBuilderMarginPctDefault),
+  "notes": zod.string().optional()
+})
+
+
+export const GetMasterProjectParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+export const GetMasterProjectResponse = zod.object({
+  "id": zod.number(),
+  "title": zod.string(),
+  "status": zod.string(),
+  "customerId": zod.number(),
+  "customerName": zod.string().nullish(),
+  "notes": zod.string().nullish(),
+  "builderMarginPct": zod.number(),
+  "materialsSubtotal": zod.number(),
+  "labourSubtotal": zod.number(),
+  "marginAmount": zod.number(),
+  "gst": zod.number(),
+  "total": zod.number(),
+  "quotes": zod.array(zod.object({
+  "id": zod.number(),
+  "title": zod.string(),
+  "status": zod.string(),
+  "customerId": zod.number(),
+  "tradeType": zod.string(),
+  "materialsSubtotal": zod.number(),
+  "labourCost": zod.number(),
+  "gst": zod.number(),
+  "total": zod.number(),
+  "createdAt": zod.coerce.date()
+})),
+  "billOfMaterials": zod.array(zod.object({
+  "materialId": zod.number().nullish(),
+  "description": zod.string(),
+  "category": zod.string(),
+  "quantity": zod.number(),
+  "unit": zod.string(),
+  "unitPrice": zod.number(),
+  "lineTotal": zod.number(),
+  "quoteCount": zod.number()
+})),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+})
+
+
+export const UpdateMasterProjectParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+
+export const updateMasterProjectBodyBuilderMarginPctMin = 0;
+export const updateMasterProjectBodyBuilderMarginPctMax = 99.99;
+
+
+
+export const UpdateMasterProjectBody = zod.object({
+  "title": zod.string().min(1).optional(),
+  "status": zod.string().optional(),
+  "builderMarginPct": zod.number().min(updateMasterProjectBodyBuilderMarginPctMin).max(updateMasterProjectBodyBuilderMarginPctMax).optional(),
+  "notes": zod.string().nullish()
+})
+
+export const UpdateMasterProjectResponse = zod.object({
+  "id": zod.number(),
+  "title": zod.string(),
+  "status": zod.string(),
+  "customerId": zod.number(),
+  "customerName": zod.string().nullish(),
+  "notes": zod.string().nullish(),
+  "builderMarginPct": zod.number(),
+  "materialsSubtotal": zod.number(),
+  "labourSubtotal": zod.number(),
+  "marginAmount": zod.number(),
+  "gst": zod.number(),
+  "total": zod.number(),
+  "quotes": zod.array(zod.object({
+  "id": zod.number(),
+  "title": zod.string(),
+  "status": zod.string(),
+  "customerId": zod.number(),
+  "tradeType": zod.string(),
+  "materialsSubtotal": zod.number(),
+  "labourCost": zod.number(),
+  "gst": zod.number(),
+  "total": zod.number(),
+  "createdAt": zod.coerce.date()
+})),
+  "billOfMaterials": zod.array(zod.object({
+  "materialId": zod.number().nullish(),
+  "description": zod.string(),
+  "category": zod.string(),
+  "quantity": zod.number(),
+  "unit": zod.string(),
+  "unitPrice": zod.number(),
+  "lineTotal": zod.number(),
+  "quoteCount": zod.number()
+})),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+})
+
+
+export const DeleteMasterProjectParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+
+export const SetMasterProjectQuotesParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+export const SetMasterProjectQuotesBody = zod.object({
+  "quoteIds": zod.array(zod.number())
+})
+
+export const SetMasterProjectQuotesResponse = zod.object({
+  "id": zod.number(),
+  "title": zod.string(),
+  "status": zod.string(),
+  "customerId": zod.number(),
+  "customerName": zod.string().nullish(),
+  "notes": zod.string().nullish(),
+  "builderMarginPct": zod.number(),
+  "materialsSubtotal": zod.number(),
+  "labourSubtotal": zod.number(),
+  "marginAmount": zod.number(),
+  "gst": zod.number(),
+  "total": zod.number(),
+  "quotes": zod.array(zod.object({
+  "id": zod.number(),
+  "title": zod.string(),
+  "status": zod.string(),
+  "customerId": zod.number(),
+  "tradeType": zod.string(),
+  "materialsSubtotal": zod.number(),
+  "labourCost": zod.number(),
+  "gst": zod.number(),
+  "total": zod.number(),
+  "createdAt": zod.coerce.date()
+})),
+  "billOfMaterials": zod.array(zod.object({
+  "materialId": zod.number().nullish(),
+  "description": zod.string(),
+  "category": zod.string(),
+  "quantity": zod.number(),
+  "unit": zod.string(),
+  "unitPrice": zod.number(),
+  "lineTotal": zod.number(),
+  "quoteCount": zod.number()
+})),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
 })
 
 

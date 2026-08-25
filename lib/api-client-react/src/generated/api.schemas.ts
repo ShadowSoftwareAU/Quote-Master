@@ -210,12 +210,108 @@ export interface QuoteEstimate {
   complianceWarnings: ComplianceWarning[];
 }
 
+export interface MasterProjectSummary {
+  id: number;
+  title: string;
+  status: string;
+  customerId: number;
+  /** @nullable */
+  customerName?: string | null;
+  builderMarginPct: number;
+  materialsSubtotal: number;
+  labourSubtotal: number;
+  marginAmount: number;
+  gst: number;
+  total: number;
+  quoteCount: number;
+  createdAt: string;
+  updatedAt?: string;
+}
+
+export interface MasterProjectQuote {
+  id: number;
+  title: string;
+  status: string;
+  customerId: number;
+  tradeType: string;
+  materialsSubtotal: number;
+  labourCost: number;
+  gst: number;
+  total: number;
+  createdAt: string;
+}
+
+export interface MasterBillOfMaterialsLine {
+  /** @nullable */
+  materialId?: number | null;
+  description: string;
+  category: string;
+  quantity: number;
+  unit: string;
+  unitPrice: number;
+  lineTotal: number;
+  quoteCount: number;
+}
+
+export interface MasterProject {
+  id: number;
+  title: string;
+  status: string;
+  customerId: number;
+  /** @nullable */
+  customerName?: string | null;
+  /** @nullable */
+  notes?: string | null;
+  builderMarginPct: number;
+  materialsSubtotal: number;
+  labourSubtotal: number;
+  marginAmount: number;
+  gst: number;
+  total: number;
+  quotes: MasterProjectQuote[];
+  billOfMaterials: MasterBillOfMaterialsLine[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface MasterProjectInput {
+  /** @minLength 1 */
+  title: string;
+  customerId: number;
+  /**
+     * @minimum 0
+     * @maximum 99.99
+     */
+  builderMarginPct?: number;
+  notes?: string;
+}
+
+export interface MasterProjectUpdate {
+  /** @minLength 1 */
+  title?: string;
+  status?: string;
+  /**
+     * @minimum 0
+     * @maximum 99.99
+     */
+  builderMarginPct?: number;
+  /** @nullable */
+  notes?: string | null;
+}
+
+export interface MasterProjectQuoteSelection {
+  quoteIds: number[];
+}
+
 export interface Quote {
   id: number;
   title: string;
   /** draft | sent | accepted | rejected */
   status: string;
   customerId: number;
+  /** @nullable */
+  masterProjectId: number | null;
+  tradeType: string;
   /** @nullable */
   customerName?: string | null;
   /** @nullable */
@@ -248,6 +344,9 @@ export interface QuoteSummary {
   status: string;
   customerId: number;
   /** @nullable */
+  masterProjectId: number | null;
+  tradeType: string;
+  /** @nullable */
   customerName?: string | null;
   lengthM?: number;
   widthM?: number;
@@ -259,6 +358,7 @@ export interface QuoteInput {
   /** @minLength 1 */
   title: string;
   customerId: number;
+  tradeType?: string;
   siteAddress?: string;
   notes?: string;
   lengthM: number;
@@ -296,6 +396,7 @@ export interface QuoteUpdate {
   /** @minLength 1 */
   title?: string;
   customerId?: number;
+  tradeType?: string;
   siteAddress?: string;
   notes?: string;
   lengthM?: number;

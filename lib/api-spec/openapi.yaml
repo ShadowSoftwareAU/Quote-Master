@@ -312,6 +312,99 @@ paths:
             application/json:
               schema: { $ref: "#/components/schemas/QuoteEstimate" }
 
+  /master-projects:
+    get:
+      operationId: listMasterProjects
+      tags: [master-projects]
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/MasterProjectSummary" }
+    post:
+      operationId: createMasterProject
+      tags: [master-projects]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/MasterProjectInput" }
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/MasterProject" }
+
+  /master-projects/{id}:
+    get:
+      operationId: getMasterProject
+      tags: [master-projects]
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: integer }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/MasterProject" }
+    patch:
+      operationId: updateMasterProject
+      tags: [master-projects]
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: integer }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/MasterProjectUpdate" }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/MasterProject" }
+    delete:
+      operationId: deleteMasterProject
+      tags: [master-projects]
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: integer }
+      responses:
+        "204": { description: Deleted }
+
+  /master-projects/{id}/quotes:
+    put:
+      operationId: setMasterProjectQuotes
+      tags: [master-projects]
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: integer }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/MasterProjectQuoteSelection" }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/MasterProject" }
+
   /bookings:
     get:
       operationId: listBookings
@@ -968,9 +1061,107 @@ components:
         limit: { type: number }
         recommendation: { type: string }
 
+    MasterProjectSummary:
+      type: object
+      required: [id, title, status, customerId, builderMarginPct, materialsSubtotal, labourSubtotal, marginAmount, gst, total, quoteCount, createdAt]
+      properties:
+        id: { type: integer }
+        title: { type: string }
+        status: { type: string }
+        customerId: { type: integer }
+        customerName: { type: ["string", "null"] }
+        builderMarginPct: { type: number }
+        materialsSubtotal: { type: number }
+        labourSubtotal: { type: number }
+        marginAmount: { type: number }
+        gst: { type: number }
+        total: { type: number }
+        quoteCount: { type: integer }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+
+    MasterProjectQuote:
+      type: object
+      required: [id, title, status, customerId, tradeType, materialsSubtotal, labourCost, gst, total, createdAt]
+      properties:
+        id: { type: integer }
+        title: { type: string }
+        status: { type: string }
+        customerId: { type: integer }
+        tradeType: { type: string }
+        materialsSubtotal: { type: number }
+        labourCost: { type: number }
+        gst: { type: number }
+        total: { type: number }
+        createdAt: { type: string, format: date-time }
+
+    MasterBillOfMaterialsLine:
+      type: object
+      required: [description, category, quantity, unit, unitPrice, lineTotal, quoteCount]
+      properties:
+        materialId: { type: ["integer", "null"] }
+        description: { type: string }
+        category: { type: string }
+        quantity: { type: number }
+        unit: { type: string }
+        unitPrice: { type: number }
+        lineTotal: { type: number }
+        quoteCount: { type: integer }
+
+    MasterProject:
+      type: object
+      required: [id, title, status, customerId, builderMarginPct, materialsSubtotal, labourSubtotal, marginAmount, gst, total, quotes, billOfMaterials, createdAt, updatedAt]
+      properties:
+        id: { type: integer }
+        title: { type: string }
+        status: { type: string }
+        customerId: { type: integer }
+        customerName: { type: ["string", "null"] }
+        notes: { type: ["string", "null"] }
+        builderMarginPct: { type: number }
+        materialsSubtotal: { type: number }
+        labourSubtotal: { type: number }
+        marginAmount: { type: number }
+        gst: { type: number }
+        total: { type: number }
+        quotes:
+          type: array
+          items: { $ref: "#/components/schemas/MasterProjectQuote" }
+        billOfMaterials:
+          type: array
+          items: { $ref: "#/components/schemas/MasterBillOfMaterialsLine" }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+
+    MasterProjectInput:
+      type: object
+      required: [title, customerId]
+      properties:
+        title: { type: string, minLength: 1 }
+        customerId: { type: integer }
+        builderMarginPct: { type: number, minimum: 0, maximum: 99.99, default: 0 }
+        notes: { type: string }
+
+    MasterProjectUpdate:
+      type: object
+      properties:
+        title: { type: string, minLength: 1 }
+        status: { type: string }
+        builderMarginPct: { type: number, minimum: 0, maximum: 99.99 }
+        notes: { type: ["string", "null"] }
+
+    MasterProjectQuoteSelection:
+      type: object
+      required: [quoteIds]
+      properties:
+        quoteIds:
+          type: array
+          uniqueItems: true
+          items: { type: integer }
+
     Quote:
       type: object
-      required: [id, title, status, customerId, lengthM, widthM, heightM, materialsSubtotal, labourCost, gst, total, lineItems, spec, createdAt, updatedAt]
+      required: [id, title, status, customerId, masterProjectId, tradeType, lengthM, widthM, heightM, materialsSubtotal, labourCost, gst, total, lineItems, spec, createdAt, updatedAt]
       properties:
         id: { type: integer }
         title: { type: string }
@@ -978,6 +1169,8 @@ components:
           type: string
           description: "draft | sent | accepted | rejected"
         customerId: { type: integer }
+        masterProjectId: { type: ["integer", "null"] }
+        tradeType: { type: string }
         customerName: { type: ["string", "null"] }
         siteAddress: { type: ["string", "null"] }
         notes: { type: ["string", "null"] }
@@ -1003,12 +1196,14 @@ components:
         updatedAt: { type: string, format: date-time }
     QuoteSummary:
       type: object
-      required: [id, title, status, customerId, total, createdAt]
+      required: [id, title, status, customerId, masterProjectId, tradeType, total, createdAt]
       properties:
         id: { type: integer }
         title: { type: string }
         status: { type: string }
         customerId: { type: integer }
+        masterProjectId: { type: ["integer", "null"] }
+        tradeType: { type: string }
         customerName: { type: ["string", "null"] }
         lengthM: { type: number }
         widthM: { type: number }
@@ -1020,6 +1215,7 @@ components:
       properties:
         title: { type: string, minLength: 1 }
         customerId: { type: integer }
+        tradeType: { type: string, default: decking }
         siteAddress: { type: string }
         notes: { type: string }
         lengthM: { type: number }
@@ -1056,6 +1252,7 @@ components:
       properties:
         title: { type: string, minLength: 1 }
         customerId: { type: integer }
+        tradeType: { type: string }
         siteAddress: { type: string }
         notes: { type: string }
         lengthM: { type: number }

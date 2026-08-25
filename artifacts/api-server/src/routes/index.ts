@@ -11,6 +11,7 @@ import timeRouter from "./time";
 import portfolioRouter from "./portfolio";
 import referralsRouter from "./referrals";
 import pdfRouter from "./pdf";
+import masterProjectsRouter from "./master-projects";
 
 const router: IRouter = Router();
 
@@ -26,5 +27,6 @@ router.use(timeRouter);
 router.use(portfolioRouter);
 router.use(referralsRouter);
 router.use(pdfRouter);
+router.use(masterProjectsRouter);
 
 export default router;

@@ -20,6 +20,7 @@ import {
   CreateQuoteVariationParams,
 } from "@workspace/api-zod";
 import { estimateDeck, calcTotals, type DeckSpec } from "../lib/estimator";
+import { recalculateMasterProjectTotals } from "../services/masterProjects";
 
 const router: IRouter = Router();
 
@@ -116,6 +117,8 @@ function quoteSummaryRow(row: typeof quotesTable.$inferSelect & {
     title: row.title,
     status: row.status,
     customerId: row.customerId,
+    masterProjectId: row.masterProjectId,
+    tradeType: row.tradeType,
     customerName: row.customerName,
     lengthM: Number(row.lengthM),
     widthM: Number(row.widthM),
@@ -145,6 +148,8 @@ async function loadQuoteJson(id: number) {
     title: row.q.title,
     status: row.q.status,
     customerId: row.q.customerId,
+    masterProjectId: row.q.masterProjectId,
+    tradeType: row.q.tradeType,
     customerName: row.customerName,
     siteAddress: row.q.siteAddress,
     notes: row.q.notes,
@@ -190,6 +195,8 @@ router.get("/quotes", async (_req, res): Promise<void> => {
       title: quotesTable.title,
       status: quotesTable.status,
       customerId: quotesTable.customerId,
+      masterProjectId: quotesTable.masterProjectId,
+      tradeType: quotesTable.tradeType,
       customerName: customersTable.name,
       lengthM: quotesTable.lengthM,
       widthM: quotesTable.widthM,
@@ -205,6 +212,8 @@ router.get("/quotes", async (_req, res): Promise<void> => {
       title: r.title,
       status: r.status,
       customerId: r.customerId,
+        masterProjectId: r.masterProjectId,
+        tradeType: r.tradeType,
       customerName: r.customerName,
       lengthM: Number(r.lengthM),
       widthM: Number(r.widthM),
@@ -268,6 +277,7 @@ router.post("/quotes", async (req, res): Promise<void> => {
     .values({
       title: data.title,
       customerId: data.customerId,
+      tradeType: data.tradeType ?? "decking",
       siteAddress: data.siteAddress ?? null,
       notes: data.notes ?? null,
       lengthM: String(data.lengthM),
@@ -393,6 +403,7 @@ router.patch("/quotes/:id", async (req, res): Promise<void> => {
     .set({
       title: d.title ?? existing.title,
       customerId: d.customerId ?? existing.customerId,
+      tradeType: d.tradeType ?? existing.tradeType,
       siteAddress: d.siteAddress ?? existing.siteAddress,
       notes: d.notes ?? existing.notes,
       lengthM: String(spec.lengthM),
@@ -430,6 +441,7 @@ router.patch("/quotes/:id", async (req, res): Promise<void> => {
       })),
     );
   }
+  if (existing.masterProjectId) await recalculateMasterProjectTotals(existing.masterProjectId);
 
   const json = await loadQuoteJson(params.data.id);
   res.json(json);
@@ -493,6 +505,7 @@ router.post("/quotes/:id/variation", async (req, res): Promise<void> => {
     .values({
       title: b.title,
       customerId: original.customerId,
+      tradeType: original.tradeType,
       siteAddress: original.siteAddress ?? null,
       notes: b.notes ?? `Variation of: ${original.title}`,
       lengthM: String(spec.lengthM),
@@ -538,6 +551,11 @@ router.delete("/quotes/:id", async (req, res): Promise<void> => {
     res.status(400).json({ error: params.error.message });
     return;
   }
+  const [existing] = await db.select().from(quotesTable).where(eq(quotesTable.id, params.data.id));
+  if (!existing) {
+    res.status(404).json({ error: "Quote not found" });
+    return;
+  }
   await db
     .delete(quoteLineItemsTable)
     .where(eq(quoteLineItemsTable.quoteId, params.data.id));
@@ -545,10 +563,8 @@ router.delete("/quotes/:id", async (req, res): Promise<void> => {
     .delete(quotesTable)
     .where(eq(quotesTable.id, params.data.id))
     .returning();
-  if (!row) {
-    res.status(404).json({ error: "Quote not found" });
-    return;
-  }
+  if (!row) { res.status(404).json({ error: "Quote not found" }); return; }
+  if (existing.masterProjectId) await recalculateMasterProjectTotals(existing.masterProjectId);
   res.sendStatus(204);
 });
 

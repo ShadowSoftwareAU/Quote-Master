@@ -18,6 +18,7 @@ import PlannerPage from "@/pages/planner";
 import PortfolioPage from "@/pages/portfolio";
 import ReferralsPage from "@/pages/referrals";
 import FinancePage from "@/pages/finance";
+import Projects from "@/pages/projects";
 
 const queryClient = new QueryClient();
 
@@ -40,6 +41,8 @@ function Router() {
             <Route path="/portfolio" component={PortfolioPage} />
             <Route path="/referrals" component={ReferralsPage} />
             <Route path="/finance" component={FinancePage} />
+            <Route path="/projects" component={Projects} />
+            <Route path="/projects/:id" component={Projects} />
             <Route component={NotFound} />
           </Switch>
         </Layout>

@@ -1,5 +1,6 @@
 import { Link, useLocation } from "wouter";
-import { Hammer, Calculator, FileText, Users, Box, Calendar, Menu, UserCheck, CalendarDays, Images, TrendingUp, PieChart } from "lucide-react";
+import { Hammer, Calculator, FileText, Users, Box, Calendar, Menu, UserCheck, CalendarDays, Images, TrendingUp, PieChart, FolderKanban } from "lucide-react";
+import { getListMasterProjectsQueryKey, useListMasterProjects } from "@workspace/api-client-react";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { ReactNode } from "react";
@@ -20,6 +21,10 @@ const navItems = [
 
 export function Layout({ children }: { children: ReactNode }) {
   const [location] = useLocation();
+  const { isSuccess: canAccessProjects } = useListMasterProjects({
+    query: { queryKey: getListMasterProjectsQueryKey(), retry: false },
+  });
+  const visibleNavItems = canAccessProjects ? [...navItems, { href: "/projects", label: "Projects", icon: FolderKanban }] : navItems;
 
   return (
     <div className="flex min-h-[100dvh] w-full bg-background flex-col md:flex-row">
@@ -31,7 +36,7 @@ export function Layout({ children }: { children: ReactNode }) {
           </Link>
         </div>
         <nav className="flex-1 py-6 px-4 space-y-1 overflow-y-auto">
-          {navItems.map((item) => {
+          {visibleNavItems.map((item) => {
             const active = location === item.href || (item.href !== "/" && location.startsWith(item.href));
             return (
               <Link
@@ -69,7 +74,7 @@ export function Layout({ children }: { children: ReactNode }) {
               </span>
             </div>
             <nav className="py-4 px-4 space-y-1 overflow-y-auto">
-              {navItems.map((item) => {
+              {visibleNavItems.map((item) => {
                 const active = location === item.href || (item.href !== "/" && location.startsWith(item.href));
                 return (
                   <Link
@@ -97,7 +102,7 @@ export function Layout({ children }: { children: ReactNode }) {
 
       {/* Mobile Bottom Bar — first 5 items */}
       <nav className="md:hidden fixed bottom-0 left-0 right-0 h-16 bg-card border-t flex items-center justify-around px-2 z-50">
-        {navItems.slice(0, 5).map((item) => {
+        {visibleNavItems.slice(0, 5).map((item) => {
           const active = location === item.href || (item.href !== "/" && location.startsWith(item.href));
           return (
             <Link
