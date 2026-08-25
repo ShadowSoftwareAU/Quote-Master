@@ -889,6 +889,7 @@ components:
         joistSpacingMm: { type: integer, description: "Joist centres in mm", default: 450 }
         bearerSpacingMm: { type: integer, description: "Bearer centres in mm", default: 1800 }
         postSpacingMm: { type: integer, description: "Post centres in mm", default: 1800 }
+        footingDepthMm: { type: integer, description: "Footing depth in mm for stump subframes", default: 450 }
         wastageFactor: { type: number, description: "Multiplier for cuts and offcuts", default: 1.1 }
         labourHours: { type: number, description: "Labour hours for the job", default: 0 }
         labourRate: { type: number, description: "AUD per hour labour rate", default: 85 }
@@ -939,7 +940,7 @@ components:
 
     QuoteEstimate:
       type: object
-      required: [spec, lines, materialsSubtotal, labourCost, gst, total]
+      required: [spec, lines, materialsSubtotal, labourCost, gst, total, complianceWarnings]
       properties:
         spec: { $ref: "#/components/schemas/DeckSpecInput" }
         deckAreaM2: { type: number }
@@ -950,6 +951,22 @@ components:
         labourCost: { type: number }
         gst: { type: number }
         total: { type: number }
+        complianceWarnings:
+          type: array
+          items: { $ref: "#/components/schemas/ComplianceWarning" }
+
+    ComplianceWarning:
+      type: object
+      required: [code, severity, standard, title, message, actual, limit, recommendation]
+      properties:
+        code: { type: string }
+        severity: { type: string, enum: [warning] }
+        standard: { type: string }
+        title: { type: string }
+        message: { type: string }
+        actual: { type: number }
+        limit: { type: number }
+        recommendation: { type: string }
 
     Quote:
       type: object

@@ -1,4 +1,8 @@
 import type { Material } from "@workspace/db";
+import {
+  validateDeckCompliance,
+  type ComplianceWarning,
+} from "./complianceEngine";
 
 export interface DeckSpec {
   lengthM: number;
@@ -9,6 +13,7 @@ export interface DeckSpec {
   joistSpacingMm: number;
   bearerSpacingMm: number;
   postSpacingMm: number;
+  footingDepthMm: number;
   wastageFactor: number;
   deckBoardType: string;
   subframeType: string;
@@ -102,6 +107,7 @@ export function estimateDeck(
   lines: EstimateLine[];
   deckAreaM2: number;
   materialsSubtotal: number;
+  complianceWarnings: ComplianceWarning[];
 } {
   const lines: EstimateLine[] = [];
   const wastage = spec.wastageFactor || 1.1;
@@ -261,7 +267,8 @@ export function estimateDeck(
   }
 
   const materialsSubtotal = round2(lines.reduce((sum, l) => sum + l.lineTotal, 0));
-  return { lines, deckAreaM2: round2(area), materialsSubtotal };
+  const complianceWarnings = validateDeckCompliance(spec);
+  return { lines, deckAreaM2: round2(area), materialsSubtotal, complianceWarnings };
 }
 
 export function calcTotals(opts: {

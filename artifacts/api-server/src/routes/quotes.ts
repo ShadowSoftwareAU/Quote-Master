@@ -32,6 +32,7 @@ function specFromQuoteInput(input: {
   joistSpacingMm?: number;
   bearerSpacingMm?: number;
   postSpacingMm?: number;
+  footingDepthMm?: number;
   wastageFactor?: number;
   deckBoardType?: string;
   subframeType?: string;
@@ -61,6 +62,7 @@ function specFromQuoteInput(input: {
     joistSpacingMm: input.joistSpacingMm ?? 450,
     bearerSpacingMm: input.bearerSpacingMm ?? 1800,
     postSpacingMm: input.postSpacingMm ?? 1800,
+    footingDepthMm: input.footingDepthMm ?? 450,
     wastageFactor: input.wastageFactor ?? 1.1,
     deckBoardType: input.deckBoardType ?? "treated_pine",
     subframeType: input.subframeType ?? "stumps",
@@ -220,7 +222,7 @@ router.post("/quotes/estimate", async (req, res): Promise<void> => {
   }
   const spec = specFromQuoteInput(parsed.data);
   const materials = await db.select().from(materialsTable);
-  const { lines, deckAreaM2, materialsSubtotal } = estimateDeck(
+  const { lines, deckAreaM2, materialsSubtotal, complianceWarnings } = estimateDeck(
     spec,
     materials,
   );
@@ -239,6 +241,7 @@ router.post("/quotes/estimate", async (req, res): Promise<void> => {
     labourCost,
     gst,
     total,
+    complianceWarnings,
   });
 });
 

@@ -23,6 +23,8 @@ export interface DeckSpecInput {
   bearerSpacingMm?: number;
   /** Post centres in mm */
   postSpacingMm?: number;
+  /** Footing depth in mm for stump subframes */
+  footingDepthMm?: number;
   /** Multiplier for cuts and offcuts */
   wastageFactor?: number;
   /** Labour hours for the job */

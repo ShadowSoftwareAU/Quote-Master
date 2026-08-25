@@ -5,6 +5,7 @@
  * Deck Me API — decking quotes, materials, customers, and bookings.
  * OpenAPI spec version: 0.1.0
  */
+import type { ComplianceWarning } from './complianceWarning';
 import type { DeckSpecInput } from './deckSpecInput';
 import type { QuoteEstimateLine } from './quoteEstimateLine';
 
@@ -16,4 +17,5 @@ export interface QuoteEstimate {
   labourCost: number;
   gst: number;
   total: number;
+  complianceWarnings: ComplianceWarning[];
 }

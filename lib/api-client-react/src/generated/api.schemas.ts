@@ -115,6 +115,8 @@ export interface DeckSpecInput {
   bearerSpacingMm?: number;
   /** Post centres in mm */
   postSpacingMm?: number;
+  /** Footing depth in mm for stump subframes */
+  footingDepthMm?: number;
   /** Multiplier for cuts and offcuts */
   wastageFactor?: number;
   /** Labour hours for the job */
@@ -179,6 +181,24 @@ export interface QuoteEstimateLine {
   lineTotal: number;
 }
 
+export type ComplianceWarningSeverity = typeof ComplianceWarningSeverity[keyof typeof ComplianceWarningSeverity];
+
+
+export const ComplianceWarningSeverity = {
+  warning: 'warning',
+} as const;
+
+export interface ComplianceWarning {
+  code: string;
+  severity: ComplianceWarningSeverity;
+  standard: string;
+  title: string;
+  message: string;
+  actual: number;
+  limit: number;
+  recommendation: string;
+}
+
 export interface QuoteEstimate {
   spec: DeckSpecInput;
   deckAreaM2?: number;
@@ -187,6 +207,7 @@ export interface QuoteEstimate {
   labourCost: number;
   gst: number;
   total: number;
+  complianceWarnings: ComplianceWarning[];
 }
 
 export interface Quote {

@@ -80,6 +80,7 @@ const DEFAULT_SPEC = {
   joistSpacingMm: 450,
   bearerSpacingMm: 1500,
   postSpacingMm: 1500,
+  footingDepthMm: 450,
   wastageFactor: 1.1,
   labourHours: 24,
   labourRate: 85,
@@ -207,6 +208,7 @@ export default function Calculator() {
   }, [enrichedLines]);
 
   const estData = estimate.data;
+  const complianceWarnings = estData?.complianceWarnings ?? [];
 
   const handleSaveQuote = () => {
     if (!customerId) {
@@ -248,6 +250,39 @@ export default function Calculator() {
             </div>
           </div>
         </div>
+      )}
+
+      {complianceWarnings.length > 0 && (
+        <section
+          aria-label="Structural compliance warnings"
+          className="rounded-lg border-2 border-amber-500 bg-amber-50 px-5 py-4 text-amber-950 shadow-sm dark:bg-amber-950/30 dark:text-amber-100"
+        >
+          <div className="flex items-start gap-3">
+            <AlertTriangle className="mt-0.5 h-6 w-6 shrink-0 text-amber-600 dark:text-amber-400" />
+            <div className="space-y-3">
+              <div>
+                <h2 className="font-black uppercase text-sm tracking-wide">
+                  Structural Compliance Warnings
+                </h2>
+                <p className="mt-0.5 text-sm">
+                  These inputs need review before construction. You can still save this estimate.
+                </p>
+              </div>
+              <ul className="space-y-3">
+                {complianceWarnings.map((warning) => (
+                  <li key={warning.code} className="rounded-md border border-amber-500/40 bg-background/50 p-3">
+                    <p className="font-bold text-sm">{warning.title}</p>
+                    <p className="mt-1 text-sm">{warning.message}</p>
+                    <p className="mt-1 text-sm font-medium">{warning.recommendation}</p>
+                  </li>
+                ))}
+              </ul>
+              <p className="text-xs leading-relaxed text-amber-900/80 dark:text-amber-100/80">
+                Screening checks only. Confirm final member sizes and footing design against the current AS 1684 tables, NCC, site loads, soil classification, local approvals, and a qualified building professional where required.
+              </p>
+            </div>
+          </div>
+        </section>
       )}
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
@@ -369,9 +404,15 @@ export default function Calculator() {
                   <Input type="number" name="bearerSpacingMm" value={spec.bearerSpacingMm} onChange={handleChange} className="font-mono h-10" />
                 </div>
                 {spec.subframeType === "stumps" && (
-                  <div className="space-y-1.5 col-span-2">
+                  <div className="space-y-1.5">
                     <Label className="font-bold uppercase text-xs">Post Spacing (mm)</Label>
                     <Input type="number" name="postSpacingMm" value={spec.postSpacingMm} onChange={handleChange} className="font-mono h-10" />
+                  </div>
+                )}
+                {spec.subframeType === "stumps" && (
+                  <div className="space-y-1.5">
+                    <Label className="font-bold uppercase text-xs">Footing Depth (mm)</Label>
+                    <Input type="number" name="footingDepthMm" value={spec.footingDepthMm} onChange={handleChange} className="font-mono h-10" />
                   </div>
                 )}
               </div>

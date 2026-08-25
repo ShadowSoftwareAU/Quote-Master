@@ -14,6 +14,8 @@ export * from './bookingInput';
 export * from './bookingUpdate';
 export * from './clockOffInput';
 export * from './clockOnInput';
+export * from './complianceWarning';
+export * from './complianceWarningSeverity';
 export * from './customer';
 export * from './customerInput';
 export * from './customerUpdate';

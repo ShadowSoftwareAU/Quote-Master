@@ -287,6 +287,9 @@ export default function CalculatorScreen() {
 
   // Framing
   const [joistSpacing, setJoistSpacing] = useState("450");
+  const [bearerSpacing, setBearerSpacing] = useState("1800");
+  const [postSpacing, setPostSpacing] = useState("1800");
+  const [footingDepth, setFootingDepth] = useState("450");
   const [subframeType, setSubframeType] = useState("stumps");
 
   // Labour
@@ -321,8 +324,9 @@ export default function CalculatorScreen() {
       boardWidthMm: Math.round(parseNum(boardWidth, 90)),
       gapSpacingMm: Math.round(parseNum(gapSpacing, 4)),
       joistSpacingMm: Math.round(parseNum(joistSpacing, 450)),
-      bearerSpacingMm: 1800,
-      postSpacingMm: 1800,
+      bearerSpacingMm: Math.round(parseNum(bearerSpacing, 1800)),
+      postSpacingMm: Math.round(parseNum(postSpacing, 1800)),
+      footingDepthMm: Math.round(parseNum(footingDepth, 450)),
       wastageFactor: 1.1,
       deckBoardType,
       subframeType,
@@ -343,7 +347,7 @@ export default function CalculatorScreen() {
       awningWidthM: 3,
       awningLengthM: 3,
     }),
-    [length, width, height, boardWidth, gapSpacing, joistSpacing, deckBoardType, subframeType, fastenerType,
+    [length, width, height, boardWidth, gapSpacing, joistSpacing, bearerSpacing, postSpacing, footingDepth, deckBoardType, subframeType, fastenerType,
      includeHandrails, handrailHeightMm, balustradeType, timberGapMm, wireSpacingMm,
      includeStairs, includeFencing, fencingSides, fencingHeightM, fencingWidthM, includeAwning],
   );
@@ -424,6 +428,7 @@ export default function CalculatorScreen() {
   const pricestSupplier = supplierTotals[supplierTotals.length - 1] ?? null;
   const cartSaving = cheapestSupplier && pricestSupplier ? pricestSupplier.total - cheapestSupplier.total : 0;
   const councilWarning = parseNum(height, 0) >= 1.0;
+  const complianceWarnings = estimate?.complianceWarnings ?? [];
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.background }}>
@@ -454,6 +459,46 @@ export default function CalculatorScreen() {
                   Deck height ≥1.0m — most Australian councils require a building permit.
                 </Text>
               </View>
+            </View>
+          )}
+
+          {complianceWarnings.length > 0 && (
+            <View
+              style={{
+                backgroundColor: colors.destructive,
+                borderRadius: colors.radius,
+                padding: 14,
+                gap: 10,
+              }}
+              testID="compliance-warnings"
+            >
+              <View style={{ flexDirection: "row", gap: 10 }}>
+                <Feather name="alert-triangle" size={18} color={colors.destructiveForeground} style={{ marginTop: 1 }} />
+                <View style={{ flex: 1, gap: 3 }}>
+                  <Text style={{ fontFamily: "Inter_700Bold", color: colors.destructiveForeground, fontSize: 12, letterSpacing: 0.5 }}>
+                    STRUCTURAL COMPLIANCE WARNINGS
+                  </Text>
+                  <Text style={{ fontFamily: "Inter_400Regular", color: colors.destructiveForeground, fontSize: 12 }}>
+                    Review these inputs before construction. Saving the estimate remains available.
+                  </Text>
+                </View>
+              </View>
+              {complianceWarnings.map((warning) => (
+                <View key={warning.code} style={{ borderTopWidth: 1, borderTopColor: colors.destructiveForeground, paddingTop: 10, gap: 3 }}>
+                  <Text style={{ fontFamily: "Inter_700Bold", color: colors.destructiveForeground, fontSize: 12 }}>
+                    {warning.title}
+                  </Text>
+                  <Text style={{ fontFamily: "Inter_400Regular", color: colors.destructiveForeground, fontSize: 12 }}>
+                    {warning.message}
+                  </Text>
+                  <Text style={{ fontFamily: "Inter_600SemiBold", color: colors.destructiveForeground, fontSize: 12 }}>
+                    {warning.recommendation}
+                  </Text>
+                </View>
+              ))}
+              <Text style={{ fontFamily: "Inter_400Regular", color: colors.destructiveForeground, fontSize: 10, lineHeight: 14 }}>
+                Screening checks only. Confirm the final design against the current AS 1684 tables, NCC, soil classification, local approvals, and a qualified building professional where required.
+              </Text>
             </View>
           )}
 
@@ -545,6 +590,23 @@ export default function CalculatorScreen() {
               <LabeledInput label="Joists (mm)">
                 <TextInputStyled value={joistSpacing} onChangeText={setJoistSpacing} keyboardType="number-pad" />
               </LabeledInput>
+              <LabeledInput label="Bearers (mm)">
+                <TextInputStyled value={bearerSpacing} onChangeText={setBearerSpacing} keyboardType="number-pad" />
+              </LabeledInput>
+              {subframeType === "stumps" && (
+                <View style={{ flexDirection: "row", gap: 10 }}>
+                  <View style={{ flex: 1 }}>
+                    <LabeledInput label="Posts (mm)">
+                      <TextInputStyled value={postSpacing} onChangeText={setPostSpacing} keyboardType="number-pad" />
+                    </LabeledInput>
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <LabeledInput label="Footing (mm)">
+                      <TextInputStyled value={footingDepth} onChangeText={setFootingDepth} keyboardType="number-pad" />
+                    </LabeledInput>
+                  </View>
+                </View>
+              )}
             </View>
           </Card>
 

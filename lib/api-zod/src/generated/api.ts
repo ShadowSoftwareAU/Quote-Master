@@ -304,6 +304,7 @@ export const getQuoteResponseSpecGapSpacingMmDefault = 4;
 export const getQuoteResponseSpecJoistSpacingMmDefault = 450;
 export const getQuoteResponseSpecBearerSpacingMmDefault = 1800;
 export const getQuoteResponseSpecPostSpacingMmDefault = 1800;
+export const getQuoteResponseSpecFootingDepthMmDefault = 450;
 export const getQuoteResponseSpecWastageFactorDefault = 1.1;
 export const getQuoteResponseSpecLabourHoursDefault = 0;
 export const getQuoteResponseSpecLabourRateDefault = 85;
@@ -357,6 +358,7 @@ export const GetQuoteResponse = zod.object({
   "joistSpacingMm": zod.number().default(getQuoteResponseSpecJoistSpacingMmDefault).describe('Joist centres in mm'),
   "bearerSpacingMm": zod.number().default(getQuoteResponseSpecBearerSpacingMmDefault).describe('Bearer centres in mm'),
   "postSpacingMm": zod.number().default(getQuoteResponseSpecPostSpacingMmDefault).describe('Post centres in mm'),
+  "footingDepthMm": zod.number().default(getQuoteResponseSpecFootingDepthMmDefault).describe('Footing depth in mm for stump subframes'),
   "wastageFactor": zod.number().default(getQuoteResponseSpecWastageFactorDefault).describe('Multiplier for cuts and offcuts'),
   "labourHours": zod.number().default(getQuoteResponseSpecLabourHoursDefault).describe('Labour hours for the job'),
   "labourRate": zod.number().default(getQuoteResponseSpecLabourRateDefault).describe('AUD per hour labour rate'),
@@ -444,6 +446,7 @@ export const updateQuoteResponseSpecGapSpacingMmDefault = 4;
 export const updateQuoteResponseSpecJoistSpacingMmDefault = 450;
 export const updateQuoteResponseSpecBearerSpacingMmDefault = 1800;
 export const updateQuoteResponseSpecPostSpacingMmDefault = 1800;
+export const updateQuoteResponseSpecFootingDepthMmDefault = 450;
 export const updateQuoteResponseSpecWastageFactorDefault = 1.1;
 export const updateQuoteResponseSpecLabourHoursDefault = 0;
 export const updateQuoteResponseSpecLabourRateDefault = 85;
@@ -497,6 +500,7 @@ export const UpdateQuoteResponse = zod.object({
   "joistSpacingMm": zod.number().default(updateQuoteResponseSpecJoistSpacingMmDefault).describe('Joist centres in mm'),
   "bearerSpacingMm": zod.number().default(updateQuoteResponseSpecBearerSpacingMmDefault).describe('Bearer centres in mm'),
   "postSpacingMm": zod.number().default(updateQuoteResponseSpecPostSpacingMmDefault).describe('Post centres in mm'),
+  "footingDepthMm": zod.number().default(updateQuoteResponseSpecFootingDepthMmDefault).describe('Footing depth in mm for stump subframes'),
   "wastageFactor": zod.number().default(updateQuoteResponseSpecWastageFactorDefault).describe('Multiplier for cuts and offcuts'),
   "labourHours": zod.number().default(updateQuoteResponseSpecLabourHoursDefault).describe('Labour hours for the job'),
   "labourRate": zod.number().default(updateQuoteResponseSpecLabourRateDefault).describe('AUD per hour labour rate'),
@@ -554,6 +558,7 @@ export const setQuoteStatusResponseSpecGapSpacingMmDefault = 4;
 export const setQuoteStatusResponseSpecJoistSpacingMmDefault = 450;
 export const setQuoteStatusResponseSpecBearerSpacingMmDefault = 1800;
 export const setQuoteStatusResponseSpecPostSpacingMmDefault = 1800;
+export const setQuoteStatusResponseSpecFootingDepthMmDefault = 450;
 export const setQuoteStatusResponseSpecWastageFactorDefault = 1.1;
 export const setQuoteStatusResponseSpecLabourHoursDefault = 0;
 export const setQuoteStatusResponseSpecLabourRateDefault = 85;
@@ -607,6 +612,7 @@ export const SetQuoteStatusResponse = zod.object({
   "joistSpacingMm": zod.number().default(setQuoteStatusResponseSpecJoistSpacingMmDefault).describe('Joist centres in mm'),
   "bearerSpacingMm": zod.number().default(setQuoteStatusResponseSpecBearerSpacingMmDefault).describe('Bearer centres in mm'),
   "postSpacingMm": zod.number().default(setQuoteStatusResponseSpecPostSpacingMmDefault).describe('Post centres in mm'),
+  "footingDepthMm": zod.number().default(setQuoteStatusResponseSpecFootingDepthMmDefault).describe('Footing depth in mm for stump subframes'),
   "wastageFactor": zod.number().default(setQuoteStatusResponseSpecWastageFactorDefault).describe('Multiplier for cuts and offcuts'),
   "labourHours": zod.number().default(setQuoteStatusResponseSpecLabourHoursDefault).describe('Labour hours for the job'),
   "labourRate": zod.number().default(setQuoteStatusResponseSpecLabourRateDefault).describe('AUD per hour labour rate'),
@@ -658,6 +664,7 @@ export const getQuotePortalResponseSpecGapSpacingMmDefault = 4;
 export const getQuotePortalResponseSpecJoistSpacingMmDefault = 450;
 export const getQuotePortalResponseSpecBearerSpacingMmDefault = 1800;
 export const getQuotePortalResponseSpecPostSpacingMmDefault = 1800;
+export const getQuotePortalResponseSpecFootingDepthMmDefault = 450;
 export const getQuotePortalResponseSpecWastageFactorDefault = 1.1;
 export const getQuotePortalResponseSpecLabourHoursDefault = 0;
 export const getQuotePortalResponseSpecLabourRateDefault = 85;
@@ -696,6 +703,7 @@ export const GetQuotePortalResponse = zod.object({
   "joistSpacingMm": zod.number().default(getQuotePortalResponseSpecJoistSpacingMmDefault).describe('Joist centres in mm'),
   "bearerSpacingMm": zod.number().default(getQuotePortalResponseSpecBearerSpacingMmDefault).describe('Bearer centres in mm'),
   "postSpacingMm": zod.number().default(getQuotePortalResponseSpecPostSpacingMmDefault).describe('Post centres in mm'),
+  "footingDepthMm": zod.number().default(getQuotePortalResponseSpecFootingDepthMmDefault).describe('Footing depth in mm for stump subframes'),
   "wastageFactor": zod.number().default(getQuotePortalResponseSpecWastageFactorDefault).describe('Multiplier for cuts and offcuts'),
   "labourHours": zod.number().default(getQuotePortalResponseSpecLabourHoursDefault).describe('Labour hours for the job'),
   "labourRate": zod.number().default(getQuotePortalResponseSpecLabourRateDefault).describe('AUD per hour labour rate'),
@@ -747,6 +755,7 @@ export const estimateDeckBodyGapSpacingMmDefault = 4;
 export const estimateDeckBodyJoistSpacingMmDefault = 450;
 export const estimateDeckBodyBearerSpacingMmDefault = 1800;
 export const estimateDeckBodyPostSpacingMmDefault = 1800;
+export const estimateDeckBodyFootingDepthMmDefault = 450;
 export const estimateDeckBodyWastageFactorDefault = 1.1;
 export const estimateDeckBodyLabourHoursDefault = 0;
 export const estimateDeckBodyLabourRateDefault = 85;
@@ -778,6 +787,7 @@ export const EstimateDeckBody = zod.object({
   "joistSpacingMm": zod.number().default(estimateDeckBodyJoistSpacingMmDefault).describe('Joist centres in mm'),
   "bearerSpacingMm": zod.number().default(estimateDeckBodyBearerSpacingMmDefault).describe('Bearer centres in mm'),
   "postSpacingMm": zod.number().default(estimateDeckBodyPostSpacingMmDefault).describe('Post centres in mm'),
+  "footingDepthMm": zod.number().default(estimateDeckBodyFootingDepthMmDefault).describe('Footing depth in mm for stump subframes'),
   "wastageFactor": zod.number().default(estimateDeckBodyWastageFactorDefault).describe('Multiplier for cuts and offcuts'),
   "labourHours": zod.number().default(estimateDeckBodyLabourHoursDefault).describe('Labour hours for the job'),
   "labourRate": zod.number().default(estimateDeckBodyLabourRateDefault).describe('AUD per hour labour rate'),
@@ -807,6 +817,7 @@ export const estimateDeckResponseSpecGapSpacingMmDefault = 4;
 export const estimateDeckResponseSpecJoistSpacingMmDefault = 450;
 export const estimateDeckResponseSpecBearerSpacingMmDefault = 1800;
 export const estimateDeckResponseSpecPostSpacingMmDefault = 1800;
+export const estimateDeckResponseSpecFootingDepthMmDefault = 450;
 export const estimateDeckResponseSpecWastageFactorDefault = 1.1;
 export const estimateDeckResponseSpecLabourHoursDefault = 0;
 export const estimateDeckResponseSpecLabourRateDefault = 85;
@@ -839,6 +850,7 @@ export const EstimateDeckResponse = zod.object({
   "joistSpacingMm": zod.number().default(estimateDeckResponseSpecJoistSpacingMmDefault).describe('Joist centres in mm'),
   "bearerSpacingMm": zod.number().default(estimateDeckResponseSpecBearerSpacingMmDefault).describe('Bearer centres in mm'),
   "postSpacingMm": zod.number().default(estimateDeckResponseSpecPostSpacingMmDefault).describe('Post centres in mm'),
+  "footingDepthMm": zod.number().default(estimateDeckResponseSpecFootingDepthMmDefault).describe('Footing depth in mm for stump subframes'),
   "wastageFactor": zod.number().default(estimateDeckResponseSpecWastageFactorDefault).describe('Multiplier for cuts and offcuts'),
   "labourHours": zod.number().default(estimateDeckResponseSpecLabourHoursDefault).describe('Labour hours for the job'),
   "labourRate": zod.number().default(estimateDeckResponseSpecLabourRateDefault).describe('AUD per hour labour rate'),
@@ -874,7 +886,17 @@ export const EstimateDeckResponse = zod.object({
   "materialsSubtotal": zod.number(),
   "labourCost": zod.number(),
   "gst": zod.number(),
-  "total": zod.number()
+  "total": zod.number(),
+  "complianceWarnings": zod.array(zod.object({
+  "code": zod.string(),
+  "severity": zod.enum(['warning']),
+  "standard": zod.string(),
+  "title": zod.string(),
+  "message": zod.string(),
+  "actual": zod.number(),
+  "limit": zod.number(),
+  "recommendation": zod.string()
+}))
 })
 
 
