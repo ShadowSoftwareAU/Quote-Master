@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { formatCurrency } from "@/lib/format";
-import { CheckCircle, XCircle, Send, Trash2, Copy, AlertTriangle, Download } from "lucide-react";
+import { CheckCircle, XCircle, Send, Trash2, Copy, AlertTriangle, Download, Link2 } from "lucide-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
@@ -56,6 +56,16 @@ export default function QuoteDetail() {
     }
   };
 
+  const handleCopyPortalLink = async () => {
+    const portalLink = new URL(`/quote/${quoteId}`, window.location.origin).toString();
+    try {
+      await navigator.clipboard.writeText(portalLink);
+      toast({ title: "Client portal link copied" });
+    } catch {
+      window.prompt("Copy this client portal link:", portalLink);
+    }
+  };
+
   const handleCreateVariation = () => {
     if (!varTitle.trim()) {
       toast({ title: "Enter a title for the variation", variant: "destructive" });
@@ -94,6 +104,13 @@ export default function QuoteDetail() {
           <p className="text-muted-foreground font-medium text-lg mt-1">{quote.customerName}</p>
         </div>
         <div className="flex gap-2 items-center flex-wrap">
+          <Button
+            variant="outline"
+            className="font-bold uppercase"
+            onClick={handleCopyPortalLink}
+          >
+            <Link2 className="w-4 h-4 mr-2" /> Client Portal
+          </Button>
           {quote.status === 'draft' && (
             <Button onClick={() => updateStatus('sent')} className="font-bold uppercase"><Send className="w-4 h-4 mr-2" /> Mark Sent</Button>
           )}

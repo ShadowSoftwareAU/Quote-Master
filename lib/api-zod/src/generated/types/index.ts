@@ -37,6 +37,7 @@ export * from './quoteEstimate';
 export * from './quoteEstimateLine';
 export * from './quoteInput';
 export * from './quoteLineItem';
+export * from './quotePortal';
 export * from './quoteStatusInput';
 export * from './quoteSummary';
 export * from './quoteUpdate';

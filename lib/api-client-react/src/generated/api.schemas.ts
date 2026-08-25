@@ -215,6 +215,7 @@ export interface Quote {
   labourCost: number;
   gst: number;
   total: number;
+  spec: DeckSpecInput;
   lineItems: QuoteLineItem[];
   createdAt: string;
   updatedAt: string;
@@ -249,6 +250,25 @@ export interface QuoteInput {
   wastageFactor?: number;
   labourHours?: number;
   labourRate?: number;
+  gapSpacingMm?: number;
+  deckBoardType?: string;
+  subframeType?: string;
+  fastenerType?: string;
+  fasciaType?: string;
+  includeHandrails?: boolean;
+  handrailHeightMm?: number;
+  balustradeType?: string;
+  timberGapMm?: number;
+  wireSpacingMm?: number;
+  includeStairs?: boolean;
+  stairFlights?: number;
+  includeFencing?: boolean;
+  fencingSides?: number;
+  fencingHeightM?: number;
+  fencingWidthM?: number;
+  includeAwning?: boolean;
+  awningWidthM?: number;
+  awningLengthM?: number;
 }
 
 export interface QuoteUpdate {
@@ -267,10 +287,49 @@ export interface QuoteUpdate {
   wastageFactor?: number;
   labourHours?: number;
   labourRate?: number;
+  gapSpacingMm?: number;
+  deckBoardType?: string;
+  subframeType?: string;
+  fastenerType?: string;
+  fasciaType?: string;
+  includeHandrails?: boolean;
+  handrailHeightMm?: number;
+  balustradeType?: string;
+  timberGapMm?: number;
+  wireSpacingMm?: number;
+  includeStairs?: boolean;
+  stairFlights?: number;
+  includeFencing?: boolean;
+  fencingSides?: number;
+  fencingHeightM?: number;
+  fencingWidthM?: number;
+  includeAwning?: boolean;
+  awningWidthM?: number;
+  awningLengthM?: number;
 }
 
 export interface QuoteStatusInput {
   status: string;
+}
+
+export interface QuotePortal {
+  id: number;
+  title: string;
+  status: string;
+  /** @nullable */
+  customerName: string | null;
+  /** @nullable */
+  siteAddress: string | null;
+  /** @nullable */
+  notes: string | null;
+  spec: DeckSpecInput;
+  lineItems: QuoteLineItem[];
+  materialsSubtotal: number;
+  labourCost: number;
+  gst: number;
+  total: number;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface Booking {

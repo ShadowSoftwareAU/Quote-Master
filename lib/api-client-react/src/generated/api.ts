@@ -46,6 +46,7 @@ import type {
   Quote,
   QuoteEstimate,
   QuoteInput,
+  QuotePortal,
   QuoteStatusInput,
   QuoteSummary,
   QuoteUpdate,
@@ -1317,6 +1318,83 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
       > => {
       return useMutation(getSetQuoteStatusMutationOptions(options));
     }
+
+export const getGetQuotePortalUrl = (id: number,) => {
+
+
+
+
+  return `/api/quotes/${id}/portal`
+}
+
+/**
+ * @summary Get the customer-safe view of a quote
+ */
+export const getQuotePortal = async (id: number, options?: RequestInit): Promise<QuotePortal> => {
+
+  return customFetch<QuotePortal>(getGetQuotePortalUrl(id),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetQuotePortalQueryKey = (id: number,) => {
+    return [
+    `/api/quotes/${id}/portal`
+    ] as const;
+    }
+
+
+export const getGetQuotePortalQueryOptions = <TData = Awaited<ReturnType<typeof getQuotePortal>>, TError = ErrorType<unknown>>(id: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getQuotePortal>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetQuotePortalQueryKey(id);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getQuotePortal>>> = ({ signal }) => getQuotePortal(id, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: !!(id), ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getQuotePortal>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetQuotePortalQueryResult = NonNullable<Awaited<ReturnType<typeof getQuotePortal>>>
+export type GetQuotePortalQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary Get the customer-safe view of a quote
+ */
+
+export function useGetQuotePortal<TData = Awaited<ReturnType<typeof getQuotePortal>>, TError = ErrorType<unknown>>(
+ id: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getQuotePortal>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetQuotePortalQueryOptions(id,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
 
 export const getEstimateDeckUrl = () => {
 

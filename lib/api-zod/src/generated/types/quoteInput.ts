@@ -22,4 +22,23 @@ export interface QuoteInput {
   wastageFactor?: number;
   labourHours?: number;
   labourRate?: number;
+  gapSpacingMm?: number;
+  deckBoardType?: string;
+  subframeType?: string;
+  fastenerType?: string;
+  fasciaType?: string;
+  includeHandrails?: boolean;
+  handrailHeightMm?: number;
+  balustradeType?: string;
+  timberGapMm?: number;
+  wireSpacingMm?: number;
+  includeStairs?: boolean;
+  stairFlights?: number;
+  includeFencing?: boolean;
+  fencingSides?: number;
+  fencingHeightM?: number;
+  fencingWidthM?: number;
+  includeAwning?: boolean;
+  awningWidthM?: number;
+  awningLengthM?: number;
 }

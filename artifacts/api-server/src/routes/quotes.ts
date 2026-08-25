@@ -83,6 +83,29 @@ function specFromQuoteInput(input: {
   };
 }
 
+function specFromStoredQuote(row: typeof quotesTable.$inferSelect): DeckSpec {
+  const savedSpec =
+    row.specJson && typeof row.specJson === "object" && !Array.isArray(row.specJson)
+      ? (row.specJson as Partial<DeckSpec>)
+      : {};
+
+  return specFromQuoteInput({
+    lengthM: Number(row.lengthM),
+    widthM: Number(row.widthM),
+    heightM: Number(row.heightM),
+    boardWidthMm: row.boardWidthMm,
+    joistSpacingMm: row.joistSpacingMm,
+    bearerSpacingMm: row.bearerSpacingMm,
+    postSpacingMm: row.postSpacingMm,
+    wastageFactor: Number(row.wastageFactor),
+    ...savedSpec,
+  });
+}
+
+function serialiseSpec(spec: DeckSpec): Record<string, unknown> {
+  return { ...spec };
+}
+
 function quoteSummaryRow(row: typeof quotesTable.$inferSelect & {
   customerName: string | null;
 }) {
@@ -109,6 +132,7 @@ async function loadQuoteJson(id: number) {
     .leftJoin(customersTable, eq(customersTable.id, quotesTable.customerId))
     .where(eq(quotesTable.id, id));
   if (!row) return null;
+  const spec = specFromStoredQuote(row.q);
   const lines = await db
     .select()
     .from(quoteLineItemsTable)
@@ -136,6 +160,11 @@ async function loadQuoteJson(id: number) {
     labourCost: Number(row.q.labourCost),
     gst: Number(row.q.gst),
     total: Number(row.q.total),
+    spec: {
+      ...spec,
+      labourHours: Number(row.q.labourHours),
+      labourRate: Number(row.q.labourRate),
+    },
     lineItems: lines.map((l) => ({
       id: l.id,
       quoteId: l.quoteId,
@@ -252,6 +281,7 @@ router.post("/quotes", async (req, res): Promise<void> => {
       labourCost: String(labourCost),
       gst: String(gst),
       total: String(total),
+      specJson: serialiseSpec(spec),
     })
     .returning();
 
@@ -288,6 +318,36 @@ router.get("/quotes/:id", async (req, res): Promise<void> => {
   res.json(json);
 });
 
+router.get("/quotes/:id/portal", async (req, res): Promise<void> => {
+  const params = GetQuoteParams.safeParse(req.params);
+  if (!params.success) {
+    res.status(400).json({ error: params.error.message });
+    return;
+  }
+  const quote = await loadQuoteJson(params.data.id);
+  if (!quote) {
+    res.status(404).json({ error: "Quote not found" });
+    return;
+  }
+
+  res.json({
+    id: quote.id,
+    title: quote.title,
+    status: quote.status,
+    customerName: quote.customerName,
+    siteAddress: quote.siteAddress,
+    notes: quote.notes,
+    spec: quote.spec,
+    lineItems: quote.lineItems,
+    materialsSubtotal: quote.materialsSubtotal,
+    labourCost: quote.labourCost,
+    gst: quote.gst,
+    total: quote.total,
+    createdAt: quote.createdAt,
+    updatedAt: quote.updatedAt,
+  });
+});
+
 router.patch("/quotes/:id", async (req, res): Promise<void> => {
   const params = UpdateQuoteParams.safeParse(req.params);
   if (!params.success) {
@@ -308,15 +368,12 @@ router.patch("/quotes/:id", async (req, res): Promise<void> => {
     return;
   }
   const d = body.data;
+  const savedSpec = specFromStoredQuote(existing);
   const spec = specFromQuoteInput({
-    lengthM: d.lengthM ?? Number(existing.lengthM),
-    widthM: d.widthM ?? Number(existing.widthM),
-    heightM: d.heightM ?? Number(existing.heightM),
-    boardWidthMm: d.boardWidthMm ?? existing.boardWidthMm,
-    joistSpacingMm: d.joistSpacingMm ?? existing.joistSpacingMm,
-    bearerSpacingMm: d.bearerSpacingMm ?? existing.bearerSpacingMm,
-    postSpacingMm: d.postSpacingMm ?? existing.postSpacingMm,
-    wastageFactor: d.wastageFactor ?? Number(existing.wastageFactor),
+    ...savedSpec,
+    ...d,
+    lengthM: d.lengthM ?? savedSpec.lengthM,
+    widthM: d.widthM ?? savedSpec.widthM,
   });
   const materials = await db.select().from(materialsTable);
   const { lines, materialsSubtotal } = estimateDeck(spec, materials);
@@ -349,6 +406,7 @@ router.patch("/quotes/:id", async (req, res): Promise<void> => {
       labourCost: String(labourCost),
       gst: String(gst),
       total: String(total),
+      specJson: serialiseSpec(spec),
     })
     .where(eq(quotesTable.id, params.data.id));
 
@@ -417,14 +475,9 @@ router.post("/quotes/:id/variation", async (req, res): Promise<void> => {
   }
   const b = body.data;
   const spec = specFromQuoteInput({
-    lengthM: b.lengthM ?? original.lengthM,
-    widthM: b.widthM ?? original.widthM,
-    heightM: b.heightM ?? original.heightM,
-    boardWidthMm: original.boardWidthMm,
-    joistSpacingMm: original.joistSpacingMm,
-    bearerSpacingMm: original.bearerSpacingMm,
-    postSpacingMm: original.postSpacingMm,
-    wastageFactor: original.wastageFactor,
+    ...original.spec,
+    lengthM: b.lengthM ?? original.spec.lengthM,
+    widthM: b.widthM ?? original.spec.widthM,
   });
   const materials = await db.select().from(materialsTable);
   const { lines, materialsSubtotal } = estimateDeck(spec, materials);
@@ -453,6 +506,7 @@ router.post("/quotes/:id/variation", async (req, res): Promise<void> => {
       labourCost: String(labourCost),
       gst: String(gst),
       total: String(total),
+      specJson: serialiseSpec(spec),
     })
     .returning();
 

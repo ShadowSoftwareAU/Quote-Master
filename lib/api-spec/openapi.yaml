@@ -279,6 +279,22 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/Quote" }
+  /quotes/{id}/portal:
+    get:
+      operationId: getQuotePortal
+      tags: [quotes]
+      summary: Get the customer-safe view of a quote
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: integer }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/QuotePortal" }
   /quotes/estimate:
     post:
       operationId: estimateDeck
@@ -937,7 +953,7 @@ components:
 
     Quote:
       type: object
-      required: [id, title, status, customerId, lengthM, widthM, heightM, materialsSubtotal, labourCost, gst, total, lineItems, createdAt, updatedAt]
+      required: [id, title, status, customerId, lengthM, widthM, heightM, materialsSubtotal, labourCost, gst, total, lineItems, spec, createdAt, updatedAt]
       properties:
         id: { type: integer }
         title: { type: string }
@@ -962,6 +978,7 @@ components:
         labourCost: { type: number }
         gst: { type: number }
         total: { type: number }
+        spec: { $ref: "#/components/schemas/DeckSpecInput" }
         lineItems:
           type: array
           items: { $ref: "#/components/schemas/QuoteLineItem" }
@@ -998,6 +1015,25 @@ components:
         wastageFactor: { type: number }
         labourHours: { type: number }
         labourRate: { type: number }
+        gapSpacingMm: { type: number }
+        deckBoardType: { type: string }
+        subframeType: { type: string }
+        fastenerType: { type: string }
+        fasciaType: { type: string }
+        includeHandrails: { type: boolean }
+        handrailHeightMm: { type: integer }
+        balustradeType: { type: string }
+        timberGapMm: { type: integer }
+        wireSpacingMm: { type: integer }
+        includeStairs: { type: boolean }
+        stairFlights: { type: integer }
+        includeFencing: { type: boolean }
+        fencingSides: { type: integer }
+        fencingHeightM: { type: number }
+        fencingWidthM: { type: number }
+        includeAwning: { type: boolean }
+        awningWidthM: { type: number }
+        awningLengthM: { type: number }
     QuoteUpdate:
       type: object
       properties:
@@ -1015,11 +1051,50 @@ components:
         wastageFactor: { type: number }
         labourHours: { type: number }
         labourRate: { type: number }
+        gapSpacingMm: { type: number }
+        deckBoardType: { type: string }
+        subframeType: { type: string }
+        fastenerType: { type: string }
+        fasciaType: { type: string }
+        includeHandrails: { type: boolean }
+        handrailHeightMm: { type: integer }
+        balustradeType: { type: string }
+        timberGapMm: { type: integer }
+        wireSpacingMm: { type: integer }
+        includeStairs: { type: boolean }
+        stairFlights: { type: integer }
+        includeFencing: { type: boolean }
+        fencingSides: { type: integer }
+        fencingHeightM: { type: number }
+        fencingWidthM: { type: number }
+        includeAwning: { type: boolean }
+        awningWidthM: { type: number }
+        awningLengthM: { type: number }
     QuoteStatusInput:
       type: object
       required: [status]
       properties:
         status: { type: string }
+    QuotePortal:
+      type: object
+      required: [id, title, status, customerName, siteAddress, notes, spec, lineItems, materialsSubtotal, labourCost, gst, total, createdAt, updatedAt]
+      properties:
+        id: { type: integer }
+        title: { type: string }
+        status: { type: string }
+        customerName: { type: ["string", "null"] }
+        siteAddress: { type: ["string", "null"] }
+        notes: { type: ["string", "null"] }
+        spec: { $ref: "#/components/schemas/DeckSpecInput" }
+        lineItems:
+          type: array
+          items: { $ref: "#/components/schemas/QuoteLineItem" }
+        materialsSubtotal: { type: number }
+        labourCost: { type: number }
+        gst: { type: number }
+        total: { type: number }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
 
     Booking:
       type: object

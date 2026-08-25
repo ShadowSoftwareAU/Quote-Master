@@ -64,8 +64,31 @@ const FALLBACK_PRICE: Record<string, { unit: string; price: number; name: string
   fencing_paling: { unit: "each", price: 3.2, name: "Fence paling 100x19mm" },
 };
 
-function pickMaterial(materials: Material[], category: string): Material | undefined {
-  return materials.find((m) => m.category === category);
+function pickMaterial(
+  materials: Material[],
+  category: string,
+  spec?: Pick<DeckSpec, "deckBoardType" | "balustradeType">,
+): Material | undefined {
+  const candidates = materials.filter((m) => m.category === category);
+  if (candidates.length === 0) return undefined;
+
+  if (category === "decking") {
+    if (spec?.deckBoardType === "composite") {
+      return candidates.find((m) => /composite/i.test(m.name)) ?? candidates[0];
+    }
+    if (spec?.deckBoardType === "hardwood") {
+      return candidates.find((m) => /hardwood|spotted gum/i.test(m.name)) ?? candidates[0];
+    }
+  }
+
+  if (category === "balustrade") {
+    if (spec?.balustradeType === "stainless_cable") {
+      return candidates.find((m) => /stainless|cable/i.test(m.name)) ?? candidates[0];
+    }
+    return candidates.find((m) => /timber|picket/i.test(m.name)) ?? candidates[0];
+  }
+
+  return candidates[0];
 }
 
 function round2(n: number): number {
@@ -85,7 +108,7 @@ export function estimateDeck(
   const gap = spec.gapSpacingMm ?? 4;
 
   const make = (category: string, rawQuantity: number, descriptionOverride?: string): void => {
-    const m = pickMaterial(materials, category);
+    const m = pickMaterial(materials, category, spec);
     const fallback = FALLBACK_PRICE[category] ?? { unit: "each", price: 10, name: category };
     const unit = m?.unit ?? fallback.unit;
     const unitPrice = m ? Number(m.unitPrice) : fallback.price;
@@ -157,7 +180,7 @@ export function estimateDeck(
   // ── Decking oil — 1L per ~5m² ──
   const area = spec.lengthM * spec.widthM;
   const oilLitres = Math.max(1, Math.ceil(area / 5));
-  const sealMaterial = pickMaterial(materials, "sealant");
+  const sealMaterial = pickMaterial(materials, "sealant", spec);
   const sealEach = Math.max(1, Math.ceil(oilLitres / 4));
   if (sealMaterial) {
     lines.push({

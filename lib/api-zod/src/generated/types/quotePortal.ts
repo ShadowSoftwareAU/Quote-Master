@@ -8,34 +8,22 @@
 import type { DeckSpecInput } from './deckSpecInput';
 import type { QuoteLineItem } from './quoteLineItem';
 
-export interface Quote {
+export interface QuotePortal {
   id: number;
   title: string;
-  /** draft | sent | accepted | rejected */
   status: string;
-  customerId: number;
   /** @nullable */
-  customerName?: string | null;
+  customerName: string | null;
   /** @nullable */
-  siteAddress?: string | null;
+  siteAddress: string | null;
   /** @nullable */
-  notes?: string | null;
-  lengthM: number;
-  widthM: number;
-  heightM: number;
-  boardWidthMm?: number;
-  joistSpacingMm?: number;
-  bearerSpacingMm?: number;
-  postSpacingMm?: number;
-  wastageFactor?: number;
-  labourHours?: number;
-  labourRate?: number;
+  notes: string | null;
+  spec: DeckSpecInput;
+  lineItems: QuoteLineItem[];
   materialsSubtotal: number;
   labourCost: number;
   gst: number;
   total: number;
-  spec: DeckSpecInput;
-  lineItems: QuoteLineItem[];
   createdAt: Date;
   updatedAt: Date;
 }

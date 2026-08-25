@@ -4,6 +4,7 @@ import {
   text,
   integer,
   numeric,
+  jsonb,
   timestamp,
 } from "drizzle-orm/pg-core";
 
@@ -40,6 +41,7 @@ export const quotesTable = pgTable("quotes", {
     .default("0"),
   gst: numeric("gst", { precision: 12, scale: 2 }).notNull().default("0"),
   total: numeric("total", { precision: 12, scale: 2 }).notNull().default("0"),
+  specJson: jsonb("spec_json").$type<Record<string, unknown>>(),
   createdAt: timestamp("created_at", { withTimezone: true })
     .notNull()
     .defaultNow(),
