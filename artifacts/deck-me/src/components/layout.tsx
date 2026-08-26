@@ -4,7 +4,7 @@ import { getListMasterProjectsQueryKey, useListMasterProjects } from "@workspace
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { ReactNode } from "react";
-import { Show, UserButton } from "@clerk/react";
+import { Show, UserButton, useAuth } from "@clerk/react";
 
 const navItems = [
   { href: "/", label: "Dashboard", icon: Hammer },
@@ -22,8 +22,13 @@ const navItems = [
 
 export function Layout({ children }: { children: ReactNode }) {
   const [location] = useLocation();
+  const { isSignedIn } = useAuth();
   const { isSuccess: canAccessProjects } = useListMasterProjects({
-    query: { queryKey: getListMasterProjectsQueryKey(), retry: false },
+    query: {
+      queryKey: getListMasterProjectsQueryKey(),
+      retry: false,
+      enabled: isSignedIn === true,
+    },
   });
   const visibleNavItems = canAccessProjects ? [...navItems, { href: "/projects", label: "Projects", icon: FolderKanban }] : navItems;
 
@@ -70,13 +75,22 @@ export function Layout({ children }: { children: ReactNode }) {
         <Link href="/" className="flex items-center gap-2 font-display font-black text-xl text-primary">
           <Hammer className="w-6 h-6" /> DECK ME
         </Link>
-        <Sheet>
-          <SheetTrigger asChild>
-            <Button variant="ghost" size="icon">
-              <Menu className="w-6 h-6" />
+        <div className="flex items-center gap-1">
+          <Show when="signed-out">
+            <Button asChild variant="ghost" size="sm" className="font-bold">
+              <Link href="/sign-in">Sign in</Link>
             </Button>
-          </SheetTrigger>
-          <SheetContent side="left" className="w-64 p-0 bg-sidebar text-sidebar-foreground border-r-sidebar-border">
+          </Show>
+          <Show when="signed-in">
+            <UserButton />
+          </Show>
+          <Sheet>
+            <SheetTrigger asChild>
+              <Button variant="ghost" size="icon">
+                <Menu className="w-6 h-6" />
+              </Button>
+            </SheetTrigger>
+            <SheetContent side="left" className="w-64 p-0 bg-sidebar text-sidebar-foreground border-r-sidebar-border">
             <div className="h-16 flex items-center px-6 border-b border-sidebar-border">
               <span className="flex items-center gap-2 font-display font-black text-xl text-sidebar-primary">
                 <Hammer className="w-6 h-6" /> DECK ME
@@ -101,8 +115,9 @@ export function Layout({ children }: { children: ReactNode }) {
                 );
               })}
             </nav>
-          </SheetContent>
-        </Sheet>
+            </SheetContent>
+          </Sheet>
+        </div>
       </div>
 
       <main className="flex-1 overflow-auto p-4 md:p-8 pb-20 md:pb-8">
