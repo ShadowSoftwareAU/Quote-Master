@@ -228,7 +228,7 @@ export default function HomeScreen() {
                   letterSpacing: 1,
                 }}
               >
-                DECK ME
+                QUOTE MASTER
               </Text>
               <Text
                 style={{

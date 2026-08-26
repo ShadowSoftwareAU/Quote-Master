@@ -1,5 +1,5 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 220 48" role="img" aria-label="Deck Me">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 270 48" role="img" aria-label="Quote Master">
   <rect width="220" height="48" rx="8" fill="#1b1d24"/>
   <path d="M22 32 34 20l-4-4 5-5 9 9-5 5-4-4-9 9z" fill="#f97316"/>
-  <text x="57" y="32" font-family="Arial, sans-serif" font-size="23" font-weight="800" fill="#f97316">DECK ME</text>
+  <text x="57" y="32" font-family="Arial, sans-serif" font-size="23" font-weight="800" fill="#f97316">QUOTE MASTER</text>
 </svg>

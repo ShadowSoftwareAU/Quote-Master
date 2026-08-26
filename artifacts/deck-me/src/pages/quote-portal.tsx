@@ -157,7 +157,7 @@ export default function QuotePortalPage() {
             <div className="bg-primary p-2 rounded-md">
               <HardHat className="w-6 h-6 text-primary-foreground" />
             </div>
-            <span className="font-display font-black text-xl tracking-tight uppercase">DECK ME</span>
+            <span className="font-display font-black text-xl tracking-tight uppercase">QUOTE MASTER</span>
           </div>
           {isAccepted && (
             <div className="flex items-center gap-2 bg-green-500/20 text-green-400 px-4 py-1.5 rounded-full font-medium text-sm border border-green-500/30">

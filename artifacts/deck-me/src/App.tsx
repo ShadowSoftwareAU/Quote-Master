@@ -115,12 +115,12 @@ function App() {
           signIn: {
             start: {
               title: "Welcome back",
-              subtitle: "Sign in to access Deck Me",
+              subtitle: "Sign in to access Quote Master",
             },
           },
           signUp: {
             start: {
-              title: "Create your Deck Me account",
+              title: "Create your Quote Master account",
               subtitle: "Set up your account to get started",
             },
           },
@@ -128,6 +128,10 @@ function App() {
         appearance={{
           theme: shadcn,
           options: { logoPlacement: "inside", logoImageUrl: `${window.location.origin}${basePath}/logo.svg`, logoLinkUrl: basePath || "/" },
+          elements: {
+            socialButtonsBlockButton: "!text-black",
+            socialButtonsBlockButtonText: "!text-black",
+          },
           variables: { colorPrimary: "#f97316", colorForeground: "#1b1d24", colorMutedForeground: "#68707d", colorBackground: "#ffffff", colorInput: "#ffffff", colorInputForeground: "#1b1d24", colorNeutral: "#d8dbe0", fontFamily: "Inter, sans-serif", borderRadius: "0.5rem" },
         }}
       >
