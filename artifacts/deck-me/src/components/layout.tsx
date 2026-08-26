@@ -4,6 +4,7 @@ import { getListMasterProjectsQueryKey, useListMasterProjects } from "@workspace
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { ReactNode } from "react";
+import { Show, UserButton } from "@clerk/react";
 
 const navItems = [
   { href: "/", label: "Dashboard", icon: Hammer },
@@ -34,6 +35,14 @@ export function Layout({ children }: { children: ReactNode }) {
           <Link href="/" className="flex items-center gap-2 font-display font-black text-xl text-sidebar-primary">
             <Hammer className="w-6 h-6" /> DECK ME
           </Link>
+        </div>
+        <div className="px-6 py-4 border-b border-sidebar-border">
+          <Show when="signed-out">
+            <Link href="/sign-in" className="text-xs font-bold uppercase text-sidebar-primary">Sign in</Link>
+          </Show>
+          <Show when="signed-in">
+            <UserButton />
+          </Show>
         </div>
         <nav className="flex-1 py-6 px-4 space-y-1 overflow-y-auto">
           {visibleNavItems.map((item) => {

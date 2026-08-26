@@ -1,5 +1,9 @@
 import { Switch, Route, Router as WouterRouter } from "wouter";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { useEffect, useRef } from "react";
+import { ClerkProvider, SignIn, SignUp, Show, UserButton, useUser } from "@clerk/react";
+import { publishableKeyFromHost } from "@clerk/react/internal";
+import { shadcn } from "@clerk/themes";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { Layout } from "@/components/layout";
@@ -21,10 +25,41 @@ import FinancePage from "@/pages/finance";
 import Projects from "@/pages/projects";
 
 const queryClient = new QueryClient();
+const basePath = import.meta.env.BASE_URL.replace(/\/$/, "");
+const clerkPubKey = publishableKeyFromHost(
+  window.location.hostname,
+  import.meta.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY,
+);
+const clerkProxyUrl = import.meta.env.VITE_CLERK_PROXY_URL ?? "";
+
+if (!clerkPubKey) {
+  throw new Error("Missing NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY");
+}
+
+function SignInPage() {
+  return <div className="flex min-h-[100dvh] items-center justify-center bg-background px-4"><SignIn routing="path" path={`${basePath}/sign-in`} signUpUrl={`${basePath}/sign-up`} /></div>;
+}
+
+function SignUpPage() {
+  return <div className="flex min-h-[100dvh] items-center justify-center bg-background px-4"><SignUp routing="path" path={`${basePath}/sign-up`} signInUrl={`${basePath}/sign-in`} /></div>;
+}
+
+function ClerkQueryClientCacheInvalidator() {
+  const { user } = useUser();
+  const previousUserId = useRef<string | null | undefined>(undefined);
+  useEffect(() => {
+    const userId = user?.id ?? null;
+    if (previousUserId.current !== undefined && previousUserId.current !== userId) queryClient.clear();
+    previousUserId.current = userId;
+  }, [user?.id]);
+  return null;
+}
 
 function Router() {
   return (
     <Switch>
+      <Route path="/sign-in/*?" component={SignInPage} />
+      <Route path="/sign-up/*?" component={SignUpPage} />
       <Route path="/quote/:id" component={QuotePortal} />
       <Route>
         <Layout>
@@ -53,14 +88,41 @@ function Router() {
 
 function App() {
   return (
-    <QueryClientProvider client={queryClient}>
-      <TooltipProvider>
-        <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, "")}>
-          <Router />
-        </WouterRouter>
-        <Toaster />
-      </TooltipProvider>
-    </QueryClientProvider>
+    <WouterRouter base={basePath}>
+      <ClerkProvider
+        publishableKey={clerkPubKey}
+        proxyUrl={clerkProxyUrl}
+        signInUrl={`${basePath}/sign-in`}
+        signUpUrl={`${basePath}/sign-up`}
+        localization={{
+          signIn: {
+            start: {
+              title: "Welcome back",
+              subtitle: "Sign in to access Deck Me",
+            },
+          },
+          signUp: {
+            start: {
+              title: "Create your Deck Me account",
+              subtitle: "Set up your account to get started",
+            },
+          },
+        }}
+        appearance={{
+          theme: shadcn,
+          options: { logoPlacement: "inside", logoImageUrl: `${window.location.origin}${basePath}/logo.svg`, logoLinkUrl: basePath || "/" },
+          variables: { colorPrimary: "#f97316", colorForeground: "#1b1d24", colorMutedForeground: "#68707d", colorBackground: "#ffffff", colorInput: "#ffffff", colorInputForeground: "#1b1d24", colorNeutral: "#d8dbe0", fontFamily: "Inter, sans-serif", borderRadius: "0.5rem" },
+        }}
+      >
+        <QueryClientProvider client={queryClient}>
+          <TooltipProvider>
+            <ClerkQueryClientCacheInvalidator />
+            <Router />
+            <Toaster />
+          </TooltipProvider>
+        </QueryClientProvider>
+      </ClerkProvider>
+    </WouterRouter>
   );
 }
 

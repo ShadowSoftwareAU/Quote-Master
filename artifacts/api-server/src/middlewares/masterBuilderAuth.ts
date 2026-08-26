@@ -8,7 +8,7 @@ export function requireMasterBuilder(
   res: Response,
   next: NextFunction,
 ): void {
-  if (!process.env.CLERK_SECRET_KEY) {
+  if (!(process.env.CLERK_SECRET_KEY ?? process.env.Clerk_Secret_Key_Dev)) {
     res.status(503).json({ error: "Clerk authentication is not configured" });
     return;
   }
