@@ -1,7 +1,7 @@
-import { Switch, Route, Router as WouterRouter } from "wouter";
+import { Switch, Route, Router as WouterRouter, useLocation } from "wouter";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { useEffect, useRef } from "react";
-import { ClerkProvider, SignIn, SignUp, Show, UserButton, useUser } from "@clerk/react";
+import { ClerkProvider, SignIn, SignUp, useAuth, useUser } from "@clerk/react";
 import { publishableKeyFromHost } from "@clerk/react/internal";
 import { shadcn } from "@clerk/themes";
 import { Toaster } from "@/components/ui/toaster";
@@ -55,33 +55,50 @@ function ClerkQueryClientCacheInvalidator() {
   return null;
 }
 
+function ProtectedWorkspace() {
+  const { isLoaded, isSignedIn } = useAuth();
+  const [, setLocation] = useLocation();
+
+  useEffect(() => {
+    if (isLoaded && !isSignedIn) {
+      setLocation("/sign-in");
+    }
+  }, [isLoaded, isSignedIn, setLocation]);
+
+  if (!isLoaded || !isSignedIn) {
+    return <div className="min-h-[100dvh] bg-background" aria-label="Loading" />;
+  }
+
+  return (
+    <Layout>
+      <Switch>
+        <Route path="/" component={Dashboard} />
+        <Route path="/calculator" component={Calculator} />
+        <Route path="/quotes" component={Quotes} />
+        <Route path="/quotes/:id" component={QuoteDetail} />
+        <Route path="/customers" component={Customers} />
+        <Route path="/materials" component={Materials} />
+        <Route path="/bookings" component={Bookings} />
+        <Route path="/team" component={TeamPage} />
+        <Route path="/planner" component={PlannerPage} />
+        <Route path="/portfolio" component={PortfolioPage} />
+        <Route path="/referrals" component={ReferralsPage} />
+        <Route path="/finance" component={FinancePage} />
+        <Route path="/projects" component={Projects} />
+        <Route path="/projects/:id" component={Projects} />
+        <Route component={NotFound} />
+      </Switch>
+    </Layout>
+  );
+}
+
 function Router() {
   return (
     <Switch>
       <Route path="/sign-in/*?" component={SignInPage} />
       <Route path="/sign-up/*?" component={SignUpPage} />
       <Route path="/quote/:id" component={QuotePortal} />
-      <Route>
-        <Layout>
-          <Switch>
-            <Route path="/" component={Dashboard} />
-            <Route path="/calculator" component={Calculator} />
-            <Route path="/quotes" component={Quotes} />
-            <Route path="/quotes/:id" component={QuoteDetail} />
-            <Route path="/customers" component={Customers} />
-            <Route path="/materials" component={Materials} />
-            <Route path="/bookings" component={Bookings} />
-            <Route path="/team" component={TeamPage} />
-            <Route path="/planner" component={PlannerPage} />
-            <Route path="/portfolio" component={PortfolioPage} />
-            <Route path="/referrals" component={ReferralsPage} />
-            <Route path="/finance" component={FinancePage} />
-            <Route path="/projects" component={Projects} />
-            <Route path="/projects/:id" component={Projects} />
-            <Route component={NotFound} />
-          </Switch>
-        </Layout>
-      </Route>
+      <Route component={ProtectedWorkspace} />
     </Switch>
   );
 }
