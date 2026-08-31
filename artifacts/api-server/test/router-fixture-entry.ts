@@ -1,6 +1,7 @@
 import express from "express";
 import router from "../src/routes";
 import { pool } from "@workspace/db";
+import { processDueProfileMetadataJobs } from "../src/services/businessProfiles";
 
 const app = express();
 app.use(express.json());
@@ -15,4 +16,4 @@ app.use((req, _res, next) => {
 });
 app.use(router);
 
-export { app, pool };
+export { app, pool, processDueProfileMetadataJobs };

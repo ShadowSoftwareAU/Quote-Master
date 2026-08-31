@@ -8,6 +8,20 @@
       "when": 1788141244454,
       "tag": "0000_broad_stone_men",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1788145364541,
+      "tag": "0001_fuzzy_revanche",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1788145644369,
+      "tag": "0002_tiny_the_hunter",
+      "breakpoints": true
     }
   ]
 }

@@ -17,6 +17,68 @@ export const HealthCheckResponse = zod.object({
 
 
 /**
+ * @summary Create or safely retry the authenticated user's business profile
+ */
+export const createOnboardingProfileBodyBusinessNameMin = 2;
+export const createOnboardingProfileBodyBusinessNameMax = 120;
+
+export const createOnboardingProfileBodyPhoneNumberMin = 8;
+export const createOnboardingProfileBodyPhoneNumberMax = 20;
+
+
+export const createOnboardingProfileBodyPhoneNumberRegExp = new RegExp('^\\+?[0-9 ()-]+$');
+export const createOnboardingProfileBodyTradeTypeMin = 2;
+export const createOnboardingProfileBodyTradeTypeMax = 80;
+
+export const createOnboardingProfileBodyLicenseNumberMin = 2;
+export const createOnboardingProfileBodyLicenseNumberMax = 50;
+
+
+export const createOnboardingProfileBodyLicenseNumberRegExp = new RegExp('^[A-Za-z0-9 .\/-]+$');
+
+
+export const CreateOnboardingProfileBody = zod.object({
+  "businessName": zod.string().min(createOnboardingProfileBodyBusinessNameMin).max(createOnboardingProfileBodyBusinessNameMax),
+  "phoneNumber": zod.string().min(createOnboardingProfileBodyPhoneNumberMin).max(createOnboardingProfileBodyPhoneNumberMax).regex(createOnboardingProfileBodyPhoneNumberRegExp),
+  "tradeType": zod.string().min(createOnboardingProfileBodyTradeTypeMin).max(createOnboardingProfileBodyTradeTypeMax),
+  "licenseNumber": zod.string().min(createOnboardingProfileBodyLicenseNumberMin).max(createOnboardingProfileBodyLicenseNumberMax).regex(createOnboardingProfileBodyLicenseNumberRegExp).nullish(),
+  "role": zod.enum(['Owner', 'Employee', 'Subcontractor'])
+})
+
+
+/**
+ * @summary Update the authenticated user's trade and role details
+ */
+export const updateProfileSettingsBodyTradeTypeMin = 2;
+export const updateProfileSettingsBodyTradeTypeMax = 80;
+
+export const updateProfileSettingsBodyLicenseNumberMin = 2;
+export const updateProfileSettingsBodyLicenseNumberMax = 50;
+
+
+export const updateProfileSettingsBodyLicenseNumberRegExp = new RegExp('^[A-Za-z0-9 .\/-]+$');
+
+
+export const UpdateProfileSettingsBody = zod.object({
+  "tradeType": zod.string().min(updateProfileSettingsBodyTradeTypeMin).max(updateProfileSettingsBodyTradeTypeMax),
+  "licenseNumber": zod.string().min(updateProfileSettingsBodyLicenseNumberMin).max(updateProfileSettingsBodyLicenseNumberMax).regex(updateProfileSettingsBodyLicenseNumberRegExp).nullish(),
+  "role": zod.enum(['Owner', 'Employee', 'Subcontractor'])
+})
+
+export const UpdateProfileSettingsResponse = zod.object({
+  "id": zod.number(),
+  "businessName": zod.string(),
+  "phoneNumber": zod.string(),
+  "tradeType": zod.string(),
+  "licenseNumber": zod.string().nullish(),
+  "role": zod.enum(['Owner', 'Employee', 'Subcontractor']),
+  "metadataSyncStatus": zod.enum(['pending', 'synced', 'failed']),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+})
+
+
+/**
  * @summary Headline numbers for the home screen
  */
 export const GetDashboardSummaryResponse = zod.object({

@@ -11,7 +11,7 @@ import { requireMasterBuilder } from "../middlewares/masterBuilderAuth";
 import { getMasterProject, listMasterProjects, recalculateMasterProjectTotals } from "../services/masterProjects";
 
 const router: IRouter = Router();
-router.use(requireMasterBuilder);
+router.use("/master-projects", requireMasterBuilder);
 
 router.get("/master-projects", async (req, res): Promise<void> => {
   const clerkUserId = getAuth(req).userId;

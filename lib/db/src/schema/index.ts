@@ -6,3 +6,4 @@ export * from "./bookings";
 export * from "./team";
 export * from "./portfolio";
 export * from "./referrals";
+export * from "./business-profiles";

@@ -140,6 +140,8 @@ test("only the exact public quote routes bypass authentication", () => {
 
   const denied = [
     request({ method: "GET", path: "/quotes/42" }),
+    request({ method: "POST", path: "/onboarding", body: {} }),
+    request({ method: "PUT", path: "/settings/profile", body: {} }),
     request({ method: "GET", path: "/quotes/42/portal/extra" }),
     request({ method: "POST", path: "/quotes/42/estimate", body: { lengthM: 2, widthM: 2 } }),
     request({ method: "PATCH", path: "/quotes/42", body: { title: "privileged" } }),

@@ -26,6 +26,7 @@ import type {
   Booking,
   BookingInput,
   BookingUpdate,
+  BusinessProfile,
   ClockOffInput,
   ClockOnInput,
   Customer,
@@ -47,9 +48,11 @@ import type {
   Material,
   MaterialInput,
   MaterialUpdate,
+  OnboardingProfileInput,
   PnLReport,
   PortfolioEntry,
   PortfolioEntryInput,
+  ProfileSettingsInput,
   Quote,
   QuoteEstimate,
   QuoteInput,
@@ -161,6 +164,148 @@ export function useHealthCheck<TData = Awaited<ReturnType<typeof healthCheck>>, 
 
 
 
+
+export const getCreateOnboardingProfileUrl = () => {
+
+
+
+
+  return `/api/onboarding`
+}
+
+/**
+ * @summary Create or safely retry the authenticated user's business profile
+ */
+export const createOnboardingProfile = async (onboardingProfileInput: OnboardingProfileInput, options?: RequestInit): Promise<BusinessProfile> => {
+
+  return customFetch<BusinessProfile>(getCreateOnboardingProfileUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      onboardingProfileInput,)
+  }
+);}
+
+
+
+
+export const getCreateOnboardingProfileMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createOnboardingProfile>>, TError,{data: BodyType<OnboardingProfileInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createOnboardingProfile>>, TError,{data: BodyType<OnboardingProfileInput>}, TContext> => {
+
+const mutationKey = ['createOnboardingProfile'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createOnboardingProfile>>, {data: BodyType<OnboardingProfileInput>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  createOnboardingProfile(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreateOnboardingProfileMutationResult = NonNullable<Awaited<ReturnType<typeof createOnboardingProfile>>>
+    export type CreateOnboardingProfileMutationBody = BodyType<OnboardingProfileInput>
+    export type CreateOnboardingProfileMutationError = ErrorType<void>
+
+    /**
+ * @summary Create or safely retry the authenticated user's business profile
+ */
+export const useCreateOnboardingProfile = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createOnboardingProfile>>, TError,{data: BodyType<OnboardingProfileInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof createOnboardingProfile>>,
+        TError,
+        {data: BodyType<OnboardingProfileInput>},
+        TContext
+      > => {
+      return useMutation(getCreateOnboardingProfileMutationOptions(options));
+    }
+
+export const getUpdateProfileSettingsUrl = () => {
+
+
+
+
+  return `/api/settings/profile`
+}
+
+/**
+ * @summary Update the authenticated user's trade and role details
+ */
+export const updateProfileSettings = async (profileSettingsInput: ProfileSettingsInput, options?: RequestInit): Promise<BusinessProfile> => {
+
+  return customFetch<BusinessProfile>(getUpdateProfileSettingsUrl(),
+  {
+    ...options,
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      profileSettingsInput,)
+  }
+);}
+
+
+
+
+export const getUpdateProfileSettingsMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateProfileSettings>>, TError,{data: BodyType<ProfileSettingsInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updateProfileSettings>>, TError,{data: BodyType<ProfileSettingsInput>}, TContext> => {
+
+const mutationKey = ['updateProfileSettings'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateProfileSettings>>, {data: BodyType<ProfileSettingsInput>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  updateProfileSettings(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdateProfileSettingsMutationResult = NonNullable<Awaited<ReturnType<typeof updateProfileSettings>>>
+    export type UpdateProfileSettingsMutationBody = BodyType<ProfileSettingsInput>
+    export type UpdateProfileSettingsMutationError = ErrorType<void>
+
+    /**
+ * @summary Update the authenticated user's trade and role details
+ */
+export const useUpdateProfileSettings = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateProfileSettings>>, TError,{data: BodyType<ProfileSettingsInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof updateProfileSettings>>,
+        TError,
+        {data: BodyType<ProfileSettingsInput>},
+        TContext
+      > => {
+      return useMutation(getUpdateProfileSettingsMutationOptions(options));
+    }
 
 export const getGetDashboardSummaryUrl = () => {
 

@@ -19,7 +19,7 @@ export function requireMasterBuilder(
     (claims?.public_metadata as Record<string, unknown> | undefined) ??
     (claims?.publicMetadata as Record<string, unknown> | undefined) ??
     (claims?.metadata as Record<string, unknown> | undefined);
-  const role = metadata?.role;
+  const role = metadata?.accessRole ?? metadata?.role;
 
   if (!auth.userId) {
     res.status(401).json({ error: "Authentication is required" });

@@ -14,6 +14,7 @@ let tempDir;
 let server;
 let baseUrl;
 let pool;
+let processDueProfileMetadataJobs;
 const createdCustomerIds = [];
 const createdQuoteIds = [];
 const createdProjectIds = [];
@@ -52,7 +53,23 @@ before(async () => {
           namespace: "fixture",
         }));
         buildContext.onLoad({ filter: /.*/, namespace: "fixture" }, () => ({
-          contents: "export const getAuth = (req) => ({ userId: req.clerkUserId ?? null });",
+          contents: `
+            export const getAuth = (req) => ({ userId: req.clerkUserId ?? null });
+            export const clerkClient = {
+              users: {
+                getUser: async () => ({
+                  publicMetadata: { role: "MASTER_BUILDER", existing: "preserved" },
+                }),
+                updateUserMetadata: async (userId, update) => {
+                  if (globalThis.__failProfileMetadataSync) {
+                    throw new Error("Fixture Clerk outage");
+                  }
+                  globalThis.__profileMetadataUpdates ??= [];
+                  globalThis.__profileMetadataUpdates.push({ userId, update });
+                },
+              },
+            };
+          `,
           loader: "js",
         }));
       },
@@ -60,6 +77,7 @@ before(async () => {
   });
   const module = await import(pathToFileURL(path.join(tempDir, "router.cjs")).href);
   pool = module.pool;
+  processDueProfileMetadataJobs = module.processDueProfileMetadataJobs;
   server = module.app.listen(0, "127.0.0.1");
   await new Promise((resolve) => server.once("listening", resolve));
   baseUrl = `http://127.0.0.1:${server.address().port}`;
@@ -80,6 +98,8 @@ after(async () => {
     if (createdCustomerIds.length) {
       await pool.query("DELETE FROM bookings WHERE customer_id = ANY($1::int[])", [createdCustomerIds]);
     }
+    await pool.query("DELETE FROM profile_metadata_outbox WHERE clerk_user_id = ANY($1::text[])", [[userA, userB]]);
+    await pool.query("DELETE FROM business_profiles WHERE clerk_user_id = ANY($1::text[])", [[userA, userB]]);
     await pool.query("DELETE FROM customers WHERE name LIKE $1", [`${fixture}%`]);
   } finally {
     if (server) {
@@ -88,6 +108,93 @@ after(async () => {
     if (pool) await pool.end();
     await rm(tempDir, { recursive: true, force: true });
   }
+});
+
+test("database-backed onboarding and profile settings stay user scoped", { skip: !hasDatabase }, async () => {
+  const onboarding = await api(userA, "POST", "/onboarding", {
+    businessName: `${fixture} Carpentry Pty Ltd`,
+    phoneNumber: "+61 412 345 678",
+    tradeType: "Carpenter",
+    licenseNumber: "QBCC 1234567",
+    role: "Owner",
+  });
+  assert.equal(onboarding.response.status, 201);
+  assert.equal(onboarding.json.metadataSyncStatus, "synced");
+  assert.equal(onboarding.json.clerkUserId, undefined);
+
+  const foreignUpdate = await api(userB, "PUT", "/settings/profile", {
+    tradeType: "Plumber",
+    role: "Employee",
+    licenseNumber: "NSW 7654321",
+  });
+  assert.equal(foreignUpdate.response.status, 404);
+
+  const update = await api(userA, "PUT", "/settings/profile", {
+    tradeType: "Builder",
+    role: "Subcontractor",
+    licenseNumber: "QBCC 7654321",
+  });
+  assert.equal(update.response.status, 200);
+  assert.equal(update.json.tradeType, "Builder");
+  assert.equal(update.json.role, "Subcontractor");
+  assert.equal(update.json.metadataSyncStatus, "synced");
+
+  const stored = await pool.query(
+    "SELECT clerk_user_id, trade_type, role, metadata_sync_status FROM business_profiles WHERE clerk_user_id = $1",
+    [userA],
+  );
+  assert.deepEqual(stored.rows, [{
+    clerk_user_id: userA,
+    trade_type: "Builder",
+    role: "Subcontractor",
+    metadata_sync_status: "synced",
+  }]);
+
+  const metadataUpdates = globalThis.__profileMetadataUpdates ?? [];
+  const latest = metadataUpdates.at(-1);
+  assert.equal(latest.userId, userA);
+  assert.deepEqual(latest.update.publicMetadata, {
+    role: "Subcontractor",
+    accessRole: "MASTER_BUILDER",
+    tradeType: "Builder",
+    existing: "preserved",
+  });
+});
+
+test("failed Clerk metadata delivery retries from the durable outbox", { skip: !hasDatabase }, async () => {
+  globalThis.__failProfileMetadataSync = true;
+  const failed = await api(userB, "POST", "/onboarding", {
+    businessName: `${fixture} Plumbing Pty Ltd`,
+    phoneNumber: "07 3123 4567",
+    tradeType: "Plumber",
+    licenseNumber: "QLD 998877",
+    role: "Owner",
+  });
+  assert.equal(failed.response.status, 502);
+  assert.equal(failed.json.retryable, true);
+
+  const beforeRetry = await pool.query(
+    "SELECT metadata_sync_status FROM business_profiles WHERE clerk_user_id = $1",
+    [userB],
+  );
+  assert.equal(beforeRetry.rows[0].metadata_sync_status, "failed");
+
+  globalThis.__failProfileMetadataSync = false;
+  await pool.query(
+    "UPDATE profile_metadata_outbox SET available_at = now() WHERE clerk_user_id = $1",
+    [userB],
+  );
+  await processDueProfileMetadataJobs();
+
+  const afterRetry = await pool.query(
+    "SELECT metadata_sync_status FROM business_profiles WHERE clerk_user_id = $1",
+    [userB],
+  );
+  assert.equal(afterRetry.rows[0].metadata_sync_status, "synced");
+  assert.equal(
+    (globalThis.__profileMetadataUpdates ?? []).some((update) => update.userId === userB),
+    true,
+  );
 });
 
 test("database-backed customer and nested route isolation", { skip: !hasDatabase }, async () => {

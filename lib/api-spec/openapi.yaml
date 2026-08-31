@@ -19,6 +19,7 @@ tags:
   - name: time
   - name: portfolio
   - name: referrals
+  - name: profile
 paths:
   /healthz:
     get:
@@ -31,6 +32,46 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/HealthStatus" }
+
+  /onboarding:
+    post:
+      operationId: createOnboardingProfile
+      tags: [profile]
+      summary: Create or safely retry the authenticated user's business profile
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/OnboardingProfileInput" }
+      responses:
+        "201":
+          description: Profile created and Clerk metadata synchronised
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/BusinessProfile" }
+        "502":
+          description: Profile saved but Clerk metadata synchronisation failed
+
+  /settings/profile:
+    put:
+      operationId: updateProfileSettings
+      tags: [profile]
+      summary: Update the authenticated user's trade and role details
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ProfileSettingsInput" }
+      responses:
+        "200":
+          description: Profile and Clerk metadata updated
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/BusinessProfile" }
+        "404":
+          description: Profile not found
+        "502":
+          description: Profile saved but Clerk metadata synchronisation failed
 
   /dashboard/summary:
     get:
@@ -939,6 +980,55 @@ components:
       required: [status]
       properties:
         status: { type: string }
+
+    BusinessRole:
+      type: string
+      enum: [Owner, Employee, Subcontractor]
+    BusinessProfile:
+      type: object
+      required: [id, businessName, phoneNumber, tradeType, role, metadataSyncStatus, createdAt, updatedAt]
+      properties:
+        id: { type: integer }
+        businessName: { type: string }
+        phoneNumber: { type: string }
+        tradeType: { type: string }
+        licenseNumber: { type: ["string", "null"] }
+        role: { $ref: "#/components/schemas/BusinessRole" }
+        metadataSyncStatus:
+          type: string
+          enum: [pending, synced, failed]
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+    OnboardingProfileInput:
+      type: object
+      additionalProperties: false
+      required: [businessName, phoneNumber, tradeType, role]
+      properties:
+        businessName: { type: string, minLength: 2, maxLength: 120 }
+        phoneNumber:
+          type: string
+          minLength: 8
+          maxLength: 20
+          pattern: '^\+?[0-9 ()-]+$'
+        tradeType: { type: string, minLength: 2, maxLength: 80 }
+        licenseNumber:
+          type: [string, "null"]
+          minLength: 2
+          maxLength: 50
+          pattern: '^[A-Za-z0-9 ./-]+$'
+        role: { $ref: "#/components/schemas/BusinessRole" }
+    ProfileSettingsInput:
+      type: object
+      additionalProperties: false
+      required: [tradeType, role]
+      properties:
+        tradeType: { type: string, minLength: 2, maxLength: 80 }
+        licenseNumber:
+          type: [string, "null"]
+          minLength: 2
+          maxLength: 50
+          pattern: '^[A-Za-z0-9 ./-]+$'
+        role: { $ref: "#/components/schemas/BusinessRole" }
 
     DeletionSuccess:
       type: object

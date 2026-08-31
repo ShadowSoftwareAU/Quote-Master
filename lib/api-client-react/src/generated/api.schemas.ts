@@ -9,6 +9,80 @@ export interface HealthStatus {
   status: string;
 }
 
+export type BusinessRole = typeof BusinessRole[keyof typeof BusinessRole];
+
+
+export const BusinessRole = {
+  Owner: 'Owner',
+  Employee: 'Employee',
+  Subcontractor: 'Subcontractor',
+} as const;
+
+export type BusinessProfileMetadataSyncStatus = typeof BusinessProfileMetadataSyncStatus[keyof typeof BusinessProfileMetadataSyncStatus];
+
+
+export const BusinessProfileMetadataSyncStatus = {
+  pending: 'pending',
+  synced: 'synced',
+  failed: 'failed',
+} as const;
+
+export interface BusinessProfile {
+  id: number;
+  businessName: string;
+  phoneNumber: string;
+  tradeType: string;
+  /** @nullable */
+  licenseNumber?: string | null;
+  role: BusinessRole;
+  metadataSyncStatus: BusinessProfileMetadataSyncStatus;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface OnboardingProfileInput {
+  /**
+     * @minLength 2
+     * @maxLength 120
+     */
+  businessName: string;
+  /**
+     * @minLength 8
+     * @maxLength 20
+     * @pattern ^\+?[0-9 ()-]+$
+     */
+  phoneNumber: string;
+  /**
+     * @minLength 2
+     * @maxLength 80
+     */
+  tradeType: string;
+  /**
+     * @minLength 2
+     * @maxLength 50
+     * @nullable
+     * @pattern ^[A-Za-z0-9 ./-]+$
+     */
+  licenseNumber?: string | null;
+  role: BusinessRole;
+}
+
+export interface ProfileSettingsInput {
+  /**
+     * @minLength 2
+     * @maxLength 80
+     */
+  tradeType: string;
+  /**
+     * @minLength 2
+     * @maxLength 50
+     * @nullable
+     * @pattern ^[A-Za-z0-9 ./-]+$
+     */
+  licenseNumber?: string | null;
+  role: BusinessRole;
+}
+
 export const DeletionSuccessValue = {
   deleted: true,
 } as const;
