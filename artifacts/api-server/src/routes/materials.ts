@@ -17,6 +17,8 @@ function rowToJson(row: typeof materialsTable.$inferSelect) {
     id: row.id,
     name: row.name,
     sku: row.sku,
+    vendorName: row.vendorName,
+    vendorSku: row.vendorSku,
     category: row.category,
     unit: row.unit,
     unitPrice: Number(row.unitPrice),
@@ -24,6 +26,7 @@ function rowToJson(row: typeof materialsTable.$inferSelect) {
     packSize: row.packSize,
     supplier: row.supplier,
     notes: row.notes,
+    lastUpdated: row.lastUpdated,
   };
 }
 
@@ -58,6 +61,7 @@ router.post("/materials", async (req, res): Promise<void> => {
       clerkUserId: userId,
       unitPrice: String(unitPrice),
       tradeCost: tradeCost !== undefined ? String(tradeCost) : null,
+      lastUpdated: new Date(),
     })
     .returning();
   res.status(201).json(rowToJson(row));
@@ -80,6 +84,7 @@ router.patch("/materials/:id", async (req, res): Promise<void> => {
   const update: Record<string, unknown> = { ...rest };
   if (unitPrice !== undefined) update.unitPrice = String(unitPrice);
   if (tradeCost !== undefined) update.tradeCost = String(tradeCost);
+  update.lastUpdated = new Date();
   const [row] = await db
     .update(materialsTable)
     .set(update)

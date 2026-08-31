@@ -1496,11 +1496,13 @@ components:
 
     Material:
       type: object
-      required: [id, name, category, unit, unitPrice, supplier]
+      required: [id, name, category, unit, unitPrice, supplier, lastUpdated]
       properties:
         id: { type: integer }
         name: { type: string }
         sku: { type: ["string", "null"] }
+        vendorName: { type: ["string", "null"], description: "Canonical vendor name, ready for live supplier integrations" }
+        vendorSku: { type: ["string", "null"], description: "Vendor-specific product SKU" }
         category:
           type: string
           description: "decking | joist | bearer | post | stump | screw | nail | bracket | sealant | other"
@@ -1514,12 +1516,15 @@ components:
           type: string
           description: "bunnings | mitre10 | local | other"
         notes: { type: ["string", "null"] }
+        lastUpdated: { type: string, format: date-time }
     MaterialInput:
       type: object
       required: [name, category, unit, unitPrice, supplier]
       properties:
         name: { type: string, minLength: 1 }
         sku: { type: string }
+        vendorName: { type: string }
+        vendorSku: { type: string }
         category: { type: string }
         unit: { type: string }
         unitPrice: { type: number }
@@ -1532,6 +1537,8 @@ components:
       properties:
         name: { type: string, minLength: 1 }
         sku: { type: string }
+        vendorName: { type: string }
+        vendorSku: { type: string }
         category: { type: string }
         unit: { type: string }
         unitPrice: { type: number }

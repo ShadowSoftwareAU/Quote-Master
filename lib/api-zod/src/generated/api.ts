@@ -302,13 +302,16 @@ export const ListMaterialsResponseItem = zod.object({
   "id": zod.number(),
   "name": zod.string(),
   "sku": zod.string().nullish(),
+  "vendorName": zod.string().nullish().describe('Canonical vendor name, ready for live supplier integrations'),
+  "vendorSku": zod.string().nullish().describe('Vendor-specific product SKU'),
   "category": zod.string().describe('decking | joist | bearer | post | stump | screw | nail | bracket | sealant | other'),
   "unit": zod.string().describe('each | metre | pack | bag'),
   "unitPrice": zod.number().describe('Retail price per unit (AUD) — shown on client quotes'),
   "tradeCost": zod.number().nullish().describe('Your trade\/buy price — never shown to clients'),
   "packSize": zod.number().nullish().describe('Items per pack, if unit=pack'),
   "supplier": zod.string().describe('bunnings | mitre10 | local | other'),
-  "notes": zod.string().nullish()
+  "notes": zod.string().nullish(),
+  "lastUpdated": zod.coerce.date()
 })
 export const ListMaterialsResponse = zod.array(ListMaterialsResponseItem)
 
@@ -319,6 +322,8 @@ export const ListMaterialsResponse = zod.array(ListMaterialsResponseItem)
 export const CreateMaterialBody = zod.object({
   "name": zod.string().min(1),
   "sku": zod.string().optional(),
+  "vendorName": zod.string().optional(),
+  "vendorSku": zod.string().optional(),
   "category": zod.string(),
   "unit": zod.string(),
   "unitPrice": zod.number(),
@@ -339,6 +344,8 @@ export const UpdateMaterialParams = zod.object({
 export const UpdateMaterialBody = zod.object({
   "name": zod.string().min(1).optional(),
   "sku": zod.string().optional(),
+  "vendorName": zod.string().optional(),
+  "vendorSku": zod.string().optional(),
   "category": zod.string().optional(),
   "unit": zod.string().optional(),
   "unitPrice": zod.number().optional(),
@@ -352,13 +359,16 @@ export const UpdateMaterialResponse = zod.object({
   "id": zod.number(),
   "name": zod.string(),
   "sku": zod.string().nullish(),
+  "vendorName": zod.string().nullish().describe('Canonical vendor name, ready for live supplier integrations'),
+  "vendorSku": zod.string().nullish().describe('Vendor-specific product SKU'),
   "category": zod.string().describe('decking | joist | bearer | post | stump | screw | nail | bracket | sealant | other'),
   "unit": zod.string().describe('each | metre | pack | bag'),
   "unitPrice": zod.number().describe('Retail price per unit (AUD) — shown on client quotes'),
   "tradeCost": zod.number().nullish().describe('Your trade\/buy price — never shown to clients'),
   "packSize": zod.number().nullish().describe('Items per pack, if unit=pack'),
   "supplier": zod.string().describe('bunnings | mitre10 | local | other'),
-  "notes": zod.string().nullish()
+  "notes": zod.string().nullish(),
+  "lastUpdated": zod.coerce.date()
 })
 
 

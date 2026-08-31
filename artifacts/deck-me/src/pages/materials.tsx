@@ -13,6 +13,7 @@ import type { Material } from "@workspace/api-client-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
+import { Link } from "wouter";
 
 type CsvRow = { name: string; sku?: string; tradeCost: number };
 
@@ -165,6 +166,11 @@ export default function Materials() {
           <Button variant="outline" onClick={() => fileInputRef.current?.click()} className="font-bold uppercase">
             <Upload className="w-4 h-4 mr-2" /> Import Trade CSV
           </Button>
+          <Link href="/materials/import">
+            <Button variant="outline" className="font-bold uppercase">
+              <FileText className="mr-2 h-4 w-4" /> Smart Material Import
+            </Button>
+          </Link>
           <Dialog open={open} onOpenChange={setOpen}>
             <Button onClick={handleOpenCreate} className="font-bold uppercase">
               <Plus className="w-4 h-4 mr-2" /> Add Material

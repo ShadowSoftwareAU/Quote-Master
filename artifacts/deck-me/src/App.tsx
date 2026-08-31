@@ -17,6 +17,7 @@ import QuotePortal from "@/pages/quote-portal";
 import MasterProjectPortal from "@/pages/master-project-portal";
 import Customers from "@/pages/customers";
 import Materials from "@/pages/materials";
+import MaterialImport from "@/pages/material-import";
 import Bookings from "@/pages/bookings";
 import TeamPage from "@/pages/team";
 import PlannerPage from "@/pages/planner";
@@ -189,6 +190,7 @@ function WorkspaceRoutes() {
         <Route path="/quotes/:id" component={QuoteDetail} />
         <Route path="/customers" component={canViewGeneralWorkspace ? Customers : () => <RestrictedPage title="Customers" />} />
         <Route path="/materials" component={canViewGeneralWorkspace ? Materials : () => <RestrictedPage title="Materials" />} />
+        <Route path="/materials/import" component={canViewGeneralWorkspace ? MaterialImport : () => <RestrictedPage title="Material Import" />} />
         <Route path="/bookings" component={Bookings} />
         <Route path="/team" component={canManageTeam ? TeamPage : () => <RestrictedPage title="Team management" />} />
         <Route path="/planner" component={canManageTeam ? PlannerPage : () => <RestrictedPage title="Planner" />} />

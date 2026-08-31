@@ -10,6 +10,8 @@ export interface MaterialInput {
   /** @minLength 1 */
   name: string;
   sku?: string;
+  vendorName?: string;
+  vendorSku?: string;
   category: string;
   unit: string;
   unitPrice: number;

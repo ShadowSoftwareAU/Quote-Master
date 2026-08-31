@@ -11,6 +11,16 @@ export interface Material {
   name: string;
   /** @nullable */
   sku?: string | null;
+  /**
+     * Canonical vendor name, ready for live supplier integrations
+     * @nullable
+     */
+  vendorName?: string | null;
+  /**
+     * Vendor-specific product SKU
+     * @nullable
+     */
+  vendorSku?: string | null;
   /** decking | joist | bearer | post | stump | screw | nail | bracket | sealant | other */
   category: string;
   /** each | metre | pack | bag */
@@ -31,4 +41,5 @@ export interface Material {
   supplier: string;
   /** @nullable */
   notes?: string | null;
+  lastUpdated: Date;
 }
