@@ -687,6 +687,12 @@ export interface QuotePortal {
   complianceDisclaimer: string;
   /** @nullable */
   contractorLicenseNumber: string | null;
+  /** @nullable */
+  businessName: string | null;
+  /** @nullable */
+  businessPhone: string | null;
+  /** @nullable */
+  businessTradeType: string | null;
   spec: DeckSpecInput;
   lineItems: PublicQuoteLineItem[];
   materialsSubtotal: number;

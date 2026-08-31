@@ -8,8 +8,12 @@ import {
   getGetMasterProjectQueryKey,
   useDeleteQuote,
   useGetQuote,
+  useRegenerateQuotePortalToken,
   useSetQuoteStatus,
 } from "@workspace/api-client-react";
+import { useAuth } from "@clerk/expo";
+import * as FileSystem from "expo-file-system/legacy";
+import * as Sharing from "expo-sharing";
 import { Redirect, router, useLocalSearchParams } from "expo-router";
 import React from "react";
 import {
@@ -17,6 +21,7 @@ import {
   Alert,
   Pressable,
   ScrollView,
+  Share,
   Text,
   View,
 } from "react-native";
@@ -27,6 +32,7 @@ import {
   StatusBadge,
   formatAUD,
 } from "@/components/ui";
+import { API_BASE_URL, WEB_BASE_URL } from "@/constants/api";
 import { useColors } from "@/hooks/useColors";
 import { useProfileAccess } from "@/lib/access";
 
@@ -39,6 +45,7 @@ export default function QuoteDetailRoute() {
 function QuoteDetail() {
   const colors = useColors();
   const { isAssignedWorker } = useProfileAccess();
+  const { getToken } = useAuth();
   const params = useLocalSearchParams<{ id: string }>();
   const id = Number(params.id);
   const qc = useQueryClient();
@@ -47,7 +54,40 @@ function QuoteDetail() {
   });
   const statusMut = useSetQuoteStatus();
   const deleteMut = useDeleteQuote();
+  const portalTokenMut = useRegenerateQuotePortalToken();
   const linkedMasterProjectId = data?.masterProjectId;
+
+  async function sharePortalLink() {
+    const portalToken =
+      data?.portalToken ??
+      (await portalTokenMut.mutateAsync({ id })).portalToken;
+    await Share.share({
+      message: `${WEB_BASE_URL}/quote/${portalToken}`,
+      title: data?.title ?? "Client quote portal",
+    });
+  }
+
+  async function downloadPdf() {
+    const authToken = await getToken();
+    if (!authToken) {
+      throw new Error("You must be signed in to download a quote PDF.");
+    }
+    const target = `${FileSystem.documentDirectory}quote-${id}.pdf`;
+    const result = await FileSystem.downloadAsync(
+      `${API_BASE_URL}/api/quotes/${id}/pdf`,
+      target,
+      { headers: { Authorization: `Bearer ${authToken}` } },
+    );
+    if (!(await Sharing.isAvailableAsync())) {
+      Alert.alert("PDF downloaded", "The PDF was saved to this device.");
+      return;
+    }
+    await Sharing.shareAsync(result.uri, {
+      mimeType: "application/pdf",
+      dialogTitle: "Share quote PDF",
+      UTI: "com.adobe.pdf",
+    });
+  }
 
   function setStatus(status: string) {
     statusMut.mutate(
@@ -142,6 +182,54 @@ function QuoteDetail() {
           {data.customerName ?? "—"} · {data.lengthM}×{data.widthM}m
         </Text>
       </View>}
+
+      {!isAssignedWorker && (
+        <View style={{ gap: 8 }}>
+          <Pressable
+            disabled={portalTokenMut.isPending}
+            onPress={() =>
+              sharePortalLink().catch(() =>
+                Alert.alert("Could not share portal link", "Please try again."),
+              )
+            }
+            style={[
+              styles.actionButton,
+              {
+                backgroundColor: colors.primary,
+                opacity: portalTokenMut.isPending ? 0.6 : 1,
+              },
+            ]}
+          >
+            <Feather name="link" size={16} color="#fff" />
+            <Text style={styles.actionButtonText}>
+              {portalTokenMut.isPending
+                ? "PREPARING LINK..."
+                : "SHARE PORTAL LINK"}
+            </Text>
+          </Pressable>
+          <Pressable
+            onPress={() =>
+              downloadPdf().catch(() =>
+                Alert.alert("Could not download PDF", "Please try again."),
+              )
+            }
+            style={[
+              styles.actionButton,
+              { borderColor: colors.border, borderWidth: 1 },
+            ]}
+          >
+            <Feather name="download" size={16} color={colors.foreground} />
+            <Text
+              style={[
+                styles.actionButtonText,
+                { color: colors.foreground },
+              ]}
+            >
+              DOWNLOAD / SHARE PDF
+            </Text>
+          </Pressable>
+        </View>
+      )}
 
       <View
         style={{
@@ -341,3 +429,20 @@ function Row({ label, value }: { label: string; value: string }) {
     </View>
   );
 }
+
+const styles = {
+  actionButton: {
+    borderRadius: 8,
+    padding: 14,
+    alignItems: "center" as const,
+    justifyContent: "center" as const,
+    flexDirection: "row" as const,
+    gap: 8,
+  },
+  actionButtonText: {
+    color: "#fff",
+    fontFamily: "Inter_700Bold",
+    fontSize: 12,
+    letterSpacing: 0.5,
+  },
+};

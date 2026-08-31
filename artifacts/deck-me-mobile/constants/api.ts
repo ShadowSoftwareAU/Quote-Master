@@ -17,3 +17,10 @@ const configuredApiUrl =
   DEFAULT_API_URL;
 
 export const API_BASE_URL = normaliseApiUrl(configuredApiUrl);
+
+const configuredWebUrl =
+  process.env.EXPO_PUBLIC_WEB_URL?.trim() ||
+  process.env.EXPO_PUBLIC_DOMAIN?.trim() ||
+  API_BASE_URL;
+
+export const WEB_BASE_URL = normaliseApiUrl(configuredWebUrl);

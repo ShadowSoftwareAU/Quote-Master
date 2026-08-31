@@ -59,6 +59,10 @@ before(async () => {
           path: "fixture-clerk",
           namespace: "fixture",
         }));
+        buildContext.onResolve({ filter: /^pdfkit$/ }, () => ({
+          path: "fixture-pdfkit",
+          namespace: "fixture-pdfkit",
+        }));
         buildContext.onLoad({ filter: /.*/, namespace: "fixture" }, () => ({
           contents: `
             export const getAuth = (req) => ({ userId: req.clerkUserId ?? null });
@@ -79,6 +83,30 @@ before(async () => {
           `,
           loader: "js",
         }));
+        buildContext.onLoad(
+          { filter: /.*/, namespace: "fixture-pdfkit" },
+          () => ({
+            contents: `
+              export default class FixturePdfDocument {
+                pipe(response) { this.response = response; return response; }
+                rect() { return this; }
+                fill() { return this; }
+                fontSize() { return this; }
+                font() { return this; }
+                fillColor() { return this; }
+                text() { return this; }
+                moveTo() { return this; }
+                lineTo() { return this; }
+                strokeColor() { return this; }
+                stroke() { return this; }
+                addPage() { return this; }
+                heightOfString() { return 12; }
+                end() { this.response.end("%PDF-fixture"); }
+              }
+            `,
+            loader: "js",
+          }),
+        );
       },
     }],
   });
@@ -340,6 +368,26 @@ test("database-backed customer and nested route isolation", { skip: !hasDatabase
   assert.equal(quote.json.contractorLicenseNumber, "QBCC 7654321");
   createdQuoteIds.push(quote.json.id);
 
+  assert.equal(
+    (await api(null, "GET", `/quotes/${quote.json.id}/pdf`)).response.status,
+    401,
+  );
+  assert.equal(
+    (await api(userB, "GET", `/quotes/${quote.json.id}/pdf`)).response.status,
+    404,
+  );
+  const quotePdf = await api(userA, "GET", `/quotes/${quote.json.id}/pdf`);
+  assert.equal(quotePdf.response.status, 200);
+  assert.equal(
+    quotePdf.response.headers.get("content-type"),
+    "application/pdf",
+  );
+  assert.equal(
+    new TextDecoder()
+      .decode((await quotePdf.response.arrayBuffer()).slice(0, 4)),
+    "%PDF",
+  );
+
   const customQuote = await api(userA, "POST", "/quotes", {
     title: `${fixture}-custom-line-items-quote`,
     customerId: quoteCustomer.json.id,
@@ -458,6 +506,37 @@ test("database-backed customer and nested route isolation", { skip: !hasDatabase
     assert.equal("unitCost" in line, false);
     assert.equal("markupPercentage" in line, false);
   }
+  const acceptedTotal = acceptedCustomQuote.json.total;
+  const acceptedSpec = acceptedCustomQuote.json.spec;
+  const postAcceptanceUpdate = await api(
+    null,
+    "PATCH",
+    `/quote/${customQuote.json.portalToken}`,
+    { deckBoardType: "post-acceptance-change" },
+  );
+  assert.equal(postAcceptanceUpdate.response.status, 409);
+  const unchangedAcceptedQuote = await api(
+    null,
+    "GET",
+    `/quote/${customQuote.json.portalToken}`,
+  );
+  assert.equal(unchangedAcceptedQuote.json.total, acceptedTotal);
+  assert.deepEqual(unchangedAcceptedQuote.json.spec, acceptedSpec);
+  assert.equal(
+    (await api(userA, "PATCH", `/quotes/${customQuote.json.id}/status`, { status: "draft" })).response.status,
+    409,
+  );
+  assert.equal(
+    (await api(userA, "PATCH", `/quotes/${customQuote.json.id}`, { notes: "reopen bypass" })).response.status,
+    409,
+  );
+  const stillAcceptedQuote = await api(
+    null,
+    "GET",
+    `/quote/${customQuote.json.portalToken}`,
+  );
+  assert.equal(stillAcceptedQuote.json.status, "accepted");
+  assert.equal(stillAcceptedQuote.json.total, acceptedTotal);
 
   const preciseQuote = await api(userA, "POST", "/quotes", {
     title: `${fixture}-normalised-line-item-quote`,
@@ -495,6 +574,24 @@ test("database-backed customer and nested route isolation", { skip: !hasDatabase
   assert.equal(
     precisePortalUpdate.json.lineItems.find((line) => line.category === "custom").lineTotal,
     preciseLine.lineTotal,
+  );
+  const [raceAcceptance, raceManagerUpdate] = await Promise.all([
+    api(null, "PATCH", `/quote/${preciseQuote.json.portalToken}/status`, {
+      status: "accepted",
+    }),
+    api(userA, "PATCH", `/quotes/${preciseQuote.json.id}`, {
+      notes: "Concurrent owner update",
+    }),
+  ]);
+  assert.equal(raceAcceptance.response.status, 200);
+  assert.equal([200, 409].includes(raceManagerUpdate.response.status), true);
+  const raceResult = await api(userA, "GET", `/quotes/${preciseQuote.json.id}`);
+  assert.equal(raceResult.json.status, "accepted");
+  assert.equal(
+    (await api(userA, "PATCH", `/quotes/${preciseQuote.json.id}`, {
+      notes: "Must remain locked",
+    })).response.status,
+    409,
   );
 
   for (const invalidLineItem of [
@@ -544,6 +641,9 @@ test("database-backed customer and nested route isolation", { skip: !hasDatabase
   assert.equal(publicPortal.json.id, quote.json.id);
   assert.equal(publicPortal.json.complianceDisclaimer, quote.json.complianceDisclaimer);
   assert.equal(publicPortal.json.contractorLicenseNumber, "QBCC 7654321");
+  assert.equal(publicPortal.json.businessName, `${fixture} Carpentry Pty Ltd`);
+  assert.equal(publicPortal.json.businessPhone, "+61 412 345 678");
+  assert.equal(publicPortal.json.businessTradeType, "Builder");
 
   await pool.query(
     "UPDATE quotes SET compliance_disclaimer = NULL, contractor_license_number = NULL WHERE id = $1",

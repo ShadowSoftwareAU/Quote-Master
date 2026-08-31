@@ -870,6 +870,9 @@ export const GetQuotePortalResponse = zod.object({
   "notes": zod.string().nullable(),
   "complianceDisclaimer": zod.string(),
   "contractorLicenseNumber": zod.string().nullable(),
+  "businessName": zod.string().nullable(),
+  "businessPhone": zod.string().nullable(),
+  "businessTradeType": zod.string().nullable(),
   "spec": zod.object({
   "lengthM": zod.number().describe('Deck length in metres'),
   "widthM": zod.number().describe('Deck width in metres'),
@@ -972,6 +975,9 @@ export const UpdateQuotePortalResponse = zod.object({
   "notes": zod.string().nullable(),
   "complianceDisclaimer": zod.string(),
   "contractorLicenseNumber": zod.string().nullable(),
+  "businessName": zod.string().nullable(),
+  "businessPhone": zod.string().nullable(),
+  "businessTradeType": zod.string().nullable(),
   "spec": zod.object({
   "lengthM": zod.number().describe('Deck length in metres'),
   "widthM": zod.number().describe('Deck width in metres'),
@@ -1073,6 +1079,9 @@ export const SetQuotePortalStatusResponse = zod.object({
   "notes": zod.string().nullable(),
   "complianceDisclaimer": zod.string(),
   "contractorLicenseNumber": zod.string().nullable(),
+  "businessName": zod.string().nullable(),
+  "businessPhone": zod.string().nullable(),
+  "businessTradeType": zod.string().nullable(),
   "spec": zod.object({
   "lengthM": zod.number().describe('Deck length in metres'),
   "widthM": zod.number().describe('Deck width in metres'),
@@ -1143,6 +1152,14 @@ export const RevokeQuotePortalTokenParams = zod.object({
 
 export const RevokeQuotePortalTokenResponse = zod.object({
   "revoked": zod.boolean()
+})
+
+
+/**
+ * @summary Download an authenticated quote PDF
+ */
+export const GetQuotePdfParams = zod.object({
+  "id": zod.coerce.number()
 })
 
 

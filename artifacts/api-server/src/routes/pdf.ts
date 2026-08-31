@@ -75,6 +75,8 @@ router.get("/quotes/:id/pdf", async (req, res): Promise<void> => {
   const [profile] = await db
     .select({
       licenseNumber: businessProfilesTable.licenseNumber,
+      businessName: businessProfilesTable.businessName,
+      phoneNumber: businessProfilesTable.phoneNumber,
       tradeType: businessProfilesTable.tradeType,
     })
     .from(businessProfilesTable)
@@ -85,6 +87,9 @@ router.get("/quotes/:id/pdf", async (req, res): Promise<void> => {
     complianceDisclaimerForTrade(profile?.tradeType ?? q.tradeType);
   const contractorLicenseNumber =
     q.contractorLicenseNumber ?? profile?.licenseNumber ?? null;
+  const businessName = profile?.businessName ?? "Quote Master";
+  const businessPhone = profile?.phoneNumber ?? null;
+  const businessTradeType = profile?.tradeType ?? q.tradeType;
   const customerName = row.customerName ?? "Customer";
   const deckArea = Math.round(Number(q.lengthM) * Number(q.widthM) * 100) / 100;
   const councilWarning = Number(q.heightM) >= 1.0;
@@ -116,13 +121,13 @@ router.get("/quotes/:id/pdf", async (req, res): Promise<void> => {
     .fontSize(28)
     .font("Helvetica-Bold")
     .fillColor(ORANGE)
-    .text("QUOTE MASTER", margin, 22, { continued: false });
+    .text(businessName.toUpperCase(), margin, 22, { continued: false, width: contentW * 0.55, ellipsis: true });
 
   doc
     .fontSize(9)
     .font("Helvetica")
     .fillColor("rgba(255,255,255,0.5)")
-    .text("DECKING SPECIALISTS", margin, 55);
+    .text(`${businessTradeType.toUpperCase()}${businessPhone ? `  ·  ${businessPhone}` : ""}`, margin, 55);
 
   // Quote title (right side of header)
   doc
@@ -141,6 +146,22 @@ router.get("/quotes/:id/pdf", async (req, res): Promise<void> => {
   doc.fontSize(9).font("Helvetica-Bold").fillColor(statusColor).text(q.status.toUpperCase(), margin, 58, { align: "right" });
 
   let y = 116;
+  const pageContentBottom = 750;
+  const drawTableHeader = () => {
+    doc.rect(margin, y, contentW, 24).fill(DARK);
+    doc.fontSize(8).font("Helvetica-Bold").fillColor("white")
+      .text("ITEM", margin + 8, y + 8)
+      .text("QTY", margin + contentW * 0.58, y + 8)
+      .text("UNIT PRICE", margin + contentW * 0.72, y + 8)
+      .text("TOTAL", margin + contentW * 0.88, y + 8);
+    y += 24;
+  };
+  const ensureSpace = (height: number, redrawTableHeader = false) => {
+    if (y + height <= pageContentBottom) return;
+    doc.addPage();
+    y = 50;
+    if (redrawTableHeader) drawTableHeader();
+  };
 
   // ── Client / Job info block ──
   const infoY = y;
@@ -175,24 +196,19 @@ router.get("/quotes/:id/pdf", async (req, res): Promise<void> => {
   y += 20;
 
   // ── BOM Table header ──
-  doc.rect(margin, y, contentW, 24).fill(DARK);
-  doc.fontSize(8).font("Helvetica-Bold").fillColor("white")
-    .text("ITEM", margin + 8, y + 8)
-    .text("QTY", margin + contentW * 0.58, y + 8)
-    .text("UNIT PRICE", margin + contentW * 0.72, y + 8)
-    .text("TOTAL", margin + contentW * 0.88, y + 8);
-  y += 24;
+  drawTableHeader();
 
   // ── BOM rows ──
   for (let i = 0; i < lines.length; i++) {
     const l = lines[i];
     const rowH = 26;
+    ensureSpace(rowH, true);
     const bg = i % 2 === 0 ? "#ffffff" : LIGHT_GREY;
     doc.rect(margin, y, contentW, rowH).fill(bg);
 
     const qty = Number(l.quantity);
-    const unitPrice = Number(l.unitPrice);
     const lineTotal = Number(l.lineTotal);
+    const unitPrice = qty > 0 ? Math.round((lineTotal / qty + Number.EPSILON) * 100) / 100 : 0;
 
     doc.fontSize(9).font("Helvetica-Bold").fillColor(TEXT)
       .text(l.description, margin + 8, y + 5, { width: contentW * 0.55, ellipsis: true });
@@ -205,16 +221,11 @@ router.get("/quotes/:id/pdf", async (req, res): Promise<void> => {
       .text(formatAUD(lineTotal), margin + contentW * 0.88, y + 9, { width: contentW * 0.11, align: "right" });
 
     y += rowH;
-
-    // Page break
-    if (y > 740) {
-      doc.addPage();
-      y = 50;
-    }
   }
 
   // ── Totals block ──
   y += 10;
+  ensureSpace(112);
   const totalsX = margin + contentW * 0.58;
   const totalsW = contentW * 0.42;
 
@@ -240,21 +251,20 @@ router.get("/quotes/:id/pdf", async (req, res): Promise<void> => {
 
   // ── Notes ──
   if (q.notes) {
+    ensureSpace(36);
     doc.fontSize(8).font("Helvetica-Bold").fillColor(MUTED).text("NOTES", margin, y);
     doc.fontSize(9).font("Helvetica").fillColor(TEXT).text(q.notes, margin, y + 12, { width: contentW });
-    y += 40;
+    y = doc.y + 18;
   }
 
-  if (y > 700) {
-    doc.addPage();
-    y = 50;
-  }
+  ensureSpace(48);
   doc.fontSize(8).font("Helvetica-Bold").fillColor(MUTED)
     .text("COMPLIANCE", margin, y);
   doc.fontSize(9).font("Helvetica").fillColor(TEXT)
     .text(complianceDisclaimer, margin, y + 12, { width: contentW });
-  y += 38;
+  y = doc.y + 14;
   if (contractorLicenseNumber) {
+    ensureSpace(24);
     doc.fontSize(9).font("Helvetica-Bold").fillColor(TEXT)
       .text(`Builder / Contractor Licence: ${contractorLicenseNumber}`, margin, y, { width: contentW });
   }

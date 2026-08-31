@@ -1735,7 +1735,7 @@ export const updateQuotePortal = async (token: string,
 
 
 
-export const getUpdateQuotePortalMutationOptions = <TError = ErrorType<unknown>,
+export const getUpdateQuotePortalMutationOptions = <TError = ErrorType<void>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateQuotePortal>>, TError,{token: string;data: BodyType<QuotePortalUpgradeInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
 ): UseMutationOptions<Awaited<ReturnType<typeof updateQuotePortal>>, TError,{token: string;data: BodyType<QuotePortalUpgradeInput>}, TContext> => {
 
@@ -1764,12 +1764,12 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
     export type UpdateQuotePortalMutationResult = NonNullable<Awaited<ReturnType<typeof updateQuotePortal>>>
     export type UpdateQuotePortalMutationBody = BodyType<QuotePortalUpgradeInput>
-    export type UpdateQuotePortalMutationError = ErrorType<unknown>
+    export type UpdateQuotePortalMutationError = ErrorType<void>
 
     /**
  * @summary Apply an allowed customer upgrade using a secure portal token
  */
-export const useUpdateQuotePortal = <TError = ErrorType<unknown>,
+export const useUpdateQuotePortal = <TError = ErrorType<void>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateQuotePortal>>, TError,{token: string;data: BodyType<QuotePortalUpgradeInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
  ): UseMutationResult<
         Awaited<ReturnType<typeof updateQuotePortal>>,
@@ -1991,6 +1991,83 @@ export const useRevokeQuotePortalToken = <TError = ErrorType<unknown>,
       > => {
       return useMutation(getRevokeQuotePortalTokenMutationOptions(options));
     }
+
+export const getGetQuotePdfUrl = (id: number,) => {
+
+
+
+
+  return `/api/quotes/${id}/pdf`
+}
+
+/**
+ * @summary Download an authenticated quote PDF
+ */
+export const getQuotePdf = async (id: number, options?: RequestInit): Promise<Blob> => {
+
+  return customFetch<Blob>(getGetQuotePdfUrl(id),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetQuotePdfQueryKey = (id: number,) => {
+    return [
+    `/api/quotes/${id}/pdf`
+    ] as const;
+    }
+
+
+export const getGetQuotePdfQueryOptions = <TData = Awaited<ReturnType<typeof getQuotePdf>>, TError = ErrorType<unknown>>(id: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getQuotePdf>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetQuotePdfQueryKey(id);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getQuotePdf>>> = ({ signal }) => getQuotePdf(id, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: !!(id), ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getQuotePdf>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetQuotePdfQueryResult = NonNullable<Awaited<ReturnType<typeof getQuotePdf>>>
+export type GetQuotePdfQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary Download an authenticated quote PDF
+ */
+
+export function useGetQuotePdf<TData = Awaited<ReturnType<typeof getQuotePdf>>, TError = ErrorType<unknown>>(
+ id: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getQuotePdf>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetQuotePdfQueryOptions(id,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
 
 export const getEstimateDeckUrl = () => {
 

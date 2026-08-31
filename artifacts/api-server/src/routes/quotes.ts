@@ -1,6 +1,6 @@
 import { Router, type IRouter } from "express";
 import { getAuth } from "@clerk/express";
-import { and, eq, desc, isNotNull, or } from "drizzle-orm";
+import { and, eq, desc, isNotNull, ne, or } from "drizzle-orm";
 import { randomBytes } from "node:crypto";
 import {
   db,
@@ -277,6 +277,8 @@ async function loadQuoteJson(id: number, userId?: string) {
     ? await db
         .select({
           licenseNumber: businessProfilesTable.licenseNumber,
+          businessName: businessProfilesTable.businessName,
+          phoneNumber: businessProfilesTable.phoneNumber,
           tradeType: businessProfilesTable.tradeType,
         })
         .from(businessProfilesTable)
@@ -336,6 +338,9 @@ async function loadQuoteJson(id: number, userId?: string) {
       complianceDisclaimerForTrade(profile?.tradeType ?? row.q.tradeType),
     contractorLicenseNumber:
       row.q.contractorLicenseNumber ?? profile?.licenseNumber ?? null,
+    businessName: profile?.businessName ?? null,
+    businessPhone: profile?.phoneNumber ?? null,
+    businessTradeType: profile?.tradeType ?? row.q.tradeType,
     customerName: row.customerName,
     siteAddress: row.q.siteAddress,
     notes: row.q.notes,
@@ -400,6 +405,9 @@ function publicQuoteResponse(quote: LoadedQuote) {
     notes: quote.notes,
     complianceDisclaimer: quote.complianceDisclaimer,
     contractorLicenseNumber: quote.contractorLicenseNumber,
+    businessName: quote.businessName,
+    businessPhone: quote.businessPhone,
+    businessTradeType: quote.businessTradeType,
     spec: publicSpec,
     lineItems: quote.lineItems.map(publicLineItem),
     materialsSubtotal: quote.materialsSubtotal,
@@ -690,6 +698,10 @@ router.patch("/quotes/:id", requireQuoteManager, async (req, res): Promise<void>
     res.status(404).json({ error: "Quote not found" });
     return;
   }
+  if (existing.status === "accepted") {
+    res.status(409).json({ error: "Accepted quotes cannot be changed" });
+    return;
+  }
   const d = body.data;
   if (d.assignedTeamMemberId !== undefined) {
     if ((await getBusinessRole(userId)) !== "Owner") {
@@ -781,8 +793,12 @@ router.patch("/quotes/:id", requireQuoteManager, async (req, res): Promise<void>
       })
       .where(
         userId
-          ? and(eq(quotesTable.id, params.data.id), eq(quotesTable.clerkUserId, userId))
-          : eq(quotesTable.id, params.data.id),
+          ? and(
+              eq(quotesTable.id, params.data.id),
+              eq(quotesTable.clerkUserId, userId),
+              ne(quotesTable.status, "accepted"),
+            )
+          : and(eq(quotesTable.id, params.data.id), ne(quotesTable.status, "accepted")),
       )
       .returning();
     if (!row) return null;
@@ -811,7 +827,7 @@ router.patch("/quotes/:id", requireQuoteManager, async (req, res): Promise<void>
     return row;
   });
   if (!updated) {
-    res.status(404).json({ error: "Quote not found" });
+    res.status(409).json({ error: "Quote was accepted before the update completed" });
     return;
   }
   const json = await loadQuoteJson(params.data.id, userId ?? undefined);
@@ -835,17 +851,35 @@ router.patch("/quotes/:id/status", requireQuoteManager, async (req, res): Promis
     res.status(400).json({ error: body.error.message });
     return;
   }
+  const [existing] = await db
+    .select({ status: quotesTable.status })
+    .from(quotesTable)
+    .where(and(
+      eq(quotesTable.id, params.data.id),
+      eq(quotesTable.clerkUserId, userId),
+    ))
+    .limit(1);
+  if (!existing) {
+    res.status(404).json({ error: "Quote not found" });
+    return;
+  }
+  if (existing.status === "accepted") {
+    res.status(409).json({ error: "Accepted quotes cannot be reopened" });
+    return;
+  }
   const [row] = await db
     .update(quotesTable)
     .set({ status: body.data.status })
     .where(
-      userId
-        ? and(eq(quotesTable.id, params.data.id), eq(quotesTable.clerkUserId, userId))
-        : eq(quotesTable.id, params.data.id),
+      and(
+        eq(quotesTable.id, params.data.id),
+        eq(quotesTable.clerkUserId, userId),
+        ne(quotesTable.status, "accepted"),
+      ),
     )
     .returning();
   if (!row) {
-    res.status(404).json({ error: "Quote not found" });
+    res.status(409).json({ error: "Quote was accepted before the status change completed" });
     return;
   }
   const json = await loadQuoteJson(params.data.id, userId ?? undefined);
@@ -892,7 +926,10 @@ router.patch("/quote/:token", async (req, res): Promise<void> => {
       labourCost: String(labourCost),
       gst: String(gst),
       total: String(total),
-    }).where(eq(quotesTable.portalToken, params.data.token)).returning();
+    }).where(and(
+      eq(quotesTable.portalToken, params.data.token),
+      ne(quotesTable.status, "accepted"),
+    )).returning();
     if (!row) return null;
     await tx.delete(quoteLineItemsTable).where(eq(quoteLineItemsTable.quoteId, row.id));
     if (lines.length > 0) {
@@ -914,7 +951,7 @@ router.patch("/quote/:token", async (req, res): Promise<void> => {
     return row;
   });
   if (!updated) {
-    res.status(404).json({ error: "Quote not found" });
+    res.status(409).json({ error: "Quote was accepted before the update completed" });
     return;
   }
   const json = await loadQuoteJson(updated.id);

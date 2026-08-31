@@ -88,6 +88,11 @@ export default function QuoteDetail() {
     }
   };
 
+  const handleDownloadPdf = () => {
+    const basePath = import.meta.env.BASE_URL.replace(/\/$/, "");
+    window.open(`${basePath}/api/quotes/${quoteId}/pdf`, "_blank", "noopener,noreferrer");
+  };
+
   const handleCreateVariation = () => {
     if (!varTitle.trim()) {
       toast({ title: "Enter a title for the variation", variant: "destructive" });
@@ -131,7 +136,7 @@ export default function QuoteDetail() {
             className="font-bold uppercase"
             onClick={handleCopyPortalLink}
           >
-            <Link2 className="w-4 h-4 mr-2" /> Client Portal
+            <Link2 className="w-4 h-4 mr-2" /> Copy Portal Link
           </Button>
           {quote.status === 'draft' && (
             <Button onClick={() => updateStatus('sent')} className="font-bold uppercase"><Send className="w-4 h-4 mr-2" /> Mark Sent</Button>
@@ -154,9 +159,9 @@ export default function QuoteDetail() {
           <Button
             variant="outline"
             className="font-bold uppercase"
-            onClick={() => window.open(`/api/quotes/${quoteId}/pdf`, "_blank")}
+              onClick={handleDownloadPdf}
           >
-            <Download className="w-4 h-4 mr-2" /> PDF
+              <Download className="w-4 h-4 mr-2" /> Download PDF
           </Button>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>

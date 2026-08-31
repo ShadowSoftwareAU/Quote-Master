@@ -11,6 +11,15 @@ import type { QuoteEstimate, DeckSpecInput } from "@workspace/api-client-react";
 import { Check, ChevronRight, HardHat, Info, Hammer, MapPin, Ruler, FileText, CheckCircle2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
+function isConflictError(error: unknown): boolean {
+  return Boolean(
+    error &&
+      typeof error === "object" &&
+      "status" in error &&
+      error.status === 409,
+  );
+}
+
 export default function QuotePortalPage() {
   const params = useParams();
   const token = params.token ?? "";
@@ -68,7 +77,18 @@ export default function QuotePortalPage() {
             complianceWarnings: [],
           });
         },
-        onError: () => {
+        onError: async (error) => {
+          if (isConflictError(error)) {
+            setEstimate(null);
+            await queryClient.invalidateQueries({
+              queryKey: getGetQuotePortalQueryKey(token),
+            });
+            toast({
+              title: "This quote has already been accepted",
+              description: "The accepted scope and price are now locked.",
+            });
+            return;
+          }
           toast({
             title: "Price update unavailable",
             description: "Please try your selection again before accepting the quote.",
@@ -122,8 +142,19 @@ export default function QuotePortalPage() {
       },
       {
         onSuccess: markAccepted,
-        onError: () => {
+        onError: async (error) => {
           setIsAccepting(false);
+          if (isConflictError(error)) {
+            setEstimate(null);
+            await queryClient.invalidateQueries({
+              queryKey: getGetQuotePortalQueryKey(token),
+            });
+            toast({
+              title: "This quote has already been accepted",
+              description: "The accepted scope and price are now locked.",
+            });
+            return;
+          }
           toast({
             title: "We could not save your selection",
             description: "Please try again before accepting the quote.",
@@ -175,8 +206,14 @@ export default function QuotePortalPage() {
       {/* Header */}
       <header className="bg-secondary text-secondary-foreground py-6 px-6 md:px-12 sticky top-0 z-10 shadow-md">
         <div className="max-w-6xl mx-auto flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <img src={`${import.meta.env.BASE_URL}quote-master-logo.jpg`} alt="Quote Master" className="w-48 h-auto object-contain" />
+          <div className="flex items-center gap-3 min-w-0">
+            <img src={`${import.meta.env.BASE_URL}quote-master-logo.jpg`} alt="Quote Master" className="w-40 sm:w-48 h-auto object-contain" />
+            <div className="hidden sm:block min-w-0 border-l border-secondary-foreground/20 pl-4">
+              <p className="font-display font-bold truncate">{quote.businessName || "Quote Master"}</p>
+              <p className="text-xs text-secondary-foreground/60 truncate">
+                {quote.businessTradeType || "Building services"}{quote.businessPhone ? ` · ${quote.businessPhone}` : ""}
+              </p>
+            </div>
           </div>
           {isAccepted && (
             <div className="flex items-center gap-2 bg-green-500/20 text-green-400 px-4 py-1.5 rounded-full font-medium text-sm border border-green-500/30">
@@ -409,6 +446,10 @@ export default function QuotePortalPage() {
                       <p className="font-semibold shrink-0">{formatCurrency(item.lineTotal)}</p>
                     </div>
                   ))}
+                  <div className="flex justify-between items-start border-b border-secondary-foreground/10 pb-4">
+                    <p className="font-medium text-secondary-foreground">Labour</p>
+                    <p className="font-semibold shrink-0">{formatCurrency(estimate ? estimate.labourCost : quote.labourCost)}</p>
+                  </div>
                 </div>
               </div>
 
