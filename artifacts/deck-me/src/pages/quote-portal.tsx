@@ -97,7 +97,13 @@ export default function QuotePortalPage() {
     }
 
     updateQuote.mutate(
-      { id: quote.id, data: activeSpec },
+      {
+        id: quote.id,
+        data: {
+          deckBoardType: activeSpec.deckBoardType,
+          balustradeType: activeSpec.balustradeType,
+        },
+      },
       {
         onSuccess: markAccepted,
         onError: () => {
