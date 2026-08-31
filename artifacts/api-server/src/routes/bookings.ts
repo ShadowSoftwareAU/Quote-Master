@@ -1,9 +1,11 @@
 import { Router, type IRouter } from "express";
-import { eq, asc } from "drizzle-orm";
+import { getAuth } from "@clerk/express";
+import { eq, asc, and } from "drizzle-orm";
 import {
   db,
   bookingsTable,
   customersTable,
+  quotesTable,
 } from "@workspace/db";
 import {
   CreateBookingBody,
@@ -15,6 +17,7 @@ import {
   RemoveBookingPhotoBody,
   RemoveBookingPhotoParams,
 } from "@workspace/api-zod";
+import { isPrivateObjectPathOwnedByUser } from "../lib/objectStorage";
 
 const router: IRouter = Router();
 
@@ -35,42 +38,57 @@ function toJson(row: typeof bookingsTable.$inferSelect & { customerName: string 
   };
 }
 
-async function loadBooking(id: number) {
+async function loadBooking(id: number, userId: string) {
   const [row] = await db
     .select({
       b: bookingsTable,
       customerName: customersTable.name,
     })
     .from(bookingsTable)
-    .leftJoin(customersTable, eq(customersTable.id, bookingsTable.customerId))
-    .where(eq(bookingsTable.id, id));
+    .leftJoin(customersTable, and(eq(customersTable.id, bookingsTable.customerId), eq(customersTable.clerkUserId, userId)))
+    .where(and(eq(bookingsTable.id, id), eq(bookingsTable.clerkUserId, userId)));
   if (!row) return null;
   return toJson({ ...row.b, customerName: row.customerName });
 }
 
-router.get("/bookings", async (_req, res): Promise<void> => {
+router.get("/bookings", async (req, res): Promise<void> => {
+  const userId = getAuth(req).userId;
+  if (!userId) { res.status(401).json({ error: "Unauthorized" }); return; }
   const rows = await db
     .select({
       b: bookingsTable,
       customerName: customersTable.name,
     })
     .from(bookingsTable)
-    .leftJoin(customersTable, eq(customersTable.id, bookingsTable.customerId))
+    .leftJoin(customersTable, and(eq(customersTable.id, bookingsTable.customerId), eq(customersTable.clerkUserId, userId)))
+    .where(eq(bookingsTable.clerkUserId, userId))
     .orderBy(asc(bookingsTable.startAt));
   res.json(rows.map((r) => toJson({ ...r.b, customerName: r.customerName })));
 });
 
 router.post("/bookings", async (req, res): Promise<void> => {
+  const userId = getAuth(req).userId;
+  if (!userId) { res.status(401).json({ error: "Unauthorized" }); return; }
   const parsed = CreateBookingBody.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({ error: parsed.error.message });
     return;
   }
   const d = parsed.data;
-  const [created] = await db
-    .insert(bookingsTable)
-    .values({
+  const result = await db.transaction(async (tx) => {
+    if (d.customerId != null) {
+      const [customer] = await tx.select({ id: customersTable.id }).from(customersTable)
+        .where(and(eq(customersTable.id, d.customerId), eq(customersTable.clerkUserId, userId)));
+      if (!customer) return { error: "Customer not found" } as const;
+    }
+    if (d.quoteId != null) {
+      const [quote] = await tx.select({ id: quotesTable.id }).from(quotesTable)
+        .where(and(eq(quotesTable.id, d.quoteId), eq(quotesTable.clerkUserId, userId)));
+      if (!quote) return { error: "Quote not found" } as const;
+    }
+    const [created] = await tx.insert(bookingsTable).values({
       title: d.title,
+      clerkUserId: userId,
       customerId: d.customerId ?? null,
       quoteId: d.quoteId ?? null,
       siteAddress: d.siteAddress ?? null,
@@ -79,13 +97,19 @@ router.post("/bookings", async (req, res): Promise<void> => {
       endAt: new Date(d.endAt),
       status: d.status ?? "scheduled",
       photos: [],
-    })
-    .returning();
-  const json = await loadBooking(created.id);
+    }).returning();
+    return { created } as const;
+  });
+  if ("error" in result) { res.status(400).json({ error: result.error }); return; }
+  const { created } = result;
+  const json = await loadBooking(created.id, userId);
+  if (!json) { res.status(404).json({ error: "Booking not found" }); return; }
   res.status(201).json(json);
 });
 
 router.patch("/bookings/:id", async (req, res): Promise<void> => {
+  const userId = getAuth(req).userId;
+  if (!userId) { res.status(401).json({ error: "Unauthorized" }); return; }
   const params = UpdateBookingParams.safeParse(req.params);
   if (!params.success) {
     res.status(400).json({ error: params.error.message });
@@ -106,20 +130,34 @@ router.patch("/bookings/:id", async (req, res): Promise<void> => {
   if (d.startAt !== undefined) update.startAt = new Date(d.startAt);
   if (d.endAt !== undefined) update.endAt = new Date(d.endAt);
   if (d.status !== undefined) update.status = d.status;
-  const [row] = await db
-    .update(bookingsTable)
-    .set(update)
-    .where(eq(bookingsTable.id, params.data.id))
-    .returning();
-  if (!row) {
-    res.status(404).json({ error: "Booking not found" });
-    return;
-  }
-  const json = await loadBooking(row.id);
+  const result = await db.transaction(async (tx) => {
+    if (d.customerId != null) {
+      const [customer] = await tx.select({ id: customersTable.id }).from(customersTable)
+        .where(and(eq(customersTable.id, d.customerId), eq(customersTable.clerkUserId, userId)));
+      if (!customer) return { ok: false, error: "Customer not found", status: 400 } as const;
+    }
+    if (d.quoteId != null) {
+      const [quote] = await tx.select({ id: quotesTable.id }).from(quotesTable)
+        .where(and(eq(quotesTable.id, d.quoteId), eq(quotesTable.clerkUserId, userId)));
+      if (!quote) return { ok: false, error: "Quote not found", status: 400 } as const;
+    }
+    const [row] = await tx.update(bookingsTable).set(update)
+      .where(and(eq(bookingsTable.id, params.data.id), eq(bookingsTable.clerkUserId, userId)))
+      .returning();
+    return row
+      ? { ok: true, row } as const
+      : { ok: false, error: "Booking not found", status: 404 } as const;
+  });
+  if (!result.ok) { res.status(result.status).json({ error: result.error }); return; }
+  const { row } = result;
+  const json = await loadBooking(row.id, userId);
+  if (!json) { res.status(404).json({ error: "Booking not found" }); return; }
   res.json(json);
 });
 
 router.post("/bookings/:id/photos", async (req, res): Promise<void> => {
+  const userId = getAuth(req).userId;
+  if (!userId) { res.status(401).json({ error: "Unauthorized" }); return; }
   const params = AddBookingPhotoParams.safeParse(req.params);
   if (!params.success) {
     res.status(400).json({ error: params.error.message });
@@ -130,7 +168,11 @@ router.post("/bookings/:id/photos", async (req, res): Promise<void> => {
     res.status(400).json({ error: body.error.message });
     return;
   }
-  const [existing] = await db.select().from(bookingsTable).where(eq(bookingsTable.id, params.data.id));
+  if (!isPrivateObjectPathOwnedByUser(body.data.objectPath, userId)) {
+    res.status(400).json({ error: "Photo objectPath must belong to the authenticated user" });
+    return;
+  }
+  const [existing] = await db.select().from(bookingsTable).where(and(eq(bookingsTable.id, params.data.id), eq(bookingsTable.clerkUserId, userId)));
   if (!existing) {
     res.status(404).json({ error: "Booking not found" });
     return;
@@ -140,13 +182,20 @@ router.post("/bookings/:id/photos", async (req, res): Promise<void> => {
   const [row] = await db
     .update(bookingsTable)
     .set({ photos: updatedPhotos })
-    .where(eq(bookingsTable.id, params.data.id))
+    .where(and(eq(bookingsTable.id, params.data.id), eq(bookingsTable.clerkUserId, userId)))
     .returning();
-  const json = await loadBooking(row.id);
+  if (!row) {
+    res.status(404).json({ error: "Booking not found" });
+    return;
+  }
+  const json = await loadBooking(row.id, userId);
+  if (!json) { res.status(404).json({ error: "Booking not found" }); return; }
   res.json(json);
 });
 
 router.delete("/bookings/:id/photos", async (req, res): Promise<void> => {
+  const userId = getAuth(req).userId;
+  if (!userId) { res.status(401).json({ error: "Unauthorized" }); return; }
   const params = RemoveBookingPhotoParams.safeParse(req.params);
   if (!params.success) {
     res.status(400).json({ error: params.error.message });
@@ -157,7 +206,11 @@ router.delete("/bookings/:id/photos", async (req, res): Promise<void> => {
     res.status(400).json({ error: body.error.message });
     return;
   }
-  const [existing] = await db.select().from(bookingsTable).where(eq(bookingsTable.id, params.data.id));
+  if (!isPrivateObjectPathOwnedByUser(body.data.objectPath, userId)) {
+    res.status(400).json({ error: "Photo objectPath must belong to the authenticated user" });
+    return;
+  }
+  const [existing] = await db.select().from(bookingsTable).where(and(eq(bookingsTable.id, params.data.id), eq(bookingsTable.clerkUserId, userId)));
   if (!existing) {
     res.status(404).json({ error: "Booking not found" });
     return;
@@ -167,13 +220,20 @@ router.delete("/bookings/:id/photos", async (req, res): Promise<void> => {
   const [row] = await db
     .update(bookingsTable)
     .set({ photos: updatedPhotos })
-    .where(eq(bookingsTable.id, params.data.id))
+    .where(and(eq(bookingsTable.id, params.data.id), eq(bookingsTable.clerkUserId, userId)))
     .returning();
-  const json = await loadBooking(row.id);
+  if (!row) {
+    res.status(404).json({ error: "Booking not found" });
+    return;
+  }
+  const json = await loadBooking(row.id, userId);
+  if (!json) { res.status(404).json({ error: "Booking not found" }); return; }
   res.json(json);
 });
 
 router.delete("/bookings/:id", async (req, res): Promise<void> => {
+  const userId = getAuth(req).userId;
+  if (!userId) { res.status(401).json({ error: "Unauthorized" }); return; }
   const params = DeleteBookingParams.safeParse(req.params);
   if (!params.success) {
     res.status(400).json({ error: params.error.message });
@@ -181,13 +241,13 @@ router.delete("/bookings/:id", async (req, res): Promise<void> => {
   }
   const [row] = await db
     .delete(bookingsTable)
-    .where(eq(bookingsTable.id, params.data.id))
+    .where(and(eq(bookingsTable.id, params.data.id), eq(bookingsTable.clerkUserId, userId)))
     .returning();
   if (!row) {
     res.status(404).json({ error: "Booking not found" });
     return;
   }
-  res.sendStatus(204);
+  res.json({ deleted: true });
 });
 
 export default router;

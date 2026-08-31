@@ -9,6 +9,35 @@ export interface HealthStatus {
   status: string;
 }
 
+export const DeletionSuccessValue = {
+  deleted: true,
+} as const;
+export type DeletionSuccess = typeof DeletionSuccessValue;
+
+export interface DeletionSuccessWithId {
+  deleted: true;
+  id: number;
+}
+
+export interface SuccessWithId {
+  success: true;
+  id: number;
+}
+
+export interface StorageUploadRequest {
+  /** @minLength 1 */
+  name: string;
+  /** @minimum 0 */
+  size: number;
+  /** @minLength 1 */
+  contentType: string;
+}
+
+export interface StorageUploadResponse {
+  uploadURL: string;
+  objectPath: string;
+}
+
 export interface Customer {
   id: number;
   name: string;

@@ -1,5 +1,6 @@
 import { Router, type IRouter } from "express";
-import { eq, asc } from "drizzle-orm";
+import { getAuth } from "@clerk/express";
+import { eq, asc, and } from "drizzle-orm";
 import {
   db,
   teamMembersTable,
@@ -50,15 +51,20 @@ function assignmentToJson(
   };
 }
 
-router.get("/team", async (_req, res): Promise<void> => {
+router.get("/team", async (req, res): Promise<void> => {
+  const userId = getAuth(req).userId;
+  if (!userId) { res.status(401).json({ error: "Unauthorized" }); return; }
   const rows = await db
     .select()
     .from(teamMembersTable)
+    .where(eq(teamMembersTable.clerkUserId, userId))
     .orderBy(asc(teamMembersTable.name));
   res.json(rows.map(memberToJson));
 });
 
 router.post("/team", async (req, res): Promise<void> => {
+  const userId = getAuth(req).userId;
+  if (!userId) { res.status(401).json({ error: "Unauthorized" }); return; }
   const parsed = CreateTeamMemberBody.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({ error: parsed.error.message });
@@ -69,6 +75,7 @@ router.post("/team", async (req, res): Promise<void> => {
     .insert(teamMembersTable)
     .values({
       name: d.name,
+      clerkUserId: userId,
       ...(d.role ? { role: d.role } : {}),
       ...(d.phone ? { phone: d.phone } : {}),
       ...(d.email ? { email: d.email } : {}),
@@ -79,6 +86,8 @@ router.post("/team", async (req, res): Promise<void> => {
 });
 
 router.patch("/team/:id", async (req, res): Promise<void> => {
+  const userId = getAuth(req).userId;
+  if (!userId) { res.status(401).json({ error: "Unauthorized" }); return; }
   const params = UpdateTeamMemberParams.safeParse(req.params);
   if (!params.success) {
     res.status(400).json({ error: params.error.message });
@@ -99,7 +108,7 @@ router.patch("/team/:id", async (req, res): Promise<void> => {
       ...(d.email !== undefined ? { email: d.email } : {}),
       ...(d.pin !== undefined ? { pin: d.pin } : {}),
     })
-    .where(eq(teamMembersTable.id, params.data.id))
+    .where(and(eq(teamMembersTable.id, params.data.id), eq(teamMembersTable.clerkUserId, userId)))
     .returning();
   if (!row) {
     res.status(404).json({ error: "Team member not found" });
@@ -109,6 +118,8 @@ router.patch("/team/:id", async (req, res): Promise<void> => {
 });
 
 router.delete("/team/:id", async (req, res): Promise<void> => {
+  const userId = getAuth(req).userId;
+  if (!userId) { res.status(401).json({ error: "Unauthorized" }); return; }
   const params = DeleteTeamMemberParams.safeParse(req.params);
   if (!params.success) {
     res.status(400).json({ error: params.error.message });
@@ -117,69 +128,74 @@ router.delete("/team/:id", async (req, res): Promise<void> => {
   const [row] = await db
     .update(teamMembersTable)
     .set({ active: false })
-    .where(eq(teamMembersTable.id, params.data.id))
+    .where(and(eq(teamMembersTable.id, params.data.id), eq(teamMembersTable.clerkUserId, userId)))
     .returning();
   if (!row) {
     res.status(404).json({ error: "Team member not found" });
     return;
   }
-  res.sendStatus(204);
+  res.json({ deleted: true });
 });
 
 router.post("/team/:memberId/assign/:jobId", async (req, res): Promise<void> => {
+  const userId = getAuth(req).userId;
+  if (!userId) { res.status(401).json({ error: "Unauthorized" }); return; }
   const params = AssignTeamMemberToJobParams.safeParse(req.params);
   if (!params.success) {
     res.status(400).json({ error: params.error.message });
     return;
   }
   const body = AssignTeamMemberToJobBody.safeParse(req.body);
-  const roleOnJob = body.success ? (body.data.roleOnJob ?? null) : null;
-
-  const [existing] = await db
-    .select()
-    .from(jobAssignmentsTable)
-    .where(
-      eq(jobAssignmentsTable.teamMemberId, params.data.memberId)
-    );
-
-  if (existing && existing.jobId === params.data.jobId) {
-    res.status(409).json({ error: "Already assigned" });
+  if (!body.success) {
+    res.status(400).json({ error: body.error.message });
     return;
   }
+  const roleOnJob = body.data.roleOnJob ?? null;
 
-  const [row] = await db
-    .insert(jobAssignmentsTable)
-    .values({
+  const result = await db.transaction(async (tx) => {
+    const [member] = await tx.select({ name: teamMembersTable.name }).from(teamMembersTable)
+      .where(and(eq(teamMembersTable.id, params.data.memberId), eq(teamMembersTable.clerkUserId, userId)));
+    if (!member) return { ok: false, error: "Team member not found", status: 404 } as const;
+    const [booking] = await tx.select({ title: bookingsTable.title }).from(bookingsTable)
+      .where(and(eq(bookingsTable.id, params.data.jobId), eq(bookingsTable.clerkUserId, userId)));
+    if (!booking) return { ok: false, error: "Booking not found", status: 404 } as const;
+    const [existing] = await tx
+      .select()
+      .from(jobAssignmentsTable)
+      .where(and(
+        eq(jobAssignmentsTable.teamMemberId, params.data.memberId),
+        eq(jobAssignmentsTable.jobId, params.data.jobId),
+      ));
+    if (existing) return { ok: false, error: "Already assigned", status: 409 } as const;
+    const [row] = await tx.insert(jobAssignmentsTable).values({
       teamMemberId: params.data.memberId,
       jobId: params.data.jobId,
       roleOnJob,
-    })
-    .returning();
-
-  const member = await db
-    .select({ name: teamMembersTable.name })
-    .from(teamMembersTable)
-    .where(eq(teamMembersTable.id, row.teamMemberId));
-  const booking = await db
-    .select({ title: bookingsTable.title })
-    .from(bookingsTable)
-    .where(eq(bookingsTable.id, row.jobId));
-
+    }).returning();
+    if (!row) return { ok: false, error: "Assignment could not be created", status: 500 } as const;
+    return { ok: true, row, member, booking } as const;
+  });
+  if (!result.ok) { res.status(result.status).json({ error: result.error }); return; }
   res.status(201).json(
     assignmentToJson({
-      ...row,
-      memberName: member[0]?.name ?? null,
-      jobTitle: booking[0]?.title ?? null,
+      ...result.row,
+      memberName: result.member.name,
+      jobTitle: result.booking.title,
     })
   );
 });
 
 router.get("/bookings/:jobId/assignments", async (req, res): Promise<void> => {
+  const userId = getAuth(req).userId;
+  if (!userId) { res.status(401).json({ error: "Unauthorized" }); return; }
   const params = ListJobAssignmentsParams.safeParse(req.params);
   if (!params.success) {
     res.status(400).json({ error: params.error.message });
     return;
   }
+  const [booking] = await db.select({ id: bookingsTable.id }).from(bookingsTable)
+    .where(and(eq(bookingsTable.id, params.data.jobId), eq(bookingsTable.clerkUserId, userId)));
+  if (!booking) { res.status(404).json({ error: "Booking not found" }); return; }
   const rows = await db
     .select({
       a: jobAssignmentsTable,
@@ -187,8 +203,8 @@ router.get("/bookings/:jobId/assignments", async (req, res): Promise<void> => {
       jobTitle: bookingsTable.title,
     })
     .from(jobAssignmentsTable)
-    .leftJoin(teamMembersTable, eq(teamMembersTable.id, jobAssignmentsTable.teamMemberId))
-    .leftJoin(bookingsTable, eq(bookingsTable.id, jobAssignmentsTable.jobId))
+    .innerJoin(teamMembersTable, and(eq(teamMembersTable.id, jobAssignmentsTable.teamMemberId), eq(teamMembersTable.clerkUserId, userId)))
+    .innerJoin(bookingsTable, and(eq(bookingsTable.id, jobAssignmentsTable.jobId), eq(bookingsTable.clerkUserId, userId)))
     .where(eq(jobAssignmentsTable.jobId, params.data.jobId));
 
   res.json(
@@ -199,6 +215,8 @@ router.get("/bookings/:jobId/assignments", async (req, res): Promise<void> => {
 });
 
 router.delete("/bookings/:jobId/assignments", async (req, res): Promise<void> => {
+  const userId = getAuth(req).userId;
+  if (!userId) { res.status(401).json({ error: "Unauthorized" }); return; }
   const params = RemoveJobAssignmentParams.safeParse(req.params);
   if (!params.success) {
     res.status(400).json({ error: params.error.message });
@@ -209,10 +227,21 @@ router.delete("/bookings/:jobId/assignments", async (req, res): Promise<void> =>
     res.status(400).json({ error: body.error.message });
     return;
   }
-  await db
-    .delete(jobAssignmentsTable)
-    .where(eq(jobAssignmentsTable.teamMemberId, body.data.teamMemberId));
-  res.sendStatus(204);
+  const result = await db.transaction(async (tx) => {
+    const [booking] = await tx.select({ id: bookingsTable.id }).from(bookingsTable)
+      .where(and(eq(bookingsTable.id, params.data.jobId), eq(bookingsTable.clerkUserId, userId)));
+    if (!booking) return { error: "Booking not found" } as const;
+    const [member] = await tx.select({ id: teamMembersTable.id }).from(teamMembersTable)
+      .where(and(eq(teamMembersTable.id, body.data.teamMemberId), eq(teamMembersTable.clerkUserId, userId)));
+    if (!member) return { error: "Team member not found" } as const;
+    const [deleted] = await tx.delete(jobAssignmentsTable).where(and(
+      eq(jobAssignmentsTable.teamMemberId, body.data.teamMemberId),
+      eq(jobAssignmentsTable.jobId, params.data.jobId),
+    )).returning();
+    return deleted ? { deleted } as const : { error: "Assignment not found" } as const;
+  });
+  if ("error" in result) { res.status(404).json({ error: result.error }); return; }
+  res.json({ deleted: true });
 });
 
 export default router;

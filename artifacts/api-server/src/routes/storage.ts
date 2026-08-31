@@ -1,7 +1,7 @@
 import { Router, type IRouter, type Request, type Response } from "express";
 import { Readable } from "stream";
 import { ObjectStorageService, ObjectNotFoundError } from "../lib/objectStorage";
-import { ObjectPermission } from "../lib/objectAcl";
+import { getAuthenticatedClerkUserId } from "../middlewares/apiAuth";
 
 function parseUploadBody(body: unknown): { name: string; size: number; contentType: string } | null {
   if (!body || typeof body !== "object") return null;
@@ -31,7 +31,8 @@ router.post("/storage/uploads/request-url", async (req: Request, res: Response) 
     const { name, size, contentType } = parsed;
     void name; void size; void contentType;
 
-    const uploadURL = await objectStorageService.getObjectEntityUploadURL();
+    const userId = getAuthenticatedClerkUserId(req);
+    const uploadURL = await objectStorageService.getObjectEntityUploadURL(userId);
     const objectPath = objectStorageService.normalizeObjectEntityPath(uploadURL);
 
     res.json({ uploadURL, objectPath });
@@ -84,25 +85,11 @@ router.get("/storage/public-objects/*filePath", async (req: Request, res: Respon
  */
 router.get("/storage/objects/*path", async (req: Request, res: Response) => {
   try {
+    const userId = getAuthenticatedClerkUserId(req);
     const raw = req.params.path;
     const wildcardPath = Array.isArray(raw) ? raw.join("/") : raw;
     const objectPath = `/objects/${wildcardPath}`;
-    const objectFile = await objectStorageService.getObjectEntityFile(objectPath);
-
-    // --- Protected route example (uncomment when using replit-auth) ---
-    // if (!req.isAuthenticated()) {
-    //   res.status(401).json({ error: "Unauthorized" });
-    //   return;
-    // }
-    // const canAccess = await objectStorageService.canAccessObjectEntity({
-    //   userId: req.user.id,
-    //   objectFile,
-    //   requestedPermission: ObjectPermission.READ,
-    // });
-    // if (!canAccess) {
-    //   res.status(403).json({ error: "Forbidden" });
-    //   return;
-    // }
+    const objectFile = await objectStorageService.getObjectEntityFile(objectPath, userId);
 
     const response = await objectStorageService.downloadObject(objectFile);
 

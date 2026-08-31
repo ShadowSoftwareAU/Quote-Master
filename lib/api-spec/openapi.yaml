@@ -125,7 +125,11 @@ paths:
           required: true
           schema: { type: integer }
       responses:
-        "204": { description: Deleted }
+        "200":
+          description: Deleted
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/DeletionSuccess" }
 
   /materials:
     get:
@@ -187,7 +191,11 @@ paths:
           required: true
           schema: { type: integer }
       responses:
-        "204": { description: Deleted }
+        "200":
+          description: Deleted
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/DeletionSuccess" }
 
   /quotes:
     get:
@@ -258,7 +266,11 @@ paths:
           required: true
           schema: { type: integer }
       responses:
-        "204": { description: Deleted }
+        "200":
+          description: Deleted
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/DeletionSuccessWithId" }
   /quotes/{id}/status:
     patch:
       operationId: setQuoteStatus
@@ -382,7 +394,11 @@ paths:
           required: true
           schema: { type: integer }
       responses:
-        "204": { description: Deleted }
+        "200":
+          description: Deleted
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/SuccessWithId" }
 
   /master-projects/{id}/quotes:
     put:
@@ -460,7 +476,11 @@ paths:
           required: true
           schema: { type: integer }
       responses:
-        "204": { description: Deleted }
+        "200":
+          description: Deleted
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/DeletionSuccess" }
   /bookings/{id}/photos:
     post:
       operationId: addBookingPhoto
@@ -502,6 +522,25 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/Booking" }
+
+  /storage/uploads/request-url:
+    post:
+      operationId: requestStorageUploadUrl
+      tags: [storage]
+      summary: Request a presigned URL for an authenticated object upload
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/StorageUploadRequest" }
+      responses:
+        "200":
+          description: Upload URL created
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/StorageUploadResponse" }
+        "400":
+          description: Invalid upload metadata
 
   /quotes/{id}/variation:
     post:
@@ -584,8 +623,11 @@ paths:
           required: true
           schema: { type: integer }
       responses:
-        "204":
+        "200":
           description: Deactivated
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/DeletionSuccess" }
 
   /team/{memberId}/assign/{jobId}:
     post:
@@ -643,8 +685,11 @@ paths:
           application/json:
             schema: { $ref: "#/components/schemas/RemoveAssignmentInput" }
       responses:
-        "204":
+        "200":
           description: Removed
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/DeletionSuccess" }
 
   # ── Time Tracking ───────────────────────────────────────────────────────
   /time/clock-on:
@@ -788,8 +833,11 @@ paths:
           required: true
           schema: { type: integer }
       responses:
-        "204":
+        "200":
           description: Deleted
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/DeletionSuccess" }
 
   /portfolio/{id}/photos:
     post:
@@ -891,6 +939,38 @@ components:
       required: [status]
       properties:
         status: { type: string }
+
+    DeletionSuccess:
+      type: object
+      required: [deleted]
+      properties:
+        deleted: { type: boolean, const: true }
+    DeletionSuccessWithId:
+      type: object
+      required: [deleted, id]
+      properties:
+        deleted: { type: boolean, const: true }
+        id: { type: integer }
+    SuccessWithId:
+      type: object
+      required: [success, id]
+      properties:
+        success: { type: boolean, const: true }
+        id: { type: integer }
+
+    StorageUploadRequest:
+      type: object
+      required: [name, size, contentType]
+      properties:
+        name: { type: string, minLength: 1 }
+        size: { type: integer, minimum: 0 }
+        contentType: { type: string, minLength: 1 }
+    StorageUploadResponse:
+      type: object
+      required: [uploadURL, objectPath]
+      properties:
+        uploadURL: { type: string }
+        objectPath: { type: string }
 
     Customer:
       type: object

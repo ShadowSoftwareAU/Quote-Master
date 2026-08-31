@@ -1,5 +1,6 @@
 import { Router, type IRouter } from "express";
-import { eq } from "drizzle-orm";
+import { getAuth } from "@clerk/express";
+import { and, eq } from "drizzle-orm";
 import { db, materialsTable } from "@workspace/db";
 import {
   CreateMaterialBody,
@@ -27,10 +28,13 @@ function rowToJson(row: typeof materialsTable.$inferSelect) {
 }
 
 router.get("/materials", async (req, res): Promise<void> => {
+  const userId = getAuth(req).userId;
+  if (!userId) { res.status(401).json({ error: "Unauthorized" }); return; }
   const q = ListMaterialsQueryParams.safeParse(req.query);
   const rows = await db
     .select()
     .from(materialsTable)
+    .where(eq(materialsTable.clerkUserId, userId))
     .orderBy(materialsTable.category, materialsTable.name);
   const filtered = q.success && q.data.category
     ? rows.filter((r) => r.category === q.data.category)
@@ -39,6 +43,8 @@ router.get("/materials", async (req, res): Promise<void> => {
 });
 
 router.post("/materials", async (req, res): Promise<void> => {
+  const userId = getAuth(req).userId;
+  if (!userId) { res.status(401).json({ error: "Unauthorized" }); return; }
   const parsed = CreateMaterialBody.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({ error: parsed.error.message });
@@ -49,6 +55,7 @@ router.post("/materials", async (req, res): Promise<void> => {
     .insert(materialsTable)
     .values({
       ...rest,
+      clerkUserId: userId,
       unitPrice: String(unitPrice),
       tradeCost: tradeCost !== undefined ? String(tradeCost) : null,
     })
@@ -57,6 +64,8 @@ router.post("/materials", async (req, res): Promise<void> => {
 });
 
 router.patch("/materials/:id", async (req, res): Promise<void> => {
+  const userId = getAuth(req).userId;
+  if (!userId) { res.status(401).json({ error: "Unauthorized" }); return; }
   const params = UpdateMaterialParams.safeParse(req.params);
   if (!params.success) {
     res.status(400).json({ error: params.error.message });
@@ -74,7 +83,7 @@ router.patch("/materials/:id", async (req, res): Promise<void> => {
   const [row] = await db
     .update(materialsTable)
     .set(update)
-    .where(eq(materialsTable.id, params.data.id))
+    .where(and(eq(materialsTable.id, params.data.id), eq(materialsTable.clerkUserId, userId)))
     .returning();
   if (!row) {
     res.status(404).json({ error: "Material not found" });
@@ -84,6 +93,8 @@ router.patch("/materials/:id", async (req, res): Promise<void> => {
 });
 
 router.delete("/materials/:id", async (req, res): Promise<void> => {
+  const userId = getAuth(req).userId;
+  if (!userId) { res.status(401).json({ error: "Unauthorized" }); return; }
   const params = DeleteMaterialParams.safeParse(req.params);
   if (!params.success) {
     res.status(400).json({ error: params.error.message });
@@ -91,13 +102,13 @@ router.delete("/materials/:id", async (req, res): Promise<void> => {
   }
   const [row] = await db
     .delete(materialsTable)
-    .where(eq(materialsTable.id, params.data.id))
+    .where(and(eq(materialsTable.id, params.data.id), eq(materialsTable.clerkUserId, userId)))
     .returning();
   if (!row) {
     res.status(404).json({ error: "Material not found" });
     return;
   }
-  res.sendStatus(204);
+  res.json({ deleted: true });
 });
 
 export default router;

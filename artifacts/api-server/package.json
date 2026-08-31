@@ -7,7 +7,8 @@
     "dev": "export NODE_ENV=development && pnpm run build && pnpm run start",
     "build": "node ./build.mjs",
     "start": "node --enable-source-maps ./dist/index.mjs",
-    "typecheck": "tsc -p tsconfig.json --noEmit"
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test:isolation": "node --test ./test/isolation-runtime.test.mjs ./test/isolation-db.integration.test.mjs && node ./test/isolation-regression.mjs"
   },
   "dependencies": {
     "@clerk/express": "2.1.60",

@@ -1,5 +1,6 @@
 import { Router, type IRouter } from "express";
-import { eq, asc, desc } from "drizzle-orm";
+import { getAuth } from "@clerk/express";
+import { and, eq, asc, desc } from "drizzle-orm";
 import QRCode from "qrcode";
 import { db, referralSourcesTable, signUpLeadsTable } from "@workspace/db";
 import {
@@ -36,15 +37,20 @@ function leadToJson(row: typeof signUpLeadsTable.$inferSelect) {
   };
 }
 
-router.get("/referrals/sources", async (_req, res): Promise<void> => {
+router.get("/referrals/sources", async (req, res): Promise<void> => {
+  const clerkUserId = getAuth(req).userId;
+  if (!clerkUserId) { res.status(401).json({ error: "Unauthorized" }); return; }
   const rows = await db
     .select()
     .from(referralSourcesTable)
+    .where(eq(referralSourcesTable.clerkUserId, clerkUserId))
     .orderBy(asc(referralSourcesTable.name));
   res.json(rows.map(sourceToJson));
 });
 
 router.post("/referrals/sources", async (req, res): Promise<void> => {
+  const clerkUserId = getAuth(req).userId;
+  if (!clerkUserId) { res.status(401).json({ error: "Unauthorized" }); return; }
   const parsed = CreateReferralSourceBody.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({ error: parsed.error.message });
@@ -54,6 +60,7 @@ router.post("/referrals/sources", async (req, res): Promise<void> => {
   const [row] = await db
     .insert(referralSourcesTable)
     .values({
+      clerkUserId,
       code: d.code,
       name: d.name,
       ...(d.type ? { type: d.type } : {}),
@@ -64,6 +71,8 @@ router.post("/referrals/sources", async (req, res): Promise<void> => {
 });
 
 router.get("/referrals/sources/:id/qr", async (req, res): Promise<void> => {
+  const clerkUserId = getAuth(req).userId;
+  if (!clerkUserId) { res.status(401).json({ error: "Unauthorized" }); return; }
   const id = parseInt(req.params.id ?? "", 10);
   if (isNaN(id)) {
     res.status(400).json({ error: "Invalid id" });
@@ -72,7 +81,10 @@ router.get("/referrals/sources/:id/qr", async (req, res): Promise<void> => {
   const [source] = await db
     .select()
     .from(referralSourcesTable)
-    .where(eq(referralSourcesTable.id, id));
+    .where(and(
+      eq(referralSourcesTable.id, id),
+      eq(referralSourcesTable.clerkUserId, clerkUserId),
+    ));
   if (!source) {
     res.status(404).json({ error: "Referral source not found" });
     return;
@@ -88,15 +100,20 @@ router.get("/referrals/sources/:id/qr", async (req, res): Promise<void> => {
   res.send(svgString);
 });
 
-router.get("/referrals/leads", async (_req, res): Promise<void> => {
+router.get("/referrals/leads", async (req, res): Promise<void> => {
+  const clerkUserId = getAuth(req).userId;
+  if (!clerkUserId) { res.status(401).json({ error: "Unauthorized" }); return; }
   const rows = await db
     .select()
     .from(signUpLeadsTable)
+    .where(eq(signUpLeadsTable.clerkUserId, clerkUserId))
     .orderBy(desc(signUpLeadsTable.createdAt));
   res.json(rows.map(leadToJson));
 });
 
 router.post("/referrals/leads", async (req, res): Promise<void> => {
+  const clerkUserId = getAuth(req).userId;
+  if (!clerkUserId) { res.status(401).json({ error: "Unauthorized" }); return; }
   const parsed = CreateSignUpLeadBody.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({ error: parsed.error.message });
@@ -107,6 +124,7 @@ router.post("/referrals/leads", async (req, res): Promise<void> => {
   const [row] = await db
     .insert(signUpLeadsTable)
     .values({
+      clerkUserId,
       name: d.name,
       ...(d.email ? { email: d.email } : {}),
       ...(d.phone ? { phone: d.phone } : {}),

@@ -1,5 +1,6 @@
 import { Router, type IRouter } from "express";
-import { eq } from "drizzle-orm";
+import { getAuth } from "@clerk/express";
+import { and, eq } from "drizzle-orm";
 import { db, customersTable } from "@workspace/db";
 import {
   CreateCustomerBody,
@@ -11,15 +12,20 @@ import {
 
 const router: IRouter = Router();
 
-router.get("/customers", async (_req, res): Promise<void> => {
+router.get("/customers", async (req, res): Promise<void> => {
+  const userId = getAuth(req).userId;
+  if (!userId) { res.status(401).json({ error: "Unauthorized" }); return; }
   const rows = await db
     .select()
     .from(customersTable)
+    .where(eq(customersTable.clerkUserId, userId))
     .orderBy(customersTable.name);
   res.json(rows);
 });
 
 router.post("/customers", async (req, res): Promise<void> => {
+  const userId = getAuth(req).userId;
+  if (!userId) { res.status(401).json({ error: "Unauthorized" }); return; }
   const parsed = CreateCustomerBody.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({ error: parsed.error.message });
@@ -27,12 +33,14 @@ router.post("/customers", async (req, res): Promise<void> => {
   }
   const [row] = await db
     .insert(customersTable)
-    .values(parsed.data)
+    .values({ ...parsed.data, clerkUserId: userId })
     .returning();
   res.status(201).json(row);
 });
 
 router.get("/customers/:id", async (req, res): Promise<void> => {
+  const userId = getAuth(req).userId;
+  if (!userId) { res.status(401).json({ error: "Unauthorized" }); return; }
   const params = GetCustomerParams.safeParse(req.params);
   if (!params.success) {
     res.status(400).json({ error: params.error.message });
@@ -41,7 +49,7 @@ router.get("/customers/:id", async (req, res): Promise<void> => {
   const [row] = await db
     .select()
     .from(customersTable)
-    .where(eq(customersTable.id, params.data.id));
+    .where(and(eq(customersTable.id, params.data.id), eq(customersTable.clerkUserId, userId)));
   if (!row) {
     res.status(404).json({ error: "Customer not found" });
     return;
@@ -50,6 +58,8 @@ router.get("/customers/:id", async (req, res): Promise<void> => {
 });
 
 router.patch("/customers/:id", async (req, res): Promise<void> => {
+  const userId = getAuth(req).userId;
+  if (!userId) { res.status(401).json({ error: "Unauthorized" }); return; }
   const params = UpdateCustomerParams.safeParse(req.params);
   if (!params.success) {
     res.status(400).json({ error: params.error.message });
@@ -63,7 +73,7 @@ router.patch("/customers/:id", async (req, res): Promise<void> => {
   const [row] = await db
     .update(customersTable)
     .set(body.data)
-    .where(eq(customersTable.id, params.data.id))
+    .where(and(eq(customersTable.id, params.data.id), eq(customersTable.clerkUserId, userId)))
     .returning();
   if (!row) {
     res.status(404).json({ error: "Customer not found" });
@@ -73,6 +83,8 @@ router.patch("/customers/:id", async (req, res): Promise<void> => {
 });
 
 router.delete("/customers/:id", async (req, res): Promise<void> => {
+  const userId = getAuth(req).userId;
+  if (!userId) { res.status(401).json({ error: "Unauthorized" }); return; }
   const params = DeleteCustomerParams.safeParse(req.params);
   if (!params.success) {
     res.status(400).json({ error: params.error.message });
@@ -80,13 +92,13 @@ router.delete("/customers/:id", async (req, res): Promise<void> => {
   }
   const [row] = await db
     .delete(customersTable)
-    .where(eq(customersTable.id, params.data.id))
+    .where(and(eq(customersTable.id, params.data.id), eq(customersTable.clerkUserId, userId)))
     .returning();
   if (!row) {
     res.status(404).json({ error: "Customer not found" });
     return;
   }
-  res.sendStatus(204);
+  res.json({ deleted: true });
 });
 
 export default router;

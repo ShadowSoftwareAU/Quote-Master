@@ -1,6 +1,6 @@
 import { Storage, File } from "@google-cloud/storage";
 import { Readable } from "stream";
-import { randomUUID } from "crypto";
+import { createHash, randomUUID } from "crypto";
 import {
   ObjectAclPolicy,
   ObjectPermission,
@@ -35,6 +35,35 @@ export class ObjectNotFoundError extends Error {
     this.name = "ObjectNotFoundError";
     Object.setPrototypeOf(this, ObjectNotFoundError.prototype);
   }
+}
+
+/**
+ * A stable, non-reversible storage namespace for a Clerk identity. Object
+ * names can be observed in URLs and logs, so never put the Clerk ID in them.
+ */
+export function getPrivateObjectUserNamespace(userId: string): string {
+  return createHash("sha256").update(userId).digest("hex");
+}
+
+/**
+ * Private object entity paths are intentionally limited to the layout emitted
+ * by getObjectEntityUploadURL. In particular, legacy /objects/uploads/<uuid>
+ * objects have no owner namespace and must not be reachable.
+ */
+export function isPrivateObjectPathOwnedByUser(
+  objectPath: string,
+  userId: string,
+): boolean {
+  const namespace = getPrivateObjectUserNamespace(userId);
+  const prefix = `/objects/uploads/${namespace}/`;
+  const relativeObjectName = objectPath.slice(prefix.length);
+
+  return (
+    objectPath.startsWith(prefix) &&
+    relativeObjectName.length > 0 &&
+    !relativeObjectName.includes("/") &&
+    !relativeObjectName.includes("\\")
+  );
 }
 
 export class ObjectStorageService {
@@ -106,7 +135,7 @@ export class ObjectStorageService {
     return new Response(webStream, { headers });
   }
 
-  async getObjectEntityUploadURL(): Promise<string> {
+  async getObjectEntityUploadURL(userId: string): Promise<string> {
     const privateObjectDir = this.getPrivateObjectDir();
     if (!privateObjectDir) {
       throw new Error(
@@ -116,7 +145,8 @@ export class ObjectStorageService {
     }
 
     const objectId = randomUUID();
-    const fullPath = `${privateObjectDir}/uploads/${objectId}`;
+    const namespace = getPrivateObjectUserNamespace(userId);
+    const fullPath = `${privateObjectDir}/uploads/${namespace}/${objectId}`;
 
     const { bucketName, objectName } = parseObjectPath(fullPath);
 
@@ -128,8 +158,8 @@ export class ObjectStorageService {
     });
   }
 
-  async getObjectEntityFile(objectPath: string): Promise<File> {
-    if (!objectPath.startsWith("/objects/")) {
+  async getObjectEntityFile(objectPath: string, userId: string): Promise<File> {
+    if (!isPrivateObjectPathOwnedByUser(objectPath, userId)) {
       throw new ObjectNotFoundError();
     }
 
@@ -177,14 +207,15 @@ export class ObjectStorageService {
 
   async trySetObjectEntityAclPolicy(
     rawPath: string,
-    aclPolicy: ObjectAclPolicy
+    aclPolicy: ObjectAclPolicy,
+    userId: string,
   ): Promise<string> {
     const normalizedPath = this.normalizeObjectEntityPath(rawPath);
     if (!normalizedPath.startsWith("/")) {
       return normalizedPath;
     }
 
-    const objectFile = await this.getObjectEntityFile(normalizedPath);
+    const objectFile = await this.getObjectEntityFile(normalizedPath, userId);
     await setObjectAclPolicy(objectFile, aclPolicy);
     return normalizedPath;
   }

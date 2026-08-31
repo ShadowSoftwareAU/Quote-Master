@@ -33,6 +33,8 @@ import type {
   CustomerUpdate,
   DashboardSummary,
   DeckSpecInput,
+  DeletionSuccess,
+  DeletionSuccessWithId,
   HealthStatus,
   JobAssignment,
   ListMaterialsParams,
@@ -62,6 +64,9 @@ import type {
   RemoveBookingPhotoInput,
   SignUpLead,
   SignUpLeadInput,
+  StorageUploadRequest,
+  StorageUploadResponse,
+  SuccessWithId,
   TeamMember,
   TeamMemberInput,
   TeamMemberUpdate,
@@ -592,9 +597,9 @@ export const getDeleteCustomerUrl = (id: number,) => {
   return `/api/customers/${id}`
 }
 
-export const deleteCustomer = async (id: number, options?: RequestInit): Promise<void> => {
+export const deleteCustomer = async (id: number, options?: RequestInit): Promise<DeletionSuccess> => {
 
-  return customFetch<void>(getDeleteCustomerUrl(id),
+  return customFetch<DeletionSuccess>(getDeleteCustomerUrl(id),
   {
     ...options,
     method: 'DELETE'
@@ -865,9 +870,9 @@ export const getDeleteMaterialUrl = (id: number,) => {
   return `/api/materials/${id}`
 }
 
-export const deleteMaterial = async (id: number, options?: RequestInit): Promise<void> => {
+export const deleteMaterial = async (id: number, options?: RequestInit): Promise<DeletionSuccess> => {
 
-  return customFetch<void>(getDeleteMaterialUrl(id),
+  return customFetch<DeletionSuccess>(getDeleteMaterialUrl(id),
   {
     ...options,
     method: 'DELETE'
@@ -1202,9 +1207,9 @@ export const getDeleteQuoteUrl = (id: number,) => {
   return `/api/quotes/${id}`
 }
 
-export const deleteQuote = async (id: number, options?: RequestInit): Promise<void> => {
+export const deleteQuote = async (id: number, options?: RequestInit): Promise<DeletionSuccessWithId> => {
 
-  return customFetch<void>(getDeleteQuoteUrl(id),
+  return customFetch<DeletionSuccessWithId>(getDeleteQuoteUrl(id),
   {
     ...options,
     method: 'DELETE'
@@ -1753,9 +1758,9 @@ export const getDeleteMasterProjectUrl = (id: number,) => {
   return `/api/master-projects/${id}`
 }
 
-export const deleteMasterProject = async (id: number, options?: RequestInit): Promise<void> => {
+export const deleteMasterProject = async (id: number, options?: RequestInit): Promise<SuccessWithId> => {
 
-  return customFetch<void>(getDeleteMasterProjectUrl(id),
+  return customFetch<SuccessWithId>(getDeleteMasterProjectUrl(id),
   {
     ...options,
     method: 'DELETE'
@@ -2085,9 +2090,9 @@ export const getDeleteBookingUrl = (id: number,) => {
   return `/api/bookings/${id}`
 }
 
-export const deleteBooking = async (id: number, options?: RequestInit): Promise<void> => {
+export const deleteBooking = async (id: number, options?: RequestInit): Promise<DeletionSuccess> => {
 
-  return customFetch<void>(getDeleteBookingUrl(id),
+  return customFetch<DeletionSuccess>(getDeleteBookingUrl(id),
   {
     ...options,
     method: 'DELETE'
@@ -2283,6 +2288,77 @@ export const useRemoveBookingPhoto = <TError = ErrorType<unknown>,
         TContext
       > => {
       return useMutation(getRemoveBookingPhotoMutationOptions(options));
+    }
+
+export const getRequestStorageUploadUrlUrl = () => {
+
+
+
+
+  return `/api/storage/uploads/request-url`
+}
+
+/**
+ * @summary Request a presigned URL for an authenticated object upload
+ */
+export const requestStorageUploadUrl = async (storageUploadRequest: StorageUploadRequest, options?: RequestInit): Promise<StorageUploadResponse> => {
+
+  return customFetch<StorageUploadResponse>(getRequestStorageUploadUrlUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      storageUploadRequest,)
+  }
+);}
+
+
+
+
+export const getRequestStorageUploadUrlMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof requestStorageUploadUrl>>, TError,{data: BodyType<StorageUploadRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof requestStorageUploadUrl>>, TError,{data: BodyType<StorageUploadRequest>}, TContext> => {
+
+const mutationKey = ['requestStorageUploadUrl'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof requestStorageUploadUrl>>, {data: BodyType<StorageUploadRequest>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  requestStorageUploadUrl(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type RequestStorageUploadUrlMutationResult = NonNullable<Awaited<ReturnType<typeof requestStorageUploadUrl>>>
+    export type RequestStorageUploadUrlMutationBody = BodyType<StorageUploadRequest>
+    export type RequestStorageUploadUrlMutationError = ErrorType<void>
+
+    /**
+ * @summary Request a presigned URL for an authenticated object upload
+ */
+export const useRequestStorageUploadUrl = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof requestStorageUploadUrl>>, TError,{data: BodyType<StorageUploadRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof requestStorageUploadUrl>>,
+        TError,
+        {data: BodyType<StorageUploadRequest>},
+        TContext
+      > => {
+      return useMutation(getRequestStorageUploadUrlMutationOptions(options));
     }
 
 export const getCreateQuoteVariationUrl = (id: number,) => {
@@ -2573,9 +2649,9 @@ export const getDeleteTeamMemberUrl = (id: number,) => {
   return `/api/team/${id}`
 }
 
-export const deleteTeamMember = async (id: number, options?: RequestInit): Promise<void> => {
+export const deleteTeamMember = async (id: number, options?: RequestInit): Promise<DeletionSuccess> => {
 
-  return customFetch<void>(getDeleteTeamMemberUrl(id),
+  return customFetch<DeletionSuccess>(getDeleteTeamMemberUrl(id),
   {
     ...options,
     method: 'DELETE'
@@ -2777,9 +2853,9 @@ export const getRemoveJobAssignmentUrl = (jobId: number,) => {
 }
 
 export const removeJobAssignment = async (jobId: number,
-    removeAssignmentInput: RemoveAssignmentInput, options?: RequestInit): Promise<void> => {
+    removeAssignmentInput: RemoveAssignmentInput, options?: RequestInit): Promise<DeletionSuccess> => {
 
-  return customFetch<void>(getRemoveJobAssignmentUrl(jobId),
+  return customFetch<DeletionSuccess>(getRemoveJobAssignmentUrl(jobId),
   {
     ...options,
     method: 'DELETE',
@@ -3381,9 +3457,9 @@ export const getDeletePortfolioEntryUrl = (id: number,) => {
   return `/api/portfolio/${id}`
 }
 
-export const deletePortfolioEntry = async (id: number, options?: RequestInit): Promise<void> => {
+export const deletePortfolioEntry = async (id: number, options?: RequestInit): Promise<DeletionSuccess> => {
 
-  return customFetch<void>(getDeletePortfolioEntryUrl(id),
+  return customFetch<DeletionSuccess>(getDeletePortfolioEntryUrl(id),
   {
     ...options,
     method: 'DELETE'

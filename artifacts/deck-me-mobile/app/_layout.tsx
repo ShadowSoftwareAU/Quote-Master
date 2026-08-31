@@ -22,7 +22,7 @@ import {
   setAuthTokenGetter,
   setBaseUrl,
 } from "@workspace/api-client-react";
-import { Stack } from "expo-router";
+import { Redirect, Stack, useSegments } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
 import React, { useEffect, useRef } from "react";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
@@ -53,12 +53,17 @@ setBaseUrl(API_BASE_URL);
 const queryClient = new QueryClient();
 
 function ClerkApiClientBridge() {
-  const { getToken } = useAuth();
+  const { getToken, isSignedIn } = useAuth();
 
   useEffect(() => {
+    if (!isSignedIn) {
+      setAuthTokenGetter(null);
+      return;
+    }
+
     setAuthTokenGetter(() => getToken());
     return () => setAuthTokenGetter(null);
-  }, [getToken]);
+  }, [getToken, isSignedIn]);
 
   return null;
 }
@@ -82,29 +87,38 @@ function ClerkQueryClientCacheInvalidator() {
 }
 
 function RootLayoutNav() {
+  const { isSignedIn } = useAuth();
+  const segments = useSegments();
+  const isAuthRoute = segments[0] === "(auth)";
+
   return (
-    <Stack screenOptions={{ headerBackTitle: "Back" }}>
-      <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-      <Stack.Screen
-        name="quote/[id]"
-        options={{
-          title: "Quote",
-          headerStyle: { backgroundColor: "#1a1e26" },
-          headerTintColor: "#ffffff",
-          headerTitleStyle: { fontFamily: "Chivo_700Bold" },
-        }}
-      />
-      <Stack.Screen
-        name="quote/new"
-        options={{
-          title: "Save Quote",
-          presentation: "modal",
-          headerStyle: { backgroundColor: "#1a1e26" },
-          headerTintColor: "#ffffff",
-          headerTitleStyle: { fontFamily: "Chivo_700Bold" },
-        }}
-      />
-    </Stack>
+    <>
+      <Stack screenOptions={{ headerBackTitle: "Back" }}>
+        <Stack.Screen name="(auth)" options={{ headerShown: false }} />
+        <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+        <Stack.Screen
+          name="quote/[id]"
+          options={{
+            title: "Quote",
+            headerStyle: { backgroundColor: "#1a1e26" },
+            headerTintColor: "#ffffff",
+            headerTitleStyle: { fontFamily: "Chivo_700Bold" },
+          }}
+        />
+        <Stack.Screen
+          name="quote/new"
+          options={{
+            title: "Save Quote",
+            presentation: "modal",
+            headerStyle: { backgroundColor: "#1a1e26" },
+            headerTintColor: "#ffffff",
+            headerTitleStyle: { fontFamily: "Chivo_700Bold" },
+          }}
+        />
+      </Stack>
+      {!isSignedIn && !isAuthRoute ? <Redirect href="/sign-in" /> : null}
+      {isSignedIn && isAuthRoute ? <Redirect href="/" /> : null}
+    </>
   );
 }
 

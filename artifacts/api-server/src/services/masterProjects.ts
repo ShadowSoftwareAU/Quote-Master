@@ -1,4 +1,4 @@
-import { desc, eq, inArray } from "drizzle-orm";
+import { and, desc, eq, inArray } from "drizzle-orm";
 import {
   customersTable,
   db,
@@ -8,6 +8,7 @@ import {
 } from "@workspace/db";
 
 const GST_RATE = 0.1;
+type MasterProjectDbClient = Pick<typeof db, "select" | "update">;
 
 function roundMoney(value: number): number {
   return Math.round((value + Number.EPSILON) * 100) / 100;
@@ -28,27 +29,38 @@ function buildProjectPricing(
   return { materialsSubtotal, labourSubtotal, marginAmount, gst, total: roundMoney(subtotalBeforeGst + gst) };
 }
 
-export async function getMasterProject(projectId: number) {
+export async function getMasterProject(projectId: number, clerkUserId: string) {
   const [project] = await db
     .select({ project: masterProjectsTable, customerName: customersTable.name })
     .from(masterProjectsTable)
-    .leftJoin(customersTable, eq(customersTable.id, masterProjectsTable.customerId))
+    .innerJoin(customersTable, and(
+      eq(customersTable.id, masterProjectsTable.customerId),
+      eq(customersTable.clerkUserId, clerkUserId),
+    ))
     .where(eq(masterProjectsTable.id, projectId));
   if (!project) return null;
 
   const quotes = await db
     .select()
     .from(quotesTable)
-    .where(eq(quotesTable.masterProjectId, projectId))
+    .where(and(
+      eq(quotesTable.masterProjectId, projectId),
+      eq(quotesTable.clerkUserId, clerkUserId),
+    ))
     .orderBy(desc(quotesTable.createdAt));
   const quoteIds = quotes.map((quote) => quote.id);
   const lineItems =
     quoteIds.length === 0
       ? []
       : await db
-          .select()
+          .select({ line: quoteLineItemsTable })
           .from(quoteLineItemsTable)
-          .where(inArray(quoteLineItemsTable.quoteId, quoteIds));
+          .innerJoin(quotesTable, and(
+            eq(quotesTable.id, quoteLineItemsTable.quoteId),
+            eq(quotesTable.clerkUserId, clerkUserId),
+          ))
+          .where(inArray(quoteLineItemsTable.quoteId, quoteIds))
+          .then((rows) => rows.map((row) => row.line));
 
   const consolidated = new Map<string, {
     materialId: number | null; description: string; category: string; unit: string;
@@ -109,29 +121,56 @@ export async function getMasterProject(projectId: number) {
   };
 }
 
-export async function recalculateMasterProjectTotals(projectId: number): Promise<void> {
-  const [project] = await db.select().from(masterProjectsTable).where(eq(masterProjectsTable.id, projectId));
+export async function recalculateMasterProjectTotals(
+  projectId: number,
+  clerkUserId: string,
+  client: MasterProjectDbClient = db,
+): Promise<void> {
+  const [project] = await client
+    .select({ project: masterProjectsTable })
+    .from(masterProjectsTable)
+    .innerJoin(customersTable, and(
+      eq(customersTable.id, masterProjectsTable.customerId),
+      eq(customersTable.clerkUserId, clerkUserId),
+    ))
+    .where(eq(masterProjectsTable.id, projectId));
   if (!project) return;
-  const quotes = await db.select().from(quotesTable).where(eq(quotesTable.masterProjectId, projectId));
+  const quotes = await client.select().from(quotesTable).where(and(
+    eq(quotesTable.masterProjectId, projectId),
+    eq(quotesTable.clerkUserId, clerkUserId),
+  ));
   const materialsSubtotal = roundMoney(quotes.reduce((sum, quote) => sum + Number(quote.materialsSubtotal), 0));
   const labourSubtotal = roundMoney(quotes.reduce((sum, quote) => sum + Number(quote.labourCost), 0));
-  const totals = buildProjectPricing(materialsSubtotal, labourSubtotal, Number(project.builderMarginPct));
-  await db.update(masterProjectsTable).set({
+  const totals = buildProjectPricing(materialsSubtotal, labourSubtotal, Number(project.project.builderMarginPct));
+  await client.update(masterProjectsTable).set({
     materialsSubtotal: String(totals.materialsSubtotal),
     labourSubtotal: String(totals.labourSubtotal),
     marginAmount: String(totals.marginAmount),
     gst: String(totals.gst),
     total: String(totals.total),
-  }).where(eq(masterProjectsTable.id, projectId));
+  }).where(and(
+    eq(masterProjectsTable.id, projectId),
+    inArray(
+      masterProjectsTable.customerId,
+      client.select({ id: customersTable.id }).from(customersTable)
+        .where(eq(customersTable.clerkUserId, clerkUserId)),
+    ),
+  ));
 }
 
-export async function listMasterProjects() {
+export async function listMasterProjects(clerkUserId: string) {
   const projects = await db
     .select({ project: masterProjectsTable, customerName: customersTable.name })
     .from(masterProjectsTable)
-    .leftJoin(customersTable, eq(customersTable.id, masterProjectsTable.customerId))
+    .innerJoin(customersTable, and(
+      eq(customersTable.id, masterProjectsTable.customerId),
+      eq(customersTable.clerkUserId, clerkUserId),
+    ))
     .orderBy(desc(masterProjectsTable.updatedAt));
-  const quoteCounts = await db.select({ masterProjectId: quotesTable.masterProjectId }).from(quotesTable);
+  const quoteCounts = await db
+    .select({ masterProjectId: quotesTable.masterProjectId })
+    .from(quotesTable)
+    .where(eq(quotesTable.clerkUserId, clerkUserId));
   return projects.map(({ project, customerName }) => ({
     id: project.id, title: project.title, status: project.status, customerId: project.customerId,
     customerName, builderMarginPct: Number(project.builderMarginPct),

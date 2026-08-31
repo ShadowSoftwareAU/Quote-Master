@@ -1,5 +1,6 @@
 import { Router, type IRouter } from "express";
-import { sql, eq, desc, asc, gte, inArray } from "drizzle-orm";
+import { getAuth } from "@clerk/express";
+import { sql, eq, desc, asc, gte, inArray, and } from "drizzle-orm";
 import {
   db,
   quotesTable,
@@ -11,7 +12,9 @@ import {
 
 const router: IRouter = Router();
 
-router.get("/dashboard/summary", async (_req, res): Promise<void> => {
+router.get("/dashboard/summary", async (req, res): Promise<void> => {
+  const clerkUserId = getAuth(req).userId;
+  if (!clerkUserId) { res.status(401).json({ error: "Unauthorized" }); return; }
   const now = new Date();
 
   const [counts] = await db
@@ -21,17 +24,20 @@ router.get("/dashboard/summary", async (_req, res): Promise<void> => {
       accepted: sql<number>`count(*) filter (where status = 'accepted')::int`,
       value: sql<number>`coalesce(sum(total), 0)::float`,
     })
-    .from(quotesTable);
+    .from(quotesTable)
+    .where(eq(quotesTable.clerkUserId, clerkUserId));
 
   const [bookingCount] = await db
     .select({
       upcoming: sql<number>`count(*) filter (where start_at >= now() and status <> 'cancelled')::int`,
     })
-    .from(bookingsTable);
+    .from(bookingsTable)
+    .where(eq(bookingsTable.clerkUserId, clerkUserId));
 
   const [customerCount] = await db
     .select({ c: sql<number>`count(*)::int` })
-    .from(customersTable);
+    .from(customersTable)
+    .where(eq(customersTable.clerkUserId, clerkUserId));
 
   const recentQuotesRows = await db
     .select({
@@ -46,7 +52,11 @@ router.get("/dashboard/summary", async (_req, res): Promise<void> => {
       createdAt: quotesTable.createdAt,
     })
     .from(quotesTable)
-    .leftJoin(customersTable, eq(customersTable.id, quotesTable.customerId))
+    .leftJoin(customersTable, and(
+      eq(customersTable.id, quotesTable.customerId),
+      eq(customersTable.clerkUserId, clerkUserId),
+    ))
+    .where(eq(quotesTable.clerkUserId, clerkUserId))
     .orderBy(desc(quotesTable.createdAt))
     .limit(5);
 
@@ -56,15 +66,24 @@ router.get("/dashboard/summary", async (_req, res): Promise<void> => {
       customerName: customersTable.name,
     })
     .from(bookingsTable)
-    .leftJoin(customersTable, eq(customersTable.id, bookingsTable.customerId))
-    .where(gte(bookingsTable.startAt, now))
+    .leftJoin(customersTable, and(
+      eq(customersTable.id, bookingsTable.customerId),
+      eq(customersTable.clerkUserId, clerkUserId),
+    ))
+    .where(and(
+      eq(bookingsTable.clerkUserId, clerkUserId),
+      gte(bookingsTable.startAt, now),
+    ))
     .orderBy(asc(bookingsTable.startAt))
     .limit(5);
 
   const acceptedQuoteIds = await db
     .select({ id: quotesTable.id })
     .from(quotesTable)
-    .where(sql`status = 'accepted'`);
+    .where(and(
+      eq(quotesTable.clerkUserId, clerkUserId),
+      eq(quotesTable.status, "accepted"),
+    ));
 
   let grossProfit = 0;
   let totalTradeCost = 0;
@@ -88,7 +107,10 @@ router.get("/dashboard/summary", async (_req, res): Promise<void> => {
       ? await db
           .select({ id: materialsTable.id, tradeCost: materialsTable.tradeCost })
           .from(materialsTable)
-          .where(inArray(materialsTable.id, materialIds))
+          .where(and(
+            inArray(materialsTable.id, materialIds),
+            eq(materialsTable.clerkUserId, clerkUserId),
+          ))
       : [];
 
     const tradeCostMap = new Map(
@@ -144,7 +166,9 @@ router.get("/dashboard/summary", async (_req, res): Promise<void> => {
   });
 });
 
-router.get("/dashboard/pnl", async (_req, res): Promise<void> => {
+router.get("/dashboard/pnl", async (req, res): Promise<void> => {
+  const clerkUserId = getAuth(req).userId;
+  if (!clerkUserId) { res.status(401).json({ error: "Unauthorized" }); return; }
   // Pull all accepted + sent quotes with customer names
   const quoteRows = await db
     .select({
@@ -158,8 +182,14 @@ router.get("/dashboard/pnl", async (_req, res): Promise<void> => {
       createdAt: quotesTable.createdAt,
     })
     .from(quotesTable)
-    .leftJoin(customersTable, eq(customersTable.id, quotesTable.customerId))
-    .where(sql`${quotesTable.status} in ('accepted', 'sent', 'draft')`)
+    .leftJoin(customersTable, and(
+      eq(customersTable.id, quotesTable.customerId),
+      eq(customersTable.clerkUserId, clerkUserId),
+    ))
+    .where(and(
+      eq(quotesTable.clerkUserId, clerkUserId),
+      sql`${quotesTable.status} in ('accepted', 'sent', 'draft')`,
+    ))
     .orderBy(desc(quotesTable.createdAt));
 
   if (quoteRows.length === 0) {
@@ -187,7 +217,10 @@ router.get("/dashboard/pnl", async (_req, res): Promise<void> => {
     const mats = await db
       .select({ id: materialsTable.id, tradeCost: materialsTable.tradeCost })
       .from(materialsTable)
-      .where(inArray(materialsTable.id, materialIds));
+      .where(and(
+        inArray(materialsTable.id, materialIds),
+        eq(materialsTable.clerkUserId, clerkUserId),
+      ));
     for (const m of mats) {
       tradeCostMap.set(m.id, m.tradeCost ? Number(m.tradeCost) : null);
     }

@@ -10,15 +10,16 @@ import {
   useClockOn,
   useClockOff,
   getListBookingsQueryKey,
-  customFetch,
+  useRequestStorageUploadUrl,
 } from "@workspace/api-client-react";
 import * as ImagePicker from "expo-image-picker";
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
   FlatList,
   Image,
+  type ImageStyle,
   Modal,
   Platform,
   Pressable,
@@ -30,24 +31,7 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { Button, Card, EmptyState, StatusBadge, StripedBar } from "@/components/ui";
-import { API_BASE_URL } from "@/constants/api";
 import { useColors } from "@/hooks/useColors";
-
-async function requestUploadUrl(file: { name: string; size: number; type: string }): Promise<{ uploadURL: string; objectPath: string }> {
-  return customFetch<{ uploadURL: string; objectPath: string }>(
-    "/api/storage/uploads/request-url",
-    {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        name: file.name,
-        size: file.size,
-        contentType: file.type,
-      }),
-      responseType: "json",
-    },
-  );
-}
 
 async function uploadToPresigned(uploadURL: string, uri: string, contentType: string): Promise<void> {
   const res = await fetch(uploadURL, {
@@ -60,6 +44,100 @@ async function uploadToPresigned(uploadURL: string, uri: string, contentType: st
 
 type AnyBooking = Record<string, unknown>;
 
+function OwnerAuthenticatedImage({
+  uri,
+  style,
+}: {
+  uri: string;
+  style: ImageStyle;
+}) {
+  const { getToken, isSignedIn } = useAuth();
+  const colors = useColors();
+  const [sourceUri, setSourceUri] = useState<string | null>(null);
+  const [authorizationToken, setAuthorizationToken] = useState<string | null>(null);
+  const [status, setStatus] = useState<"loading" | "ready" | "error">("loading");
+
+  useEffect(() => {
+    let cancelled = false;
+    let objectUrl: string | null = null;
+
+    setSourceUri(null);
+    setAuthorizationToken(null);
+    if (!isSignedIn) {
+      setStatus("error");
+      return;
+    }
+
+    setStatus("loading");
+    void getToken()
+      .then(async (token) => {
+        if (!token) throw new Error("No active session token");
+
+        if (Platform.OS === "web") {
+          const response = await fetch(uri, {
+            headers: { Authorization: `Bearer ${token}` },
+          });
+          if (!response.ok) throw new Error(`Image request failed: ${response.status}`);
+          objectUrl = URL.createObjectURL(await response.blob());
+          if (!cancelled) setSourceUri(objectUrl);
+          return;
+        }
+
+        if (!cancelled) {
+          setAuthorizationToken(token);
+          setSourceUri(uri);
+        }
+      })
+      .catch(() => {
+        if (!cancelled) setStatus("error");
+      });
+
+    return () => {
+      cancelled = true;
+      if (objectUrl) URL.revokeObjectURL(objectUrl);
+    };
+  }, [getToken, isSignedIn, uri]);
+
+  if (!sourceUri || status === "error") {
+    return (
+      <View
+        style={[
+          style,
+          {
+            alignItems: "center",
+            backgroundColor: colors.muted,
+            justifyContent: "center",
+          },
+        ]}
+      >
+        {status === "loading" ? (
+          <ActivityIndicator color={colors.primary} size="small" />
+        ) : (
+          <Feather name="image" color={colors.mutedForeground} size={20} />
+        )}
+      </View>
+    );
+  }
+
+  return (
+    <Image
+      accessibilityLabel="Booking photo"
+      source={
+        Platform.OS === "web"
+          ? { uri: sourceUri }
+          : {
+              uri: sourceUri,
+              headers: { Authorization: `Bearer ${authorizationToken}` },
+            }
+      }
+      style={style}
+      resizeMode="cover"
+      onLoad={() => setStatus("ready")}
+      onError={() => setStatus("error")}
+    />
+  );
+}
+
 export default function BookingsScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
@@ -70,6 +148,7 @@ export default function BookingsScreen() {
   const removePhoto = useRemoveBookingPhoto();
   const clockOn = useClockOn();
   const clockOff = useClockOff();
+  const requestUploadUrl = useRequestStorageUploadUrl();
 
   const [selectedBookingId, setSelectedBookingId] = useState<number | null>(null);
   const [uploading, setUploading] = useState(false);
@@ -118,10 +197,12 @@ export default function BookingsScreen() {
       for (const asset of result.assets) {
         const ext = asset.uri.split(".").pop() ?? "jpg";
         const contentType = `image/${ext === "jpg" ? "jpeg" : ext}`;
-        const { uploadURL, objectPath } = await requestUploadUrl({
-          name: asset.fileName ?? `photo_${Date.now()}.${ext}`,
-          size: asset.fileSize ?? 0,
-          type: contentType,
+        const { uploadURL, objectPath } = await requestUploadUrl.mutateAsync({
+          data: {
+            name: asset.fileName ?? `photo_${Date.now()}.${ext}`,
+            size: asset.fileSize ?? 0,
+            contentType,
+          },
         });
         await uploadToPresigned(uploadURL, asset.uri, contentType);
         await addPhoto.mutateAsync({ id: selectedBookingId, data: { objectPath } });
@@ -170,23 +251,8 @@ export default function BookingsScreen() {
     }
   }
 
-  const { getToken, userId } = useAuth();
-  const [imageAuthToken, setImageAuthToken] = useState<string | null>(null);
-
-  React.useEffect(() => {
-    let active = true;
-    getToken()
-      .then((token) => {
-        if (active) setImageAuthToken(token);
-      })
-      .catch(() => {
-        if (active) setImageAuthToken(null);
-      });
-
-    return () => {
-      active = false;
-    };
-  }, [getToken, userId]);
+  const domain = process.env.EXPO_PUBLIC_DOMAIN ?? "";
+  const apiBase = domain ? `https://${domain}` : "";
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.background }}>
@@ -502,19 +568,9 @@ export default function BookingsScreen() {
                       position: "relative",
                     })}
                   >
-                    <Image
-                      source={
-                        imageAuthToken
-                          ? {
-                              uri: `${API_BASE_URL}/api/storage/objects${path}`,
-                              headers: {
-                                Authorization: `Bearer ${imageAuthToken}`,
-                              },
-                            }
-                          : undefined
-                      }
+                    <OwnerAuthenticatedImage
+                      uri={`${apiBase}/api/storage/objects${path}`}
                       style={{ width: "100%", height: "100%" }}
-                      resizeMode="cover"
                     />
                     <View style={{
                       position: "absolute", bottom: 0, left: 0, right: 0,

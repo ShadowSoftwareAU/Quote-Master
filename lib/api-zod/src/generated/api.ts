@@ -168,6 +168,10 @@ export const DeleteCustomerParams = zod.object({
   "id": zod.coerce.number()
 })
 
+export const DeleteCustomerResponse = zod.object({
+  "deleted": zod.boolean()
+})
+
 
 export const ListMaterialsQueryParams = zod.object({
   "category": zod.coerce.string().optional()
@@ -239,6 +243,10 @@ export const UpdateMaterialResponse = zod.object({
 
 export const DeleteMaterialParams = zod.object({
   "id": zod.coerce.number()
+})
+
+export const DeleteMaterialResponse = zod.object({
+  "deleted": zod.boolean()
 })
 
 
@@ -551,6 +559,11 @@ export const UpdateQuoteResponse = zod.object({
 
 export const DeleteQuoteParams = zod.object({
   "id": zod.coerce.number()
+})
+
+export const DeleteQuoteResponse = zod.object({
+  "deleted": zod.boolean(),
+  "id": zod.number()
 })
 
 
@@ -1051,6 +1064,11 @@ export const DeleteMasterProjectParams = zod.object({
   "id": zod.coerce.number()
 })
 
+export const DeleteMasterProjectResponse = zod.object({
+  "success": zod.boolean(),
+  "id": zod.number()
+})
+
 
 export const SetMasterProjectQuotesParams = zod.object({
   "id": zod.coerce.number()
@@ -1170,6 +1188,10 @@ export const DeleteBookingParams = zod.object({
   "id": zod.coerce.number()
 })
 
+export const DeleteBookingResponse = zod.object({
+  "deleted": zod.boolean()
+})
+
 
 /**
  * @summary Attach an uploaded object path to a booking's photo evidence list
@@ -1222,6 +1244,27 @@ export const RemoveBookingPhotoResponse = zod.object({
   "status": zod.string().describe('scheduled | in_progress | completed | cancelled'),
   "photos": zod.array(zod.string()).optional().describe('Object paths for site photos'),
   "createdAt": zod.coerce.date()
+})
+
+
+/**
+ * @summary Request a presigned URL for an authenticated object upload
+ */
+
+export const requestStorageUploadUrlBodySizeMin = 0;
+
+
+
+
+export const RequestStorageUploadUrlBody = zod.object({
+  "name": zod.string().min(1),
+  "size": zod.number().min(requestStorageUploadUrlBodySizeMin),
+  "contentType": zod.string().min(1)
+})
+
+export const RequestStorageUploadUrlResponse = zod.object({
+  "uploadURL": zod.string(),
+  "objectPath": zod.string()
 })
 
 
@@ -1304,6 +1347,10 @@ export const DeleteTeamMemberParams = zod.object({
   "id": zod.coerce.number()
 })
 
+export const DeleteTeamMemberResponse = zod.object({
+  "deleted": zod.boolean()
+})
+
 
 export const AssignTeamMemberToJobParams = zod.object({
   "memberId": zod.coerce.number(),
@@ -1336,6 +1383,10 @@ export const RemoveJobAssignmentParams = zod.object({
 
 export const RemoveJobAssignmentBody = zod.object({
   "teamMemberId": zod.number()
+})
+
+export const RemoveJobAssignmentResponse = zod.object({
+  "deleted": zod.boolean()
 })
 
 
@@ -1501,6 +1552,10 @@ export const UpdatePortfolioEntryResponse = zod.object({
 
 export const DeletePortfolioEntryParams = zod.object({
   "id": zod.coerce.number()
+})
+
+export const DeletePortfolioEntryResponse = zod.object({
+  "deleted": zod.boolean()
 })
 
 

@@ -1,5 +1,6 @@
 import { Router, type IRouter } from "express";
-import { eq, desc } from "drizzle-orm";
+import { getAuth } from "@clerk/express";
+import { and, eq, desc } from "drizzle-orm";
 import {
   db,
   quotesTable,
@@ -23,6 +24,27 @@ import { estimateDeck, calcTotals, type DeckSpec } from "../lib/estimator";
 import { recalculateMasterProjectTotals } from "../services/masterProjects";
 
 const router: IRouter = Router();
+
+function verifiedUserId(req: Parameters<typeof getAuth>[0]): string | null {
+  try {
+    return getAuth(req).userId ?? null;
+  } catch {
+    return null;
+  }
+}
+
+async function customerBelongsToUser(customerId: number, userId: string): Promise<boolean> {
+  const [customer] = await db
+    .select({ id: customersTable.id })
+    .from(customersTable)
+    .where(and(eq(customersTable.id, customerId), eq(customersTable.clerkUserId, userId)));
+  return Boolean(customer);
+}
+
+async function ownedMaterials(userId: string | null) {
+  if (!userId) return [];
+  return db.select().from(materialsTable).where(eq(materialsTable.clerkUserId, userId));
+}
 
 function specFromQuoteInput(input: {
   lengthM: number;
@@ -127,22 +149,66 @@ function quoteSummaryRow(row: typeof quotesTable.$inferSelect & {
   };
 }
 
-async function loadQuoteJson(id: number) {
+async function loadQuoteJson(id: number, userId?: string) {
+  const customerJoin = userId
+    ? and(
+        eq(customersTable.id, quotesTable.customerId),
+        eq(customersTable.clerkUserId, userId),
+      )
+    : eq(customersTable.id, quotesTable.customerId);
   const [row] = await db
     .select({
       q: quotesTable,
       customerName: customersTable.name,
     })
     .from(quotesTable)
-    .leftJoin(customersTable, eq(customersTable.id, quotesTable.customerId))
-    .where(eq(quotesTable.id, id));
+    .leftJoin(customersTable, customerJoin)
+    .where(
+      userId
+        ? and(eq(quotesTable.id, id), eq(quotesTable.clerkUserId, userId))
+        : eq(quotesTable.id, id),
+    );
   if (!row) return null;
+  if (userId && row.customerName === null) return null;
   const spec = specFromStoredQuote(row.q);
-  const lines = await db
-    .select()
-    .from(quoteLineItemsTable)
-    .where(eq(quoteLineItemsTable.quoteId, id))
-    .orderBy(quoteLineItemsTable.id);
+  const storedLines = userId
+    ? await db
+        .select({ line: quoteLineItemsTable })
+        .from(quoteLineItemsTable)
+        .innerJoin(quotesTable, and(
+          eq(quotesTable.id, quoteLineItemsTable.quoteId),
+          eq(quotesTable.clerkUserId, userId),
+        ))
+        .where(eq(quoteLineItemsTable.quoteId, id))
+        .orderBy(quoteLineItemsTable.id)
+        .then((lines) => lines.map(({ line }) => line))
+    : await db
+        .select()
+        .from(quoteLineItemsTable)
+        .where(eq(quoteLineItemsTable.quoteId, id))
+        .orderBy(quoteLineItemsTable.id);
+  const referencedMaterialIds = Array.from(
+    new Set(
+      storedLines
+        .map((line) => line.materialId)
+        .filter((materialId): materialId is number => materialId !== null),
+    ),
+  );
+  const allowedMaterialIds = new Set<number>();
+  if (userId && referencedMaterialIds.length > 0) {
+    const owned = await db
+      .select({ id: materialsTable.id })
+      .from(materialsTable)
+      .where(eq(materialsTable.clerkUserId, userId));
+    for (const material of owned) allowedMaterialIds.add(material.id);
+  }
+  const lines = storedLines.map((line) => ({
+    ...line,
+    materialId:
+      !userId || line.materialId === null || allowedMaterialIds.has(line.materialId)
+        ? line.materialId
+        : null,
+  }));
   return {
     id: row.q.id,
     title: row.q.title,
@@ -188,7 +254,53 @@ async function loadQuoteJson(id: number) {
   };
 }
 
-router.get("/quotes", async (_req, res): Promise<void> => {
+type LoadedQuote = NonNullable<Awaited<ReturnType<typeof loadQuoteJson>>>;
+
+function publicLineItem(line: LoadedQuote["lineItems"][number]) {
+  return {
+    description: line.description,
+    category: line.category,
+    quantity: line.quantity,
+    unit: line.unit,
+    unitPrice: line.unitPrice,
+    lineTotal: line.lineTotal,
+  };
+}
+
+function publicQuoteResponse(quote: LoadedQuote) {
+  const { labourHours: _labourHours, labourRate: _labourRate, ...publicSpec } = quote.spec;
+  return {
+    id: quote.id,
+    title: quote.title,
+    status: quote.status,
+    customerName: quote.customerName,
+    siteAddress: quote.siteAddress,
+    spec: publicSpec,
+    lineItems: quote.lineItems.map(publicLineItem),
+    materialsSubtotal: quote.materialsSubtotal,
+    labourCost: quote.labourCost,
+    gst: quote.gst,
+    total: quote.total,
+    createdAt: quote.createdAt,
+    updatedAt: quote.updatedAt,
+  };
+}
+
+function isStrictPublicUpgrade(body: unknown): boolean {
+  if (!body || typeof body !== "object" || Array.isArray(body)) return false;
+  const keys = Object.keys(body);
+  return (
+    keys.length > 0 &&
+    keys.every((key) => key === "deckBoardType" || key === "balustradeType")
+  );
+}
+
+router.get("/quotes", async (req, res): Promise<void> => {
+  const userId = verifiedUserId(req);
+  if (!userId) {
+    res.status(401).json({ error: "Unauthorized" });
+    return;
+  }
   const rows = await db
     .select({
       id: quotesTable.id,
@@ -204,7 +316,19 @@ router.get("/quotes", async (_req, res): Promise<void> => {
       createdAt: quotesTable.createdAt,
     })
     .from(quotesTable)
-    .leftJoin(customersTable, eq(customersTable.id, quotesTable.customerId))
+    .leftJoin(
+      customersTable,
+      and(
+        eq(customersTable.id, quotesTable.customerId),
+        eq(customersTable.clerkUserId, userId),
+      ),
+    )
+    .where(
+      and(
+        eq(quotesTable.clerkUserId, userId),
+        eq(customersTable.clerkUserId, userId),
+      ),
+    )
     .orderBy(desc(quotesTable.createdAt));
   res.json(
     rows.map((r) => ({
@@ -230,7 +354,7 @@ router.post("/quotes/estimate", async (req, res): Promise<void> => {
     return;
   }
   const spec = specFromQuoteInput(parsed.data);
-  const materials = await db.select().from(materialsTable);
+  const materials = await ownedMaterials(verifiedUserId(req));
   const { lines, deckAreaM2, materialsSubtotal, complianceWarnings } = estimateDeck(
     spec,
     materials,
@@ -245,7 +369,7 @@ router.post("/quotes/estimate", async (req, res): Promise<void> => {
   res.json({
     spec: { ...spec, labourHours, labourRate },
     deckAreaM2,
-    lines,
+    lines: lines.map(({ materialId: _materialId, ...line }) => line),
     materialsSubtotal,
     labourCost,
     gst,
@@ -255,14 +379,23 @@ router.post("/quotes/estimate", async (req, res): Promise<void> => {
 });
 
 router.post("/quotes", async (req, res): Promise<void> => {
+  const userId = verifiedUserId(req);
+  if (!userId) {
+    res.status(401).json({ error: "Unauthorized" });
+    return;
+  }
   const parsed = CreateQuoteBody.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({ error: parsed.error.message });
     return;
   }
   const data = parsed.data;
+  if (!(await customerBelongsToUser(data.customerId, userId))) {
+    res.status(400).json({ error: "Customer not found" });
+    return;
+  }
   const spec = specFromQuoteInput(data);
-  const materials = await db.select().from(materialsTable);
+  const materials = await ownedMaterials(userId);
   const { lines, materialsSubtotal } = estimateDeck(spec, materials);
   const labourHours = data.labourHours ?? 0;
   const labourRate = data.labourRate ?? 85;
@@ -272,58 +405,71 @@ router.post("/quotes", async (req, res): Promise<void> => {
     labourRate,
   });
 
-  const [created] = await db
-    .insert(quotesTable)
-    .values({
-      title: data.title,
-      customerId: data.customerId,
-      tradeType: data.tradeType ?? "decking",
-      siteAddress: data.siteAddress ?? null,
-      notes: data.notes ?? null,
-      lengthM: String(data.lengthM),
-      widthM: String(data.widthM),
-      heightM: String(spec.heightM),
-      boardWidthMm: spec.boardWidthMm,
-      joistSpacingMm: spec.joistSpacingMm,
-      bearerSpacingMm: spec.bearerSpacingMm,
-      postSpacingMm: spec.postSpacingMm,
-      wastageFactor: String(spec.wastageFactor),
-      labourHours: String(labourHours),
-      labourRate: String(labourRate),
-      materialsSubtotal: String(materialsSubtotal),
-      labourCost: String(labourCost),
-      gst: String(gst),
-      total: String(total),
-      specJson: serialiseSpec(spec),
-    })
-    .returning();
+  const created = await db.transaction(async (tx) => {
+    const [customer] = await tx.select({ id: customersTable.id }).from(customersTable)
+      .where(and(eq(customersTable.id, data.customerId), eq(customersTable.clerkUserId, userId)));
+    if (!customer) return null;
+    const [row] = await tx
+      .insert(quotesTable)
+      .values({
+        clerkUserId: userId,
+        title: data.title,
+        customerId: data.customerId,
+        tradeType: data.tradeType ?? "decking",
+        siteAddress: data.siteAddress ?? null,
+        notes: data.notes ?? null,
+        lengthM: String(data.lengthM),
+        widthM: String(data.widthM),
+        heightM: String(spec.heightM),
+        boardWidthMm: spec.boardWidthMm,
+        joistSpacingMm: spec.joistSpacingMm,
+        bearerSpacingMm: spec.bearerSpacingMm,
+        postSpacingMm: spec.postSpacingMm,
+        wastageFactor: String(spec.wastageFactor),
+        labourHours: String(labourHours),
+        labourRate: String(labourRate),
+        materialsSubtotal: String(materialsSubtotal),
+        labourCost: String(labourCost),
+        gst: String(gst),
+        total: String(total),
+        specJson: serialiseSpec(spec),
+      })
+      .returning();
+    if (lines.length > 0) {
+      await tx.insert(quoteLineItemsTable).values(
+        lines.map((l) => ({
+          quoteId: row.id,
+          materialId: l.materialId,
+          description: l.description,
+          category: l.category,
+          quantity: String(l.quantity),
+          unit: l.unit,
+          unitPrice: String(l.unitPrice),
+          lineTotal: String(l.lineTotal),
+        })),
+      );
+    }
+    return row;
+  });
+  if (!created) { res.status(400).json({ error: "Customer not found" }); return; }
 
-  if (lines.length > 0) {
-    await db.insert(quoteLineItemsTable).values(
-      lines.map((l) => ({
-        quoteId: created.id,
-        materialId: l.materialId,
-        description: l.description,
-        category: l.category,
-        quantity: String(l.quantity),
-        unit: l.unit,
-        unitPrice: String(l.unitPrice),
-        lineTotal: String(l.lineTotal),
-      })),
-    );
-  }
-
-  const json = await loadQuoteJson(created.id);
+  const json = await loadQuoteJson(created.id, userId);
+  if (!json) { res.status(404).json({ error: "Quote not found" }); return; }
   res.status(201).json(json);
 });
 
 router.get("/quotes/:id", async (req, res): Promise<void> => {
+  const userId = verifiedUserId(req);
+  if (!userId) {
+    res.status(401).json({ error: "Unauthorized" });
+    return;
+  }
   const params = GetQuoteParams.safeParse(req.params);
   if (!params.success) {
     res.status(400).json({ error: params.error.message });
     return;
   }
-  const json = await loadQuoteJson(params.data.id);
+  const json = await loadQuoteJson(params.data.id, userId);
   if (!json) {
     res.status(404).json({ error: "Quote not found" });
     return;
@@ -343,25 +489,13 @@ router.get("/quotes/:id/portal", async (req, res): Promise<void> => {
     return;
   }
 
-  res.json({
-    id: quote.id,
-    title: quote.title,
-    status: quote.status,
-    customerName: quote.customerName,
-    siteAddress: quote.siteAddress,
-    notes: quote.notes,
-    spec: quote.spec,
-    lineItems: quote.lineItems,
-    materialsSubtotal: quote.materialsSubtotal,
-    labourCost: quote.labourCost,
-    gst: quote.gst,
-    total: quote.total,
-    createdAt: quote.createdAt,
-    updatedAt: quote.updatedAt,
-  });
+  res.json(publicQuoteResponse(quote));
 });
 
 router.patch("/quotes/:id", async (req, res): Promise<void> => {
+  const userId = verifiedUserId(req);
+  const clerkUserId = userId;
+  const isPublic = !userId;
   const params = UpdateQuoteParams.safeParse(req.params);
   if (!params.success) {
     res.status(400).json({ error: params.error.message });
@@ -372,15 +506,31 @@ router.patch("/quotes/:id", async (req, res): Promise<void> => {
     res.status(400).json({ error: body.error.message });
     return;
   }
+  if (isPublic && !isStrictPublicUpgrade(req.body)) {
+    res.status(401).json({ error: "Unauthorized" });
+    return;
+  }
   const [existing] = await db
     .select()
     .from(quotesTable)
-    .where(eq(quotesTable.id, params.data.id));
+    .where(
+      userId
+        ? and(eq(quotesTable.id, params.data.id), eq(quotesTable.clerkUserId, userId))
+        : eq(quotesTable.id, params.data.id),
+    );
   if (!existing) {
     res.status(404).json({ error: "Quote not found" });
     return;
   }
   const d = body.data;
+  if (
+    userId &&
+    d.customerId !== undefined &&
+    !(await customerBelongsToUser(d.customerId, userId))
+  ) {
+    res.status(400).json({ error: "Customer not found" });
+    return;
+  }
   const savedSpec = specFromStoredQuote(existing);
   const spec = specFromQuoteInput({
     ...savedSpec,
@@ -388,7 +538,7 @@ router.patch("/quotes/:id", async (req, res): Promise<void> => {
     lengthM: d.lengthM ?? savedSpec.lengthM,
     widthM: d.widthM ?? savedSpec.widthM,
   });
-  const materials = await db.select().from(materialsTable);
+  const materials = await ownedMaterials(userId ?? existing.clerkUserId);
   const { lines, materialsSubtotal } = estimateDeck(spec, materials);
   const labourHours = d.labourHours ?? Number(existing.labourHours);
   const labourRate = d.labourRate ?? Number(existing.labourRate);
@@ -398,56 +548,91 @@ router.patch("/quotes/:id", async (req, res): Promise<void> => {
     labourRate,
   });
 
-  await db
-    .update(quotesTable)
-    .set({
-      title: d.title ?? existing.title,
-      customerId: d.customerId ?? existing.customerId,
-      tradeType: d.tradeType ?? existing.tradeType,
-      siteAddress: d.siteAddress ?? existing.siteAddress,
-      notes: d.notes ?? existing.notes,
-      lengthM: String(spec.lengthM),
-      widthM: String(spec.widthM),
-      heightM: String(spec.heightM),
-      boardWidthMm: spec.boardWidthMm,
-      joistSpacingMm: spec.joistSpacingMm,
-      bearerSpacingMm: spec.bearerSpacingMm,
-      postSpacingMm: spec.postSpacingMm,
-      wastageFactor: String(spec.wastageFactor),
-      labourHours: String(labourHours),
-      labourRate: String(labourRate),
-      materialsSubtotal: String(materialsSubtotal),
-      labourCost: String(labourCost),
-      gst: String(gst),
-      total: String(total),
-      specJson: serialiseSpec(spec),
-    })
-    .where(eq(quotesTable.id, params.data.id));
-
-  await db
-    .delete(quoteLineItemsTable)
-    .where(eq(quoteLineItemsTable.quoteId, params.data.id));
-  if (lines.length > 0) {
-    await db.insert(quoteLineItemsTable).values(
-      lines.map((l) => ({
-        quoteId: params.data.id,
-        materialId: l.materialId,
-        description: l.description,
-        category: l.category,
-        quantity: String(l.quantity),
-        unit: l.unit,
-        unitPrice: String(l.unitPrice),
-        lineTotal: String(l.lineTotal),
-      })),
-    );
+  const updated = await db.transaction(async (tx) => {
+    if (userId && d.customerId !== undefined) {
+      const [customer] = await tx
+        .select({ id: customersTable.id })
+        .from(customersTable)
+        .where(and(
+          eq(customersTable.id, d.customerId),
+          eq(customersTable.clerkUserId, userId),
+        ));
+      if (!customer) return null;
+    }
+    const [authorisedParent] = await tx
+      .select({ id: quotesTable.id })
+      .from(quotesTable)
+      .where(
+        userId
+          ? and(eq(quotesTable.id, params.data.id), eq(quotesTable.clerkUserId, userId))
+          : eq(quotesTable.id, params.data.id),
+      );
+    if (!authorisedParent) return null;
+    const [row] = await tx
+      .update(quotesTable)
+      .set({
+        title: d.title ?? existing.title,
+        customerId: d.customerId ?? existing.customerId,
+        tradeType: d.tradeType ?? existing.tradeType,
+        siteAddress: d.siteAddress ?? existing.siteAddress,
+        notes: d.notes ?? existing.notes,
+        lengthM: String(spec.lengthM),
+        widthM: String(spec.widthM),
+        heightM: String(spec.heightM),
+        boardWidthMm: spec.boardWidthMm,
+        joistSpacingMm: spec.joistSpacingMm,
+        bearerSpacingMm: spec.bearerSpacingMm,
+        postSpacingMm: spec.postSpacingMm,
+        wastageFactor: String(spec.wastageFactor),
+        labourHours: String(labourHours),
+        labourRate: String(labourRate),
+        materialsSubtotal: String(materialsSubtotal),
+        labourCost: String(labourCost),
+        gst: String(gst),
+        total: String(total),
+        specJson: serialiseSpec(spec),
+      })
+      .where(
+        userId
+          ? and(eq(quotesTable.id, params.data.id), eq(quotesTable.clerkUserId, userId))
+          : eq(quotesTable.id, params.data.id),
+      )
+      .returning();
+    if (!row) return null;
+    await tx
+      .delete(quoteLineItemsTable)
+      .where(eq(quoteLineItemsTable.quoteId, authorisedParent.id));
+    if (lines.length > 0) {
+      await tx.insert(quoteLineItemsTable).values(
+        lines.map((l) => ({
+          quoteId: authorisedParent.id,
+          materialId: l.materialId,
+          description: l.description,
+          category: l.category,
+          quantity: String(l.quantity),
+          unit: l.unit,
+          unitPrice: String(l.unitPrice),
+          lineTotal: String(l.lineTotal),
+        })),
+      );
+    }
+    const masterProjectOwnerId = clerkUserId ?? existing.clerkUserId;
+    if (masterProjectOwnerId && existing.masterProjectId) {
+      await recalculateMasterProjectTotals(existing.masterProjectId, masterProjectOwnerId, tx);
+    }
+    return row;
+  });
+  if (!updated) {
+    res.status(404).json({ error: "Quote not found" });
+    return;
   }
-  if (existing.masterProjectId) await recalculateMasterProjectTotals(existing.masterProjectId);
-
-  const json = await loadQuoteJson(params.data.id);
-  res.json(json);
+  const json = await loadQuoteJson(params.data.id, userId ?? undefined);
+  if (!json) { res.status(404).json({ error: "Quote not found" }); return; }
+  res.json(isPublic ? publicQuoteResponse(json) : json);
 });
 
 router.patch("/quotes/:id/status", async (req, res): Promise<void> => {
+  const userId = verifiedUserId(req);
   const params = SetQuoteStatusParams.safeParse(req.params);
   if (!params.success) {
     res.status(400).json({ error: params.error.message });
@@ -458,21 +643,44 @@ router.patch("/quotes/:id/status", async (req, res): Promise<void> => {
     res.status(400).json({ error: body.error.message });
     return;
   }
+  const publicStatusKeys =
+    req.body && typeof req.body === "object" && !Array.isArray(req.body)
+      ? Object.keys(req.body)
+      : [];
+  if (
+    !userId &&
+    (body.data.status !== "accepted" ||
+      publicStatusKeys.length !== 1 ||
+      publicStatusKeys[0] !== "status")
+  ) {
+    res.status(401).json({ error: "Unauthorized" });
+    return;
+  }
   const [row] = await db
     .update(quotesTable)
     .set({ status: body.data.status })
-    .where(eq(quotesTable.id, params.data.id))
+    .where(
+      userId
+        ? and(eq(quotesTable.id, params.data.id), eq(quotesTable.clerkUserId, userId))
+        : eq(quotesTable.id, params.data.id),
+    )
     .returning();
   if (!row) {
     res.status(404).json({ error: "Quote not found" });
     return;
   }
-  const json = await loadQuoteJson(params.data.id);
-  res.json(json);
+  const json = await loadQuoteJson(params.data.id, userId ?? undefined);
+  if (!json) { res.status(404).json({ error: "Quote not found" }); return; }
+  res.json(!userId ? publicQuoteResponse(json) : json);
   void quoteSummaryRow; // silence unused
 });
 
 router.post("/quotes/:id/variation", async (req, res): Promise<void> => {
+  const userId = verifiedUserId(req);
+  if (!userId) {
+    res.status(401).json({ error: "Unauthorized" });
+    return;
+  }
   const params = CreateQuoteVariationParams.safeParse(req.params);
   if (!params.success) {
     res.status(400).json({ error: params.error.message });
@@ -483,7 +691,7 @@ router.post("/quotes/:id/variation", async (req, res): Promise<void> => {
     res.status(400).json({ error: body.error.message });
     return;
   }
-  const original = await loadQuoteJson(params.data.id);
+  const original = await loadQuoteJson(params.data.id, userId);
   if (!original) {
     res.status(404).json({ error: "Quote not found" });
     return;
@@ -494,15 +702,23 @@ router.post("/quotes/:id/variation", async (req, res): Promise<void> => {
     lengthM: b.lengthM ?? original.spec.lengthM,
     widthM: b.widthM ?? original.spec.widthM,
   });
-  const materials = await db.select().from(materialsTable);
+  const materials = await ownedMaterials(userId);
   const { lines, materialsSubtotal } = estimateDeck(spec, materials);
   const labourHours = b.labourHours ?? original.labourHours;
   const labourRate = b.labourRate ?? original.labourRate;
   const { labourCost, gst, total } = calcTotals({ materialsSubtotal, labourHours, labourRate });
 
-  const [created] = await db
-    .insert(quotesTable)
-    .values({
+  const created = await db.transaction(async (tx) => {
+    const [authorisedOriginal] = await tx
+      .select({ id: quotesTable.id })
+      .from(quotesTable)
+      .where(and(
+        eq(quotesTable.id, params.data.id),
+        eq(quotesTable.clerkUserId, userId),
+      ));
+    if (!authorisedOriginal) return null;
+    const [row] = await tx.insert(quotesTable).values({
+      clerkUserId: userId,
       title: b.title,
       customerId: original.customerId,
       tradeType: original.tradeType,
@@ -523,13 +739,11 @@ router.post("/quotes/:id/variation", async (req, res): Promise<void> => {
       gst: String(gst),
       total: String(total),
       specJson: serialiseSpec(spec),
-    })
-    .returning();
-
-  if (lines.length > 0) {
-    await db.insert(quoteLineItemsTable).values(
-      lines.map((l) => ({
-        quoteId: created.id,
+    }).returning();
+    if (lines.length > 0) {
+      await tx.insert(quoteLineItemsTable).values(
+        lines.map((l) => ({
+        quoteId: row.id,
         materialId: l.materialId,
         description: l.description,
         category: l.category,
@@ -537,35 +751,55 @@ router.post("/quotes/:id/variation", async (req, res): Promise<void> => {
         unit: l.unit,
         unitPrice: String(l.unitPrice),
         lineTotal: String(l.lineTotal),
-      })),
-    );
-  }
+        })),
+      );
+    }
+    return row;
+  });
+  if (!created) { res.status(404).json({ error: "Quote not found" }); return; }
 
-  const json = await loadQuoteJson(created.id);
+  const json = await loadQuoteJson(created.id, userId);
+  if (!json) { res.status(404).json({ error: "Quote not found" }); return; }
   res.status(201).json(json);
 });
 
 router.delete("/quotes/:id", async (req, res): Promise<void> => {
+  const userId = verifiedUserId(req);
+  if (!userId) {
+    res.status(401).json({ error: "Unauthorized" });
+    return;
+  }
   const params = DeleteQuoteParams.safeParse(req.params);
   if (!params.success) {
     res.status(400).json({ error: params.error.message });
     return;
   }
-  const [existing] = await db.select().from(quotesTable).where(eq(quotesTable.id, params.data.id));
-  if (!existing) {
-    res.status(404).json({ error: "Quote not found" });
-    return;
-  }
-  await db
-    .delete(quoteLineItemsTable)
-    .where(eq(quoteLineItemsTable.quoteId, params.data.id));
-  const [row] = await db
-    .delete(quotesTable)
-    .where(eq(quotesTable.id, params.data.id))
-    .returning();
+  const row = await db.transaction(async (tx) => {
+    const [existing] = await tx
+      .select()
+      .from(quotesTable)
+      .where(and(
+        eq(quotesTable.id, params.data.id),
+        eq(quotesTable.clerkUserId, userId),
+      ));
+    if (!existing) return null;
+    await tx
+      .delete(quoteLineItemsTable)
+      .where(eq(quoteLineItemsTable.quoteId, existing.id));
+    const [deleted] = await tx
+      .delete(quotesTable)
+      .where(and(
+        eq(quotesTable.id, params.data.id),
+        eq(quotesTable.clerkUserId, userId),
+      ))
+      .returning();
+    if (deleted && existing.masterProjectId) {
+      await recalculateMasterProjectTotals(existing.masterProjectId, userId, tx);
+    }
+    return deleted ? { deleted, masterProjectId: existing.masterProjectId } : null;
+  });
   if (!row) { res.status(404).json({ error: "Quote not found" }); return; }
-  if (existing.masterProjectId) await recalculateMasterProjectTotals(existing.masterProjectId);
-  res.sendStatus(204);
+  res.json({ deleted: true, id: row.deleted.id });
 });
 
 export default router;

@@ -1,5 +1,6 @@
 import { Router, type IRouter } from "express";
-import { eq, asc } from "drizzle-orm";
+import { getAuth } from "@clerk/express";
+import { eq, asc, and, isNull } from "drizzle-orm";
 import { db, timeEntriesTable, teamMembersTable, bookingsTable } from "@workspace/db";
 import {
   ClockOnBody,
@@ -31,19 +32,12 @@ function entryToJson(
   };
 }
 
-async function enrichEntry(row: typeof timeEntriesTable.$inferSelect) {
-  const [member] = await db
-    .select({ name: teamMembersTable.name })
-    .from(teamMembersTable)
-    .where(eq(teamMembersTable.id, row.teamMemberId));
-  const [booking] = await db
-    .select({ title: bookingsTable.title })
-    .from(bookingsTable)
-    .where(eq(bookingsTable.id, row.jobId));
-  return entryToJson({ ...row, memberName: member?.name ?? null, jobTitle: booking?.title ?? null });
-}
-
 router.post("/time/clock-on", async (req, res): Promise<void> => {
+  const userId = getAuth(req).userId;
+  if (!userId) {
+    res.status(401).json({ error: "Unauthorized" });
+    return;
+  }
   const parsed = ClockOnBody.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({ error: parsed.error.message });
@@ -51,31 +45,79 @@ router.post("/time/clock-on", async (req, res): Promise<void> => {
   }
   const d = parsed.data;
 
-  const entries = await db
-    .select()
-    .from(timeEntriesTable)
-    .where(eq(timeEntriesTable.teamMemberId, d.teamMemberId));
+  const result = await db.transaction(async (tx) => {
+    const [member] = await tx
+      .select({ id: teamMembersTable.id, name: teamMembersTable.name })
+      .from(teamMembersTable)
+      .where(and(
+        eq(teamMembersTable.id, d.teamMemberId),
+        eq(teamMembersTable.clerkUserId, userId),
+      ))
+      .for("update");
+    if (!member) return { error: "Team member not found" as const };
 
-  const open = entries.find((e) => e.clockOff === null);
-  if (open) {
-    res.status(409).json({ error: "Already clocked on — clock off first" });
+    const [booking] = await tx
+      .select({ id: bookingsTable.id, title: bookingsTable.title })
+      .from(bookingsTable)
+      .where(and(
+        eq(bookingsTable.id, d.jobId),
+        eq(bookingsTable.clerkUserId, userId),
+      ))
+      .for("update");
+    if (!booking) return { error: "Booking not found" as const };
+
+    const [open] = await tx
+      .select({ id: timeEntriesTable.id })
+      .from(timeEntriesTable)
+      .innerJoin(teamMembersTable, and(
+        eq(teamMembersTable.id, timeEntriesTable.teamMemberId),
+        eq(teamMembersTable.clerkUserId, userId),
+      ))
+      .innerJoin(bookingsTable, and(
+        eq(bookingsTable.id, timeEntriesTable.jobId),
+        eq(bookingsTable.clerkUserId, userId),
+      ))
+      .where(and(
+        eq(timeEntriesTable.teamMemberId, d.teamMemberId),
+        isNull(timeEntriesTable.clockOff),
+      ))
+      .limit(1);
+    if (open) return { error: "Already clocked on — clock off first" as const };
+
+    const [row] = await tx
+      .insert(timeEntriesTable)
+      .values({
+        teamMemberId: member.id,
+        jobId: booking.id,
+        clockOn: new Date(),
+        notes: d.notes ?? null,
+      })
+      .returning();
+
+    return {
+      row: entryToJson({
+        ...row,
+        memberName: member.name,
+        jobTitle: booking.title,
+      }),
+    };
+  });
+
+  if ("error" in result) {
+    const status = result.error === "Already clocked on — clock off first" ? 409 : 404;
+    res.status(status).json({ error: result.error });
     return;
   }
 
-  const [row] = await db
-    .insert(timeEntriesTable)
-    .values({
-      teamMemberId: d.teamMemberId,
-      jobId: d.jobId,
-      clockOn: new Date(),
-      notes: d.notes ?? null,
-    })
-    .returning();
-
-  res.status(201).json(await enrichEntry(row));
+  res.status(201).json(result.row);
 });
 
 router.post("/time/clock-off", async (req, res): Promise<void> => {
+  const userId = getAuth(req).userId;
+  if (!userId) {
+    res.status(401).json({ error: "Unauthorized" });
+    return;
+  }
   const parsed = ClockOffBody.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({ error: parsed.error.message });
@@ -83,40 +125,91 @@ router.post("/time/clock-off", async (req, res): Promise<void> => {
   }
   const d = parsed.data;
 
-  const entries = await db
-    .select()
-    .from(timeEntriesTable)
-    .where(eq(timeEntriesTable.teamMemberId, d.teamMemberId))
-    .orderBy(asc(timeEntriesTable.clockOn));
+  const result = await db.transaction(async (tx) => {
+    const [member] = await tx
+      .select({ id: teamMembersTable.id, name: teamMembersTable.name })
+      .from(teamMembersTable)
+      .where(and(
+        eq(teamMembersTable.id, d.teamMemberId),
+        eq(teamMembersTable.clerkUserId, userId),
+      ))
+      .for("update");
+    if (!member) return { error: "Team member not found" as const };
 
-  const open = entries.find(
-    (e) => e.clockOff === null && e.jobId === d.jobId
-  );
+    const [booking] = await tx
+      .select({ id: bookingsTable.id, title: bookingsTable.title })
+      .from(bookingsTable)
+      .where(and(
+        eq(bookingsTable.id, d.jobId),
+        eq(bookingsTable.clerkUserId, userId),
+      ))
+      .for("update");
+    if (!booking) return { error: "Booking not found" as const };
 
-  if (!open) {
-    res.status(404).json({ error: "No open clock-on found for this member/job" });
+    const [open] = await tx
+      .select({ entry: timeEntriesTable })
+      .from(timeEntriesTable)
+      .innerJoin(teamMembersTable, and(
+        eq(teamMembersTable.id, timeEntriesTable.teamMemberId),
+        eq(teamMembersTable.clerkUserId, userId),
+      ))
+      .innerJoin(bookingsTable, and(
+        eq(bookingsTable.id, timeEntriesTable.jobId),
+        eq(bookingsTable.clerkUserId, userId),
+      ))
+      .where(and(
+        eq(timeEntriesTable.teamMemberId, member.id),
+        eq(timeEntriesTable.jobId, booking.id),
+        isNull(timeEntriesTable.clockOff),
+      ))
+      .orderBy(asc(timeEntriesTable.clockOn))
+      .limit(1);
+    if (!open) return { error: "No open clock-on found for this member/job" as const };
+
+    const now = new Date();
+    const durationMinutes = open.entry.clockOn
+      ? Math.round((now.getTime() - open.entry.clockOn.getTime()) / 60000)
+      : 0;
+
+    const [row] = await tx
+      .update(timeEntriesTable)
+      .set({
+        clockOff: now,
+        durationMinutes,
+        ...(d.notes ? { notes: d.notes } : {}),
+      })
+      .where(and(
+        eq(timeEntriesTable.id, open.entry.id),
+        eq(timeEntriesTable.teamMemberId, member.id),
+        eq(timeEntriesTable.jobId, booking.id),
+        isNull(timeEntriesTable.clockOff),
+      ))
+      .returning();
+    if (!row) return { error: "No open clock-on found for this member/job" as const };
+
+    return {
+      row: entryToJson({
+        ...row,
+        memberName: member.name,
+        jobTitle: booking.title,
+      }),
+    };
+  });
+
+  if ("error" in result) {
+    res.status(404).json({ error: result.error });
     return;
   }
 
-  const now = new Date();
-  const durationMinutes = open.clockOn
-    ? Math.round((now.getTime() - open.clockOn.getTime()) / 60000)
-    : 0;
-
-  const [row] = await db
-    .update(timeEntriesTable)
-    .set({
-      clockOff: now,
-      durationMinutes,
-      ...(d.notes ? { notes: d.notes } : {}),
-    })
-    .where(eq(timeEntriesTable.id, open.id))
-    .returning();
-
-  res.json(await enrichEntry(row));
+  res.json(result.row);
 });
 
 router.post("/time/manual", async (req, res): Promise<void> => {
+  const userId = getAuth(req).userId;
+  if (!userId) {
+    res.status(401).json({ error: "Unauthorized" });
+    return;
+  }
   const parsed = AddManualTimeEntryBody.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({ error: parsed.error.message });
@@ -128,25 +221,78 @@ router.post("/time/manual", async (req, res): Promise<void> => {
   const durationMinutes = clockedOn && clockedOff
     ? Math.round((clockedOff.getTime() - clockedOn.getTime()) / 60000)
     : d.durationMinutes;
-  const [row] = await db
-    .insert(timeEntriesTable)
-    .values({
-      teamMemberId: d.teamMemberId,
-      jobId: d.jobId,
-      ...(clockedOn ? { clockOn: clockedOn } : {}),
-      ...(clockedOff ? { clockOff: clockedOff } : {}),
-      durationMinutes,
-      manualEntry: true,
-      ...(d.notes ? { notes: d.notes } : {}),
-    })
-    .returning();
-  res.status(201).json(await enrichEntry(row));
+
+  const result = await db.transaction(async (tx) => {
+    const [member] = await tx
+      .select({ id: teamMembersTable.id, name: teamMembersTable.name })
+      .from(teamMembersTable)
+      .where(and(
+        eq(teamMembersTable.id, d.teamMemberId),
+        eq(teamMembersTable.clerkUserId, userId),
+      ))
+      .for("update");
+    if (!member) return { error: "Team member not found" as const };
+
+    const [booking] = await tx
+      .select({ id: bookingsTable.id, title: bookingsTable.title })
+      .from(bookingsTable)
+      .where(and(
+        eq(bookingsTable.id, d.jobId),
+        eq(bookingsTable.clerkUserId, userId),
+      ))
+      .for("update");
+    if (!booking) return { error: "Booking not found" as const };
+
+    const [row] = await tx
+      .insert(timeEntriesTable)
+      .values({
+        teamMemberId: member.id,
+        jobId: booking.id,
+        ...(clockedOn ? { clockOn: clockedOn } : {}),
+        ...(clockedOff ? { clockOff: clockedOff } : {}),
+        durationMinutes,
+        manualEntry: true,
+        ...(d.notes ? { notes: d.notes } : {}),
+      })
+      .returning();
+
+    return {
+      row: entryToJson({
+        ...row,
+        memberName: member.name,
+        jobTitle: booking.title,
+      }),
+    };
+  });
+
+  if ("error" in result) {
+    res.status(404).json({ error: result.error });
+    return;
+  }
+
+  res.status(201).json(result.row);
 });
 
 router.get("/time/job/:jobId", async (req, res): Promise<void> => {
+  const userId = getAuth(req).userId;
+  if (!userId) {
+    res.status(401).json({ error: "Unauthorized" });
+    return;
+  }
   const params = ListTimeEntriesForJobParams.safeParse(req.params);
   if (!params.success) {
     res.status(400).json({ error: params.error.message });
+    return;
+  }
+  const [booking] = await db
+    .select({ id: bookingsTable.id })
+    .from(bookingsTable)
+    .where(and(
+      eq(bookingsTable.id, params.data.jobId),
+      eq(bookingsTable.clerkUserId, userId),
+    ));
+  if (!booking) {
+    res.status(404).json({ error: "Booking not found" });
     return;
   }
   const rows = await db
@@ -156,17 +302,39 @@ router.get("/time/job/:jobId", async (req, res): Promise<void> => {
       jobTitle: bookingsTable.title,
     })
     .from(timeEntriesTable)
-    .leftJoin(teamMembersTable, eq(teamMembersTable.id, timeEntriesTable.teamMemberId))
-    .leftJoin(bookingsTable, eq(bookingsTable.id, timeEntriesTable.jobId))
+    .innerJoin(teamMembersTable, and(
+      eq(teamMembersTable.id, timeEntriesTable.teamMemberId),
+      eq(teamMembersTable.clerkUserId, userId),
+    ))
+    .innerJoin(bookingsTable, and(
+      eq(bookingsTable.id, timeEntriesTable.jobId),
+      eq(bookingsTable.clerkUserId, userId),
+    ))
     .where(eq(timeEntriesTable.jobId, params.data.jobId))
     .orderBy(asc(timeEntriesTable.clockOn));
   res.json(rows.map((r) => entryToJson({ ...r.e, memberName: r.memberName, jobTitle: r.jobTitle })));
 });
 
 router.get("/time/member/:memberId", async (req, res): Promise<void> => {
+  const userId = getAuth(req).userId;
+  if (!userId) {
+    res.status(401).json({ error: "Unauthorized" });
+    return;
+  }
   const params = ListTimeEntriesForMemberParams.safeParse(req.params);
   if (!params.success) {
     res.status(400).json({ error: params.error.message });
+    return;
+  }
+  const [member] = await db
+    .select({ id: teamMembersTable.id })
+    .from(teamMembersTable)
+    .where(and(
+      eq(teamMembersTable.id, params.data.memberId),
+      eq(teamMembersTable.clerkUserId, userId),
+    ));
+  if (!member) {
+    res.status(404).json({ error: "Team member not found" });
     return;
   }
   const rows = await db
@@ -176,8 +344,14 @@ router.get("/time/member/:memberId", async (req, res): Promise<void> => {
       jobTitle: bookingsTable.title,
     })
     .from(timeEntriesTable)
-    .leftJoin(teamMembersTable, eq(teamMembersTable.id, timeEntriesTable.teamMemberId))
-    .leftJoin(bookingsTable, eq(bookingsTable.id, timeEntriesTable.jobId))
+    .innerJoin(teamMembersTable, and(
+      eq(teamMembersTable.id, timeEntriesTable.teamMemberId),
+      eq(teamMembersTable.clerkUserId, userId),
+    ))
+    .innerJoin(bookingsTable, and(
+      eq(bookingsTable.id, timeEntriesTable.jobId),
+      eq(bookingsTable.clerkUserId, userId),
+    ))
     .where(eq(timeEntriesTable.teamMemberId, params.data.memberId))
     .orderBy(asc(timeEntriesTable.clockOn));
   res.json(rows.map((r) => entryToJson({ ...r.e, memberName: r.memberName, jobTitle: r.jobTitle })));

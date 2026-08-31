@@ -2,6 +2,23 @@ import type { NextFunction, Request, Response } from "express";
 import { getAuth } from "@clerk/express";
 import { SetQuoteStatusBody, UpdateQuoteBody } from "@workspace/api-zod";
 
+/**
+ * The identity established at the API boundary. Route handlers should use
+ * this value for ownership checks rather than accepting an identity from the
+ * request body.
+ */
+export interface AuthenticatedRequest extends Request {
+  clerkUserId: string;
+}
+
+declare global {
+  namespace Express {
+    interface Request {
+      clerkUserId?: string;
+    }
+  }
+}
+
 const PUBLIC_QUOTE_PORTAL_PATH = /^\/quotes\/\d+\/portal$/;
 const PUBLIC_QUOTE_UPDATE_PATH = /^\/quotes\/\d+$/;
 const PUBLIC_QUOTE_STATUS_PATH = /^\/quotes\/\d+\/status$/;
@@ -13,6 +30,27 @@ function objectKeys(value: unknown): string[] | null {
   }
 
   return Object.keys(value);
+}
+
+function hasBodyClerkUserId(req: Request): boolean {
+  const keys = objectKeys(req.body);
+  return keys?.includes("clerkUserId") ?? false;
+}
+
+/**
+ * Returns the identity installed by requireApiAuth.
+ *
+ * Keeping the runtime assertion here lets route handlers consume a shared,
+ * non-optional authenticated request context without calling Clerk again.
+ */
+export function getAuthenticatedClerkUserId(req: Request): string {
+  if (!req.clerkUserId) {
+    throw new Error(
+      "Authenticated request context is unavailable; requireApiAuth must run first",
+    );
+  }
+
+  return req.clerkUserId;
 }
 
 function isPublicUpgradeRequest(req: Request): boolean {
@@ -85,6 +123,14 @@ export function requireApiAuth(
     try {
       const auth = getAuth(req);
       if (auth.userId) {
+        if (hasBodyClerkUserId(req)) {
+          res.status(400).json({
+            error: "clerkUserId must not be supplied in the request body",
+          });
+          return;
+        }
+
+        req.clerkUserId = auth.userId;
         next();
         return;
       }

@@ -1,6 +1,7 @@
 import { Router, type IRouter } from "express";
+import { getAuth } from "@clerk/express";
 import PDFDocument from "pdfkit";
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import {
   db,
   quotesTable,
@@ -26,6 +27,11 @@ function formatDate(d: Date): string {
 }
 
 router.get("/quotes/:id/pdf", async (req, res): Promise<void> => {
+  const clerkUserId = getAuth(req).userId;
+  if (!clerkUserId) {
+    res.status(401).json({ error: "Unauthorized" });
+    return;
+  }
   const id = parseInt(req.params.id ?? "", 10);
   if (isNaN(id)) {
     res.status(400).json({ error: "Invalid id" });
@@ -35,8 +41,14 @@ router.get("/quotes/:id/pdf", async (req, res): Promise<void> => {
   const [row] = await db
     .select({ q: quotesTable, customerName: customersTable.name })
     .from(quotesTable)
-    .leftJoin(customersTable, eq(customersTable.id, quotesTable.customerId))
-    .where(eq(quotesTable.id, id));
+    .leftJoin(customersTable, and(
+      eq(customersTable.id, quotesTable.customerId),
+      eq(customersTable.clerkUserId, clerkUserId),
+    ))
+    .where(and(
+      eq(quotesTable.id, id),
+      eq(quotesTable.clerkUserId, clerkUserId),
+    ));
 
   if (!row) {
     res.status(404).json({ error: "Quote not found" });
@@ -44,10 +56,15 @@ router.get("/quotes/:id/pdf", async (req, res): Promise<void> => {
   }
 
   const lines = await db
-    .select()
+    .select({ line: quoteLineItemsTable })
     .from(quoteLineItemsTable)
+    .innerJoin(quotesTable, and(
+      eq(quotesTable.id, quoteLineItemsTable.quoteId),
+      eq(quotesTable.clerkUserId, clerkUserId),
+    ))
     .where(eq(quoteLineItemsTable.quoteId, id))
-    .orderBy(quoteLineItemsTable.id);
+    .orderBy(quoteLineItemsTable.id)
+    .then((rows) => rows.map((line) => line.line));
 
   const q = row.q;
   const customerName = row.customerName ?? "Customer";

@@ -1,6 +1,7 @@
 import { Router, type IRouter } from "express";
-import { eq, desc } from "drizzle-orm";
-import { db, portfolioEntriesTable } from "@workspace/db";
+import { getAuth } from "@clerk/express";
+import { eq, desc, and } from "drizzle-orm";
+import { db, portfolioEntriesTable, bookingsTable } from "@workspace/db";
 import {
   CreatePortfolioEntryBody,
   UpdatePortfolioEntryParams,
@@ -9,6 +10,7 @@ import {
   AddPortfolioPhotoParams,
   AddPortfolioPhotoBody,
 } from "@workspace/api-zod";
+import { isPrivateObjectPathOwnedByUser } from "../lib/objectStorage";
 
 const router: IRouter = Router();
 
@@ -32,25 +34,36 @@ function toJson(row: typeof portfolioEntriesTable.$inferSelect) {
   };
 }
 
-router.get("/portfolio", async (_req, res): Promise<void> => {
+router.get("/portfolio", async (req, res): Promise<void> => {
+  const userId = getAuth(req).userId;
+  if (!userId) { res.status(401).json({ error: "Unauthorized" }); return; }
   const rows = await db
     .select()
     .from(portfolioEntriesTable)
+    .where(eq(portfolioEntriesTable.clerkUserId, userId))
     .orderBy(desc(portfolioEntriesTable.completedAt));
   res.json(rows.map(toJson));
 });
 
 router.post("/portfolio", async (req, res): Promise<void> => {
+  const userId = getAuth(req).userId;
+  if (!userId) { res.status(401).json({ error: "Unauthorized" }); return; }
   const parsed = CreatePortfolioEntryBody.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({ error: parsed.error.message });
     return;
   }
   const d = parsed.data;
+  if (d.bookingId != null) {
+    const [booking] = await db.select({ id: bookingsTable.id }).from(bookingsTable)
+      .where(and(eq(bookingsTable.id, d.bookingId), eq(bookingsTable.clerkUserId, userId)));
+    if (!booking) { res.status(400).json({ error: "Booking not found" }); return; }
+  }
   const [row] = await db
     .insert(portfolioEntriesTable)
     .values({
       title: d.title,
+      clerkUserId: userId,
       ...(d.bookingId ? { bookingId: d.bookingId } : {}),
       ...(d.description ? { description: d.description } : {}),
       ...(d.deckType ? { deckType: d.deckType } : {}),
@@ -69,6 +82,8 @@ router.post("/portfolio", async (req, res): Promise<void> => {
 });
 
 router.patch("/portfolio/:id", async (req, res): Promise<void> => {
+  const userId = getAuth(req).userId;
+  if (!userId) { res.status(401).json({ error: "Unauthorized" }); return; }
   const params = UpdatePortfolioEntryParams.safeParse(req.params);
   if (!params.success) {
     res.status(400).json({ error: params.error.message });
@@ -94,7 +109,7 @@ router.patch("/portfolio/:id", async (req, res): Promise<void> => {
       ...(d.isPublic !== undefined ? { isPublic: d.isPublic } : {}),
       ...(d.completedAt !== undefined ? { completedAt: d.completedAt ? new Date(d.completedAt) : null } : {}),
     })
-    .where(eq(portfolioEntriesTable.id, params.data.id))
+    .where(and(eq(portfolioEntriesTable.id, params.data.id), eq(portfolioEntriesTable.clerkUserId, userId)))
     .returning();
   if (!row) {
     res.status(404).json({ error: "Portfolio entry not found" });
@@ -104,6 +119,8 @@ router.patch("/portfolio/:id", async (req, res): Promise<void> => {
 });
 
 router.delete("/portfolio/:id", async (req, res): Promise<void> => {
+  const userId = getAuth(req).userId;
+  if (!userId) { res.status(401).json({ error: "Unauthorized" }); return; }
   const params = DeletePortfolioEntryParams.safeParse(req.params);
   if (!params.success) {
     res.status(400).json({ error: params.error.message });
@@ -111,16 +128,18 @@ router.delete("/portfolio/:id", async (req, res): Promise<void> => {
   }
   const [row] = await db
     .delete(portfolioEntriesTable)
-    .where(eq(portfolioEntriesTable.id, params.data.id))
+    .where(and(eq(portfolioEntriesTable.id, params.data.id), eq(portfolioEntriesTable.clerkUserId, userId)))
     .returning();
   if (!row) {
     res.status(404).json({ error: "Portfolio entry not found" });
     return;
   }
-  res.sendStatus(204);
+  res.json({ deleted: true });
 });
 
 router.post("/portfolio/:id/photos", async (req, res): Promise<void> => {
+  const userId = getAuth(req).userId;
+  if (!userId) { res.status(401).json({ error: "Unauthorized" }); return; }
   const params = AddPortfolioPhotoParams.safeParse(req.params);
   if (!params.success) {
     res.status(400).json({ error: params.error.message });
@@ -131,10 +150,14 @@ router.post("/portfolio/:id/photos", async (req, res): Promise<void> => {
     res.status(400).json({ error: body.error.message });
     return;
   }
+  if (!isPrivateObjectPathOwnedByUser(body.data.objectPath, userId)) {
+    res.status(400).json({ error: "Photo objectPath must belong to the authenticated user" });
+    return;
+  }
   const [existing] = await db
     .select()
     .from(portfolioEntriesTable)
-    .where(eq(portfolioEntriesTable.id, params.data.id));
+    .where(and(eq(portfolioEntriesTable.id, params.data.id), eq(portfolioEntriesTable.clerkUserId, userId)));
   if (!existing) {
     res.status(404).json({ error: "Portfolio entry not found" });
     return;
@@ -148,7 +171,7 @@ router.post("/portfolio/:id/photos", async (req, res): Promise<void> => {
   const [row] = await db
     .update(portfolioEntriesTable)
     .set(updated)
-    .where(eq(portfolioEntriesTable.id, params.data.id))
+    .where(and(eq(portfolioEntriesTable.id, params.data.id), eq(portfolioEntriesTable.clerkUserId, userId)))
     .returning();
   res.json(toJson(row));
 });
