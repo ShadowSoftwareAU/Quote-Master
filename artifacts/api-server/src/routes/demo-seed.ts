@@ -13,6 +13,7 @@ import {
 } from "@workspace/db";
 import { SeedDemoDataBody } from "@workspace/api-zod";
 import { recalculateMasterProjectTotals } from "../services/masterProjects";
+import { calculateRequiredQuantity } from "../lib/estimator";
 
 const router: IRouter = Router();
 const DEMO_SEED_MARKER = "Deck Me presentation demo data — temporary development seed";
@@ -34,7 +35,7 @@ function portalToken(): string {
 }
 
 router.post(
-  "/settings/seed-demo-data",
+  "/dev/seed-demo-data",
   developmentOnly,
   requireOwner,
   async (req, res): Promise<void> => {
@@ -154,6 +155,18 @@ router.post(
       const oil = materialByName.get("Cabot's decking oil 4L")!;
       const fascia = materialByName.get("Merbau fascia board 140mm")!;
 
+      type DemoLineFixture = [
+        number,
+        string,
+        string,
+        number,
+        string,
+        number,
+        string,
+        number,
+        boolean,
+      ];
+
       const quoteFixtures = [
         {
           customerId: customers[0].id,
@@ -165,10 +178,10 @@ router.post(
           widthM: 3.6,
           labourHours: 28,
           lines: [
-            [merbau.id, merbau.name, "decking", 24, "metre", Number(merbau.unitPrice)],
-            [joist.id, joist.name, "joist", 22, "metre", Number(joist.unitPrice)],
-            [screws.id, screws.name, "screw", 1, "pack", Number(screws.unitPrice)],
-          ],
+            [merbau.id, merbau.name, "decking", 24, "metre", Number(merbau.unitPrice), "lm", 10, false],
+            [joist.id, joist.name, "joist", 22, "metre", Number(joist.unitPrice), "lm", 10, false],
+            [screws.id, screws.name, "screw", 1, "pack", Number(screws.unitPrice), "box", 0, true],
+          ] satisfies DemoLineFixture[],
         },
         {
           customerId: customers[0].id,
@@ -180,11 +193,11 @@ router.post(
           widthM: 4.1,
           labourHours: 42,
           lines: [
-            [merbau.id, merbau.name, "decking", 34, "metre", Number(merbau.unitPrice)],
-            [joist.id, joist.name, "joist", 29, "metre", Number(joist.unitPrice)],
-            [bearer.id, bearer.name, "bearer", 16, "metre", Number(bearer.unitPrice)],
-            [oil.id, oil.name, "sealant", 2, "each", Number(oil.unitPrice)],
-          ],
+            [merbau.id, merbau.name, "decking", 34, "metre", Number(merbau.unitPrice), "lm", 10, false],
+            [joist.id, joist.name, "joist", 29, "metre", Number(joist.unitPrice), "lm", 10, false],
+            [bearer.id, bearer.name, "bearer", 16, "metre", Number(bearer.unitPrice), "lm", 10, false],
+            [oil.id, oil.name, "sealant", 2, "each", Number(oil.unitPrice), "item", 5, false],
+          ] satisfies DemoLineFixture[],
         },
         {
           customerId: customers[1].id,
@@ -196,11 +209,11 @@ router.post(
           widthM: 3.2,
           labourHours: 31,
           lines: [
-            [merbau.id, merbau.name, "decking", 22, "metre", Number(merbau.unitPrice)],
-            [joist.id, joist.name, "joist", 20, "metre", Number(joist.unitPrice)],
-            [screws.id, screws.name, "screw", 1, "pack", Number(screws.unitPrice)],
-            [oil.id, oil.name, "sealant", 1, "each", Number(oil.unitPrice)],
-          ],
+            [merbau.id, merbau.name, "decking", 22, "metre", Number(merbau.unitPrice), "lm", 10, false],
+            [joist.id, joist.name, "joist", 20, "metre", Number(joist.unitPrice), "lm", 10, false],
+            [screws.id, screws.name, "screw", 1, "pack", Number(screws.unitPrice), "box", 0, true],
+            [oil.id, oil.name, "sealant", 1, "each", Number(oil.unitPrice), "item", 5, false],
+          ] satisfies DemoLineFixture[],
         },
         {
           customerId: customers[2].id,
@@ -212,16 +225,17 @@ router.post(
           widthM: 3.8,
           labourHours: 39,
           lines: [
-            [merbau.id, merbau.name, "decking", 38, "metre", Number(merbau.unitPrice)],
-            [joist.id, joist.name, "joist", 31, "metre", Number(joist.unitPrice)],
-            [fascia.id, fascia.name, "other", 15, "metre", Number(fascia.unitPrice)],
-          ],
+            [merbau.id, merbau.name, "decking", 38, "metre", Number(merbau.unitPrice), "lm", 10, false],
+            [joist.id, joist.name, "joist", 31, "metre", Number(joist.unitPrice), "lm", 10, false],
+            [fascia.id, fascia.name, "other", 15, "metre", Number(fascia.unitPrice), "lm", 10, false],
+          ] satisfies DemoLineFixture[],
         },
       ];
 
       const quoteRows = quoteFixtures.map((quote) => {
         const materialsSubtotal = quote.lines.reduce(
-          (sum, [, , , quantity, , unitPrice]) => sum + (quantity as number) * (unitPrice as number),
+          (sum, [, , , quantity, , unitPrice, , wastagePercentage, isBulkItem]) =>
+            sum + calculateRequiredQuantity(quantity, wastagePercentage, isBulkItem) * unitPrice,
           0,
         );
         const labourRate = 85;
@@ -293,17 +307,25 @@ router.post(
         .returning({ id: quotesTable.id });
 
       const lineRows = quoteRows.flatMap((quote, quoteIndex) =>
-        quote.lineFixtures.map(([materialId, description, category, quantity, unit, unitPrice]) => ({
-          quoteId: quotes[quoteIndex].id,
-          materialId: materialId as number,
-          description: description as string,
-          category: category as string,
-          quantity: money(quantity as number),
-          unit: unit as string,
-          unitPrice: money(unitPrice as number),
-          markupPercentage: "0.00",
-          lineTotal: money((quantity as number) * (unitPrice as number)),
-        })),
+        quote.lineFixtures.map((
+          [materialId, description, category, quantity, unit, unitPrice, unitType, wastagePercentage, isBulkItem],
+        ) => {
+          const effectiveQuantity = calculateRequiredQuantity(quantity, wastagePercentage, isBulkItem);
+          return {
+            quoteId: quotes[quoteIndex].id,
+            materialId,
+            description,
+            category,
+            quantity: money(effectiveQuantity),
+            unit,
+            unitType,
+            unitPrice: money(unitPrice),
+            markupPercentage: "0.00",
+            wastagePercentage: money(wastagePercentage),
+            isBulkItem,
+            lineTotal: money(effectiveQuantity * unitPrice),
+          };
+        }),
       );
       await tx.insert(quoteLineItemsTable).values(lineRows);
 

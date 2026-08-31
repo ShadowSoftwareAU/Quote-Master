@@ -47,13 +47,22 @@ test("generated clients and both settings screens expose Owner-only feedback", a
     read("../deck-me/src/pages/settings-profile.tsx"),
     read("../deck-me-mobile/app/settings/profile.tsx"),
   ]);
-  assert.match(contract, /\/settings\/seed-demo-data:/);
+  assert.match(contract, /\/dev\/seed-demo-data:/);
   assert.match(contract, /operationId: seedDemoData/);
   assert.match(client, /export const useSeedDemoData/);
+  assert.match(client, /\/api\/dev\/seed-demo-data/);
   for (const screen of [web, mobile]) {
     assert.match(screen, /profile\?\.role === "Owner"/);
     assert.match(screen, /seedDemoData\.isPending/);
     assert.match(screen, /apiError\.status === 409/);
     assert.match(screen, /Seed Demo Data|SEED DEMO DATA/);
   }
+});
+
+test("seeded quote lines keep unit and bulk calculation metadata", async () => {
+  const route = await read("src/routes/demo-seed.ts");
+  assert.match(route, /calculateRequiredQuantity\(quantity, wastagePercentage, isBulkItem\)/);
+  assert.match(route, /unitType,/);
+  assert.match(route, /wastagePercentage: money\(wastagePercentage\)/);
+  assert.match(route, /isBulkItem,/);
 });

@@ -89,6 +89,23 @@ export interface MasterBuilderFlagInput {
 }
 
 export interface SeedDemoDataInput { [key: string]: unknown }
+
+export type SeedDemoDataResponseCounts = {
+  customers: 5;
+  materials: 10;
+  quotes: 4;
+  masterProjects: 1;
+};
+
+export interface SeedDemoDataResponse {
+  seeded: true;
+  counts: SeedDemoDataResponseCounts;
+  customerIds: number[];
+  materialIds: number[];
+  quoteIds: number[];
+  masterProjectId: number;
+}
+
 export const DeletionSuccessValue = {
   deleted: true,
 } as const;
@@ -1129,20 +1146,3 @@ export interface AddPortfolioPhotoInput {
 export type ListMaterialsParams = {
 category?: string;
 };
-
-
-export type SeedDemoDataResponseCounts = {
-  customers: 5;
-  materials: 10;
-  quotes: 4;
-  masterProjects: 1;
-};
-
-export interface SeedDemoDataResponse {
-  seeded: true;
-  counts: SeedDemoDataResponseCounts;
-  customerIds: number[];
-  materialIds: number[];
-  quoteIds: number[];
-  masterProjectId: number;
-}

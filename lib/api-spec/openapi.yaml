@@ -87,7 +87,7 @@ paths:
         "502":
           description: Profile saved but Clerk metadata synchronisation failed
 
-  /settings/seed-demo-data:
+  /dev/seed-demo-data:
     post:
       operationId: seedDemoData
       tags: [profile]
