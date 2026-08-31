@@ -3,7 +3,6 @@ import { useUser } from "@clerk/expo";
 import { router } from "expo-router";
 import React from "react";
 import {
-  ActivityIndicator,
   FlatList,
   Platform,
   Text,
@@ -14,6 +13,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import {
   Card,
   EmptyState,
+  LoadingSkeleton,
   ScreenHeader,
   StatusBadge,
   StripedBar,
@@ -76,7 +76,7 @@ export default function QuotesScreen() {
       </View>
 
       {isLoading ? (
-        <ActivityIndicator color={colors.primary} style={{ marginTop: 40 }} />
+        <LoadingSkeleton rows={4} />
       ) : visibleQuotes.length === 0 ? (
         <EmptyState
           icon="file-text"

@@ -360,6 +360,55 @@ export function EmptyState({
   );
 }
 
+export function LoadingSkeleton({ rows = 3 }: { rows?: number }) {
+  const colors = useColors();
+  return (
+    <View
+      accessibilityLabel="Loading"
+      style={{ padding: 20, gap: 10 }}
+    >
+      {Array.from({ length: rows }).map((_, index) => (
+        <View
+          key={index}
+          style={{
+            backgroundColor: colors.card,
+            borderColor: colors.border,
+            borderRadius: colors.radius,
+            borderWidth: 1,
+            padding: 16,
+            gap: 10,
+          }}
+        >
+          <View
+            style={{
+              backgroundColor: colors.muted,
+              borderRadius: 4,
+              height: 16,
+              width: `${62 + index * 8}%`,
+            }}
+          />
+          <View
+            style={{
+              backgroundColor: colors.muted,
+              borderRadius: 4,
+              height: 12,
+              width: "44%",
+            }}
+          />
+          <View
+            style={{
+              backgroundColor: colors.muted,
+              borderRadius: 4,
+              height: 12,
+              width: "28%",
+            }}
+          />
+        </View>
+      ))}
+    </View>
+  );
+}
+
 export function LabeledInput({
   label,
   children,

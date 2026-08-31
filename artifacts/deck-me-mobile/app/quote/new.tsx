@@ -10,10 +10,13 @@ import React, { useMemo, useState } from "react";
 import {
   Alert,
   FlatList,
+  Platform,
   Pressable,
   Text,
   View,
 } from "react-native";
+import { KeyboardAvoidingView } from "react-native-keyboard-controller";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import {
   Button,
@@ -56,6 +59,7 @@ export default function NewQuoteRoute() {
 
 function NewQuoteScreen() {
   const colors = useColors();
+  const insets = useSafeAreaInsets();
   const params = useLocalSearchParams<{
     spec?: string;
     labourHours?: string;
@@ -164,14 +168,23 @@ function NewQuoteScreen() {
   }
 
   return (
-    <FlatList
+    <KeyboardAvoidingView
+      behavior="padding"
       style={{ flex: 1, backgroundColor: colors.background }}
-      contentContainerStyle={{ padding: 20, gap: 14 }}
-      keyboardShouldPersistTaps="handled"
-      data={lineItems}
-      keyExtractor={(item) => String(item.id)}
-      ListHeaderComponent={(
-        <View style={{ gap: 14 }}>
+    >
+      <FlatList
+        style={{ flex: 1, backgroundColor: colors.background }}
+        contentContainerStyle={{
+          padding: 20,
+          paddingBottom: insets.bottom + 80,
+          gap: 14,
+        }}
+        keyboardShouldPersistTaps="handled"
+        keyboardDismissMode={Platform.OS === "ios" ? "interactive" : "on-drag"}
+        data={lineItems}
+        keyExtractor={(item) => String(item.id)}
+        ListHeaderComponent={(
+          <View style={{ gap: 14 }}>
       <Card>
         <Text
           style={{
@@ -294,10 +307,10 @@ function NewQuoteScreen() {
               </Text>
             </Card>
           ) : null}
-        </View>
-      )}
-      renderItem={({ item, index }) => (
-        <Card>
+          </View>
+        )}
+        renderItem={({ item, index }) => (
+          <Card>
           <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
             <Text style={{ fontFamily: "Inter_700Bold", fontSize: 11, letterSpacing: 1.2, color: colors.mutedForeground }}>
               ITEM {index + 1}
@@ -359,11 +372,11 @@ function NewQuoteScreen() {
               </View>
             </View>
           </View>
-        </Card>
-      )}
-      ItemSeparatorComponent={() => <View style={{ height: 12 }} />}
-      ListFooterComponent={(
-        <View style={{ gap: 14, marginTop: lineItems.length ? 14 : 0 }}>
+          </Card>
+        )}
+        ItemSeparatorComponent={() => <View style={{ height: 12 }} />}
+        ListFooterComponent={(
+          <View style={{ gap: 14, marginTop: lineItems.length ? 14 : 0 }}>
           <Card>
             <View style={{ gap: 10 }}>
               <View style={{ flexDirection: "row", justifyContent: "space-between" }}>
@@ -387,8 +400,9 @@ function NewQuoteScreen() {
         onPress={save}
         loading={createMut.isPending}
       />
-        </View>
-      )}
-    />
+          </View>
+        )}
+      />
+    </KeyboardAvoidingView>
   );
 }

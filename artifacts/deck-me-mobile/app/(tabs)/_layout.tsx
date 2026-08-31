@@ -3,6 +3,7 @@ import { useAuth } from "@clerk/expo";
 import { Redirect, Tabs } from "expo-router";
 import React from "react";
 import { Platform, StyleSheet, View } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { useColors } from "@/hooks/useColors";
 import { useProfileAccess } from "@/lib/access";
@@ -12,6 +13,7 @@ export default function TabLayout() {
   const colors = useColors();
   const { isSubcontractor } = useProfileAccess();
   const isWeb = Platform.OS === "web";
+  const insets = useSafeAreaInsets();
 
   if (!isSignedIn) {
     return <Redirect href="/sign-in" />;
@@ -34,7 +36,8 @@ export default function TabLayout() {
           borderTopWidth: 1,
           borderTopColor: "#000",
           elevation: 0,
-          ...(isWeb ? { height: 84 } : {}),
+            height: isWeb ? 84 : 64 + insets.bottom,
+            paddingBottom: isWeb ? 0 : insets.bottom,
         },
         tabBarBackground: () => (
           <View

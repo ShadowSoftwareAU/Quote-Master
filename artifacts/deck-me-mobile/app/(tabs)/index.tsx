@@ -1,17 +1,22 @@
 import { Feather } from "@expo/vector-icons";
 import { router } from "expo-router";
+import {
+  getGetDashboardSummaryQueryKey,
+  useGetDashboardSummary,
+} from "@workspace/api-client-react";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
   Animated,
   Platform,
   Pressable,
+  ScrollView,
   Text,
   View,
   Image,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-import { StripedBar } from "@/components/ui";
+import { LoadingSkeleton, StripedBar } from "@/components/ui";
 import { useColors } from "@/hooks/useColors";
 import { useProfileAccess } from "@/lib/access";
 
@@ -192,6 +197,12 @@ export default function HomeScreen() {
   const colors = useColors();
   const { isSubcontractor, isMasterBuilder } = useProfileAccess();
   const insets = useSafeAreaInsets();
+  const { isLoading: isDashboardLoading } = useGetDashboardSummary({
+    query: {
+      enabled: !isSubcontractor,
+      queryKey: getGetDashboardSummaryQueryKey(),
+    },
+  });
   const topPad = Platform.OS === "web" ? Math.max(insets.top, 67) : insets.top;
 
   const now = new Date();
@@ -289,7 +300,19 @@ export default function HomeScreen() {
       </View>
 
       {/* Body */}
-      <View style={{ flex: 1, padding: 20, gap: 16 }}>
+      {isDashboardLoading ? (
+        <LoadingSkeleton rows={3} />
+      ) : (
+        <ScrollView
+          style={{ flex: 1 }}
+          contentContainerStyle={{
+            flexGrow: 1,
+            padding: 20,
+            paddingBottom: insets.bottom + 84,
+            gap: 16,
+          }}
+          showsVerticalScrollIndicator={false}
+        >
         {/* Eyebrow */}
         <View>
           <Text
@@ -343,7 +366,6 @@ export default function HomeScreen() {
             flexDirection: "row",
             alignItems: "center",
             gap: 8,
-            paddingBottom: insets.bottom + 8,
           }}
         >
           <Feather name="eye-off" size={13} color={colors.mutedForeground} />
@@ -361,7 +383,8 @@ export default function HomeScreen() {
             {" "}— trade costs stay on the web dashboard
           </Text>
         </View>
-      </View>
+        </ScrollView>
+      )}
     </View>
   );
 }
