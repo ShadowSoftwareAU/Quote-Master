@@ -21,6 +21,7 @@ import {
 } from "@workspace/api-zod";
 import { isPrivateObjectPathOwnedByUser } from "../lib/objectStorage";
 import { getBusinessRole, requireBusinessRole } from "../middlewares/businessRoleAuth";
+import { getLinkedTeamMember } from "../lib/assignmentAccess";
 
 const router: IRouter = Router();
 const requireBookingManager = requireBusinessRole("Owner", "Employee");
@@ -43,14 +44,28 @@ function toJson(row: typeof bookingsTable.$inferSelect & { customerName: string 
 }
 
 async function loadBooking(id: number, userId: string) {
+  const member = await getLinkedTeamMember(userId);
+  if (!member && await getBusinessRole(userId) === "Subcontractor") return null;
   const [row] = await db
     .select({
       b: bookingsTable,
       customerName: customersTable.name,
     })
     .from(bookingsTable)
-    .leftJoin(customersTable, and(eq(customersTable.id, bookingsTable.customerId), eq(customersTable.clerkUserId, userId)))
-    .where(and(eq(bookingsTable.id, id), eq(bookingsTable.clerkUserId, userId)));
+    .leftJoin(customersTable, and(
+      eq(customersTable.id, bookingsTable.customerId),
+      eq(customersTable.clerkUserId, bookingsTable.clerkUserId),
+    ))
+    .leftJoin(jobAssignmentsTable, eq(jobAssignmentsTable.jobId, bookingsTable.id))
+    .where(and(
+      eq(bookingsTable.id, id),
+      member
+        ? and(
+            eq(jobAssignmentsTable.teamMemberId, member.id),
+            eq(bookingsTable.clerkUserId, member.ownerClerkUserId!),
+          )
+        : eq(bookingsTable.clerkUserId, userId),
+    ));
   if (!row) return null;
   return toJson({ ...row.b, customerName: row.customerName });
 }
@@ -58,24 +73,29 @@ async function loadBooking(id: number, userId: string) {
 router.get("/bookings", async (req, res): Promise<void> => {
   const userId = getAuth(req).userId;
   if (!userId) { res.status(401).json({ error: "Unauthorized" }); return; }
-  const isSubcontractor = (await getBusinessRole(userId)) === "Subcontractor";
+  const member = await getLinkedTeamMember(userId);
+  if (!member && await getBusinessRole(userId) === "Subcontractor") {
+    res.json([]);
+    return;
+  }
   const rows = await db
-    .selectDistinct({
+    .select({
       b: bookingsTable,
       customerName: customersTable.name,
     })
     .from(bookingsTable)
-    .leftJoin(customersTable, eq(customersTable.id, bookingsTable.customerId))
+    .leftJoin(customersTable, and(
+      eq(customersTable.id, bookingsTable.customerId),
+      eq(customersTable.clerkUserId, bookingsTable.clerkUserId),
+    ))
     .leftJoin(jobAssignmentsTable, eq(jobAssignmentsTable.jobId, bookingsTable.id))
-    .leftJoin(teamMembersTable, eq(teamMembersTable.id, jobAssignmentsTable.teamMemberId))
     .where(
-      isSubcontractor
+      member
         ? and(
-            eq(teamMembersTable.linkedClerkUserId, userId),
-            eq(teamMembersTable.clerkUserId, bookingsTable.clerkUserId),
-            eq(teamMembersTable.active, true),
+            eq(jobAssignmentsTable.teamMemberId, member.id),
+            eq(bookingsTable.clerkUserId, member.ownerClerkUserId!),
           )
-        : and(eq(bookingsTable.clerkUserId, userId), eq(customersTable.clerkUserId, userId)),
+        : eq(bookingsTable.clerkUserId, userId),
     )
     .orderBy(asc(bookingsTable.startAt));
   res.json(rows.map((r) => toJson({ ...r.b, customerName: r.customerName })));

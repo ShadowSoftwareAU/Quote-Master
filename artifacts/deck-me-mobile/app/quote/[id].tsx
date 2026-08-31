@@ -38,7 +38,7 @@ export default function QuoteDetailRoute() {
 
 function QuoteDetail() {
   const colors = useColors();
-  const { isSubcontractor } = useProfileAccess();
+  const { isAssignedWorker } = useProfileAccess();
   const params = useLocalSearchParams<{ id: string }>();
   const id = Number(params.id);
   const qc = useQueryClient();
@@ -118,7 +118,7 @@ function QuoteDetail() {
       style={{ flex: 1, backgroundColor: colors.background }}
       contentContainerStyle={{ padding: 20, gap: 14, paddingBottom: 60 }}
     >
-      {!isSubcontractor && <View>
+      {!isAssignedWorker && <View>
         <StatusBadge status={data.status} />
         <Text
           style={{
@@ -301,7 +301,7 @@ function QuoteDetail() {
         </Card>
       ) : null}
 
-      {!isSubcontractor && <Button
+      {!isAssignedWorker && <Button
         label="Delete quote"
         icon="trash-2"
         variant="destructive"

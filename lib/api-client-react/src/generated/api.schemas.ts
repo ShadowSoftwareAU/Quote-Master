@@ -771,9 +771,22 @@ export interface TeamMember {
   /** owner | employee | subcontractor */
   role: string;
   active: boolean;
+  accountLinked: boolean;
+  /** @nullable */
+  accountUserId?: string | null;
   createdAt: string;
 }
 
+export interface AssignmentAccess {
+  linked: boolean;
+  /** @nullable */
+  teamMemberId?: number | null;
+  /**
+     * employee | subcontractor
+     * @nullable
+     */
+  role?: string | null;
+}
 export interface TeamMemberInput {
   /** @minLength 1 */
   name: string;
@@ -800,6 +813,13 @@ export interface TeamMemberUpdate {
   active?: boolean;
 }
 
+export interface TeamMemberAccountLinkInput {
+  /**
+     * Clerk user ID for the authenticated worker account
+     * @minLength 1
+     */
+  accountUserId: string;
+}
 export interface JobAssignment {
   id: number;
   jobId: number;
@@ -971,4 +991,3 @@ export interface AddPortfolioPhotoInput {
 export type ListMaterialsParams = {
 category?: string;
 };
-

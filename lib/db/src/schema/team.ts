@@ -7,7 +7,9 @@ import {
   timestamp,
   json,
   index,
+  uniqueIndex,
 } from "drizzle-orm/pg-core";
+import { sql } from "drizzle-orm";
 
 export const teamMembersTable = pgTable(
   "team_members",
@@ -26,7 +28,9 @@ export const teamMembersTable = pgTable(
   },
   (table) => [
     index("team_members_clerk_user_id_idx").on(table.clerkUserId),
-    index("team_members_linked_clerk_user_id_idx").on(table.linkedClerkUserId),
+    uniqueIndex("team_members_linked_clerk_user_id_uidx")
+      .on(table.linkedClerkUserId)
+      .where(sql`${table.linkedClerkUserId} is not null`),
   ],
 );
 

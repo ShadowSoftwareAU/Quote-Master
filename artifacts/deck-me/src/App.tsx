@@ -26,8 +26,13 @@ import FinancePage from "@/pages/finance";
 import Projects from "@/pages/projects";
 import Onboarding from "@/pages/onboarding";
 import ProfileSettings from "@/pages/settings-profile";
-import { useGetProfileSettings, getGetProfileSettingsQueryKey } from "@workspace/api-client-react";
 import { ProfileAccessProvider, useProfileAccess } from "@/lib/access";
+import {
+  useGetAssignmentAccess,
+  getGetAssignmentAccessQueryKey,
+  useGetProfileSettings,
+  getGetProfileSettingsQueryKey,
+} from "@workspace/api-client-react";
 
 const queryClient = new QueryClient();
 const basePath = import.meta.env.BASE_URL.replace(/\/$/, "");
@@ -64,12 +69,23 @@ function ProtectedWorkspace() {
   const { isLoaded, isSignedIn, userId } = useAuth();
   const [location, setLocation] = useLocation();
   const profileQueryKey = [...getGetProfileSettingsQueryKey(), userId];
+  const assignmentAccessQueryKey = [...getGetAssignmentAccessQueryKey(), userId];
+  const { data: assignmentAccess, isLoading: assignmentAccessLoading } = useGetAssignmentAccess({
+    query: {
+      enabled: isLoaded && isSignedIn,
+      queryKey: assignmentAccessQueryKey,
+      refetchOnWindowFocus: true,
+      refetchInterval: 10_000,
+    },
+  });
 
   const { data: profile, isLoading: profileLoading, error: profileError, refetch: refetchProfile } = useGetProfileSettings({
     query: {
       enabled: isLoaded && isSignedIn,
       retry: false,
       queryKey: profileQueryKey,
+      refetchOnWindowFocus: true,
+      refetchInterval: 10_000,
     }
   });
 
@@ -84,13 +100,13 @@ function ProtectedWorkspace() {
     typeof profileError === "object" &&
     "status" in profileError &&
     profileError.status === 404;
-  const isOtherError = profileError && !is404;
+  const isOtherError = profileError && !is404 && !assignmentAccess?.linked;
 
   useEffect(() => {
-    if (!isLoaded || !isSignedIn || profileLoading) return;
-    if (is404 && location !== "/onboarding") {
+    if (!isLoaded || !isSignedIn || profileLoading || assignmentAccessLoading) return;
+    if (is404 && !assignmentAccess?.linked && location !== "/onboarding") {
       setLocation("/onboarding");
-    } else if (profile && location === "/onboarding") {
+    } else if ((profile || assignmentAccess?.linked) && location === "/onboarding") {
       setLocation("/");
     }
   }, [
@@ -100,6 +116,8 @@ function ProtectedWorkspace() {
     location,
     profile,
     profileLoading,
+    assignmentAccess,
+    assignmentAccessLoading,
     setLocation,
   ]);
 
@@ -107,7 +125,7 @@ function ProtectedWorkspace() {
     return <div className="min-h-[100dvh] bg-background" aria-label="Loading" />;
   }
 
-  if (profileLoading) {
+  if (profileLoading || assignmentAccessLoading) {
     return (
       <div className="min-h-[100dvh] bg-background flex flex-col items-center justify-center space-y-4">
         <div className="w-10 h-10 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
@@ -134,8 +152,8 @@ function ProtectedWorkspace() {
   }
 
   if (
-    (is404 && location !== "/onboarding") ||
-    (profile && location === "/onboarding")
+    (is404 && !assignmentAccess?.linked && location !== "/onboarding") ||
+    ((profile || assignmentAccess?.linked) && location === "/onboarding")
   ) {
     return null;
   }
@@ -145,7 +163,7 @@ function ProtectedWorkspace() {
   }
 
   return (
-    <ProfileAccessProvider profile={profile ?? null}>
+    <ProfileAccessProvider profile={profile ?? null} assignmentAccess={assignmentAccess} identity={{ userId }}>
       <WorkspaceRoutes />
     </ProfileAccessProvider>
   );

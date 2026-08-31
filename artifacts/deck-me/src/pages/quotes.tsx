@@ -11,7 +11,10 @@ export default function Quotes() {
   const { user } = useUser();
   const access = useProfileAccess();
   const { data: quotes, isLoading } = useListQuotes({
-    query: { queryKey: getListQuotesQueryKey() },
+    query: {
+      queryKey: getListQuotesQueryKey(),
+      refetchInterval: access.isAssignedWorker ? 10_000 : false,
+    },
   });
   const visibleQuotes = visibleToProfile(quotes, {
     ...access,
@@ -25,7 +28,7 @@ export default function Quotes() {
           <h1 className="text-3xl font-black uppercase tracking-tight">Quotes</h1>
           <p className="text-muted-foreground font-medium">All your drafted and sent jobs.</p>
         </div>
-        {!access.isSubcontractor && <Link href="/calculator">
+        {!access.isAssignedWorker && <Link href="/calculator">
           <Button className="font-bold uppercase">
             <Plus className="w-4 h-4 mr-2" /> New Quote
           </Button>
@@ -41,7 +44,7 @@ export default function Quotes() {
           <FileText className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
           <h2 className="text-xl font-bold uppercase mb-2">No Quotes Yet</h2>
           <p className="text-muted-foreground mb-6">Quote up a job to get started.</p>
-          {!access.isSubcontractor && <Link href="/calculator">
+          {!access.isAssignedWorker && <Link href="/calculator">
             <Button className="font-bold uppercase"><Plus className="w-4 h-4 mr-2"/> Start Estimating</Button>
           </Link>}
         </div>

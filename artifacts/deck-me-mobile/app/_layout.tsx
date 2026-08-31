@@ -21,6 +21,8 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import {
   setAuthTokenGetter,
   setBaseUrl,
+  useGetAssignmentAccess,
+  getGetAssignmentAccessQueryKey,
   useGetProfileSettings,
   getGetProfileSettingsQueryKey,
 } from "@workspace/api-client-react";
@@ -163,23 +165,31 @@ function RootLayoutNav() {
   const colors = useColors();
   const isAuthRoute = segments[0] === "(auth)";
   const isOnboardingRoute = isAuthRoute && segments[1] === "onboarding";
+  const { data: assignmentAccess, isLoading: isAssignmentAccessLoading } = useGetAssignmentAccess({
+    query: {
+      enabled: isLoaded && isSignedIn,
+      queryKey: [...getGetAssignmentAccessQueryKey(), userId],
+      refetchInterval: 10_000,
+    },
+  });
 
   const { data: profile, isLoading: isProfileLoading, error: profileError, refetch } = useGetProfileSettings({
     query: {
       enabled: isLoaded && isSignedIn,
       retry: false,
       queryKey: [...getGetProfileSettingsQueryKey(), userId],
+      refetchInterval: 10_000,
     }
   });
 
   const is404 = profileError && typeof profileError === "object" && "status" in profileError && profileError.status === 404;
-  const isOtherError = profileError && !is404;
+  const isOtherError = profileError && !is404 && !assignmentAccess?.linked;
   const redirectTarget =
     isLoaded && !isSignedIn && (!isAuthRoute || isOnboardingRoute)
       ? "/sign-in"
-      : isLoaded && isSignedIn && is404 && !isOnboardingRoute
+      : isLoaded && isSignedIn && is404 && !assignmentAccess?.linked && !isOnboardingRoute
         ? "/(auth)/onboarding"
-        : isLoaded && isSignedIn && profile && isAuthRoute
+        : isLoaded && isSignedIn && (profile || assignmentAccess?.linked) && isAuthRoute
           ? "/"
           : null;
 
@@ -187,7 +197,7 @@ function RootLayoutNav() {
     if (redirectTarget) router.replace(redirectTarget);
   }, [redirectTarget, router]);
 
-  if (isLoaded && isSignedIn && isProfileLoading) {
+  if (isLoaded && isSignedIn && (isProfileLoading || isAssignmentAccessLoading)) {
     return (
       <View style={{ flex: 1, backgroundColor: colors.background, alignItems: "center", justifyContent: "center", gap: 16 }}>
         <ActivityIndicator size="large" color={colors.primary} />
@@ -212,6 +222,7 @@ function RootLayoutNav() {
     return (
       <ProfileAccessProvider
         profile={profile ?? null}
+        assignmentAccess={assignmentAccess}
         identity={{ userId, email: user?.primaryEmailAddress?.emailAddress }}
       >
         <RootStack />
@@ -222,6 +233,7 @@ function RootLayoutNav() {
   return (
     <ProfileAccessProvider
       profile={profile ?? null}
+      assignmentAccess={assignmentAccess}
       identity={{ userId, email: user?.primaryEmailAddress?.emailAddress }}
     >
       <View style={{ flex: 1, backgroundColor: colors.background }}>

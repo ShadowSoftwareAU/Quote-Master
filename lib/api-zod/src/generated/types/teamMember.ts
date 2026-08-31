@@ -18,5 +18,8 @@ export interface TeamMember {
   /** owner | employee | subcontractor */
   role: string;
   active: boolean;
+  accountLinked: boolean;
+  /** @nullable */
+  accountUserId?: string | null;
   createdAt: Date;
 }

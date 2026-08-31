@@ -1,6 +1,6 @@
 import { Router, type IRouter } from "express";
 import { getAuth } from "@clerk/express";
-import { and, eq, desc, isNotNull } from "drizzle-orm";
+import { and, eq, desc, isNotNull, or } from "drizzle-orm";
 import { randomBytes } from "node:crypto";
 import {
   db,
@@ -10,6 +10,8 @@ import {
   customersTable,
   businessProfilesTable,
   teamMembersTable,
+  bookingsTable,
+  jobAssignmentsTable,
 } from "@workspace/db";
 import {
   CreateQuoteBody,
@@ -31,6 +33,7 @@ import {
 import { estimateDeck, calcTotals, type DeckSpec } from "../lib/estimator";
 import { recalculateMasterProjectTotals } from "../services/masterProjects";
 import { complianceDisclaimerForTrade } from "../lib/quoteCompliance";
+import { getLinkedTeamMember } from "../lib/assignmentAccess";
 import { getBusinessRole, requireBusinessRole } from "../middlewares/businessRoleAuth";
 
 const router: IRouter = Router();
@@ -167,13 +170,13 @@ function quoteSummaryRow(row: typeof quotesTable.$inferSelect & {
 }
 
 async function loadQuoteJson(id: number, userId?: string) {
-  const isSubcontractor = userId
-    ? (await getBusinessRole(userId)) === "Subcontractor"
-    : false;
-  const customerJoin = userId && !isSubcontractor
+  const member = userId ? await getLinkedTeamMember(userId) : null;
+  if (userId && !member && await getBusinessRole(userId) === "Subcontractor") return null;
+  const ownerUserId = member?.ownerClerkUserId ?? userId;
+  const customerJoin = ownerUserId
     ? and(
         eq(customersTable.id, quotesTable.customerId),
-        eq(customersTable.clerkUserId, userId),
+        eq(customersTable.clerkUserId, ownerUserId),
       )
     : eq(customersTable.id, quotesTable.customerId);
   const [row] = await db
@@ -183,21 +186,24 @@ async function loadQuoteJson(id: number, userId?: string) {
     })
     .from(quotesTable)
     .leftJoin(customersTable, customerJoin)
-    .leftJoin(teamMembersTable, eq(teamMembersTable.id, quotesTable.assignedTeamMemberId))
+    .leftJoin(bookingsTable, eq(bookingsTable.quoteId, quotesTable.id))
+    .leftJoin(jobAssignmentsTable, eq(jobAssignmentsTable.jobId, bookingsTable.id))
     .where(
       userId
-        ? isSubcontractor
+        ? member
           ? and(
               eq(quotesTable.id, id),
-              eq(teamMembersTable.linkedClerkUserId, userId),
-              eq(teamMembersTable.clerkUserId, quotesTable.clerkUserId),
-              eq(teamMembersTable.active, true),
+              eq(quotesTable.clerkUserId, member.ownerClerkUserId!),
+              or(
+                eq(quotesTable.assignedTeamMemberId, member.id),
+                eq(jobAssignmentsTable.teamMemberId, member.id),
+              ),
             )
           : and(eq(quotesTable.id, id), eq(quotesTable.clerkUserId, userId))
         : eq(quotesTable.id, id),
     );
   if (!row) return null;
-  if (userId && !isSubcontractor && row.customerName === null) return null;
+  if (userId && row.customerName === null) return null;
   const [profile] = row.q.clerkUserId
     ? await db
         .select({
@@ -209,7 +215,7 @@ async function loadQuoteJson(id: number, userId?: string) {
         .limit(1)
     : [];
   const spec = specFromStoredQuote(row.q);
-  const storedLines = userId && !isSubcontractor
+  const storedLines = userId && !member
     ? await db
         .select({ line: quoteLineItemsTable })
         .from(quoteLineItemsTable)
@@ -254,7 +260,7 @@ async function loadQuoteJson(id: number, userId?: string) {
     customerId: row.q.customerId,
     assignedTeamMemberId: row.q.assignedTeamMemberId,
     masterProjectId: row.q.masterProjectId,
-    portalToken: userId ? row.q.portalToken : null,
+    portalToken: userId && !member ? row.q.portalToken : null,
     tradeType: row.q.tradeType,
     complianceDisclaimer:
       row.q.complianceDisclaimer ??
@@ -364,9 +370,13 @@ router.get("/quotes", async (req, res): Promise<void> => {
     res.status(401).json({ error: "Unauthorized" });
     return;
   }
-  const isSubcontractor = (await getBusinessRole(userId)) === "Subcontractor";
+  const member = await getLinkedTeamMember(userId);
+  if (!member && await getBusinessRole(userId) === "Subcontractor") {
+    res.json([]);
+    return;
+  }
   const rows = await db
-    .select({
+    .selectDistinct({
       id: quotesTable.id,
       title: quotesTable.title,
       status: quotesTable.status,
@@ -381,14 +391,20 @@ router.get("/quotes", async (req, res): Promise<void> => {
       createdAt: quotesTable.createdAt,
     })
     .from(quotesTable)
-    .leftJoin(customersTable, eq(customersTable.id, quotesTable.customerId))
-    .leftJoin(teamMembersTable, eq(teamMembersTable.id, quotesTable.assignedTeamMemberId))
+    .leftJoin(customersTable, and(
+      eq(customersTable.id, quotesTable.customerId),
+      eq(customersTable.clerkUserId, quotesTable.clerkUserId),
+    ))
+    .leftJoin(bookingsTable, eq(bookingsTable.quoteId, quotesTable.id))
+    .leftJoin(jobAssignmentsTable, eq(jobAssignmentsTable.jobId, bookingsTable.id))
     .where(
-      isSubcontractor
+      member
         ? and(
-            eq(teamMembersTable.linkedClerkUserId, userId),
-            eq(teamMembersTable.clerkUserId, quotesTable.clerkUserId),
-            eq(teamMembersTable.active, true),
+            eq(quotesTable.clerkUserId, member.ownerClerkUserId!),
+            or(
+              eq(quotesTable.assignedTeamMemberId, member.id),
+              eq(jobAssignmentsTable.teamMemberId, member.id),
+            ),
           )
         : and(
             eq(quotesTable.clerkUserId, userId),

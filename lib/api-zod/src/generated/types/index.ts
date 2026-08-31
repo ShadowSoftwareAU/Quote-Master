@@ -9,6 +9,7 @@
 export * from './addBookingPhotoInput';
 export * from './addPortfolioPhotoInput';
 export * from './assignJobInput';
+export * from './assignmentAccess';
 export * from './booking';
 export * from './bookingInput';
 export * from './bookingUpdate';
@@ -76,6 +77,7 @@ export * from './storageUploadRequest';
 export * from './storageUploadResponse';
 export * from './successWithId';
 export * from './teamMember';
+export * from './teamMemberAccountLinkInput';
 export * from './teamMemberInput';
 export * from './teamMemberUpdate';
 export * from './timeEntry';

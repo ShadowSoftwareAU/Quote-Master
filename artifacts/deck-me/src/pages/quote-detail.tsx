@@ -37,7 +37,7 @@ export default function QuoteDetail() {
   const [varNotes, setVarNotes] = useState("");
 
   if (isLoading || !quote) return <div className="p-8"><Skeleton className="h-64" /></div>;
-  if (access.isSubcontractor) return <ReadOnlyAssignedQuote quote={quote} />;
+  if (access.isAssignedWorker) return <ReadOnlyAssignedQuote quote={quote} />;
 
   const councilWarning = quote.heightM >= COUNCIL_HEIGHT_M;
   const refreshMasterProjects = () => {

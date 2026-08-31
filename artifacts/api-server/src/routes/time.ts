@@ -12,6 +12,10 @@ import {
 
 const router: IRouter = Router();
 
+function ownedMember(userId: string) {
+  return eq(teamMembersTable.clerkUserId, userId);
+}
+
 function entryToJson(
   row: typeof timeEntriesTable.$inferSelect & {
     memberName: string | null;
@@ -51,7 +55,7 @@ router.post("/time/clock-on", async (req, res): Promise<void> => {
       .from(teamMembersTable)
       .where(and(
         eq(teamMembersTable.id, d.teamMemberId),
-        eq(teamMembersTable.clerkUserId, userId),
+        ownedMember(userId),
       ))
       .for("update");
     if (!member) return { error: "Team member not found" as const };
@@ -71,7 +75,7 @@ router.post("/time/clock-on", async (req, res): Promise<void> => {
       .from(timeEntriesTable)
       .innerJoin(teamMembersTable, and(
         eq(teamMembersTable.id, timeEntriesTable.teamMemberId),
-        eq(teamMembersTable.clerkUserId, userId),
+        ownedMember(userId),
       ))
       .innerJoin(bookingsTable, and(
         eq(bookingsTable.id, timeEntriesTable.jobId),
@@ -131,7 +135,7 @@ router.post("/time/clock-off", async (req, res): Promise<void> => {
       .from(teamMembersTable)
       .where(and(
         eq(teamMembersTable.id, d.teamMemberId),
-        eq(teamMembersTable.clerkUserId, userId),
+        ownedMember(userId),
       ))
       .for("update");
     if (!member) return { error: "Team member not found" as const };
@@ -151,7 +155,7 @@ router.post("/time/clock-off", async (req, res): Promise<void> => {
       .from(timeEntriesTable)
       .innerJoin(teamMembersTable, and(
         eq(teamMembersTable.id, timeEntriesTable.teamMemberId),
-        eq(teamMembersTable.clerkUserId, userId),
+        ownedMember(userId),
       ))
       .innerJoin(bookingsTable, and(
         eq(bookingsTable.id, timeEntriesTable.jobId),
@@ -228,7 +232,7 @@ router.post("/time/manual", async (req, res): Promise<void> => {
       .from(teamMembersTable)
       .where(and(
         eq(teamMembersTable.id, d.teamMemberId),
-        eq(teamMembersTable.clerkUserId, userId),
+        ownedMember(userId),
       ))
       .for("update");
     if (!member) return { error: "Team member not found" as const };
@@ -304,7 +308,7 @@ router.get("/time/job/:jobId", async (req, res): Promise<void> => {
     .from(timeEntriesTable)
     .innerJoin(teamMembersTable, and(
       eq(teamMembersTable.id, timeEntriesTable.teamMemberId),
-      eq(teamMembersTable.clerkUserId, userId),
+      ownedMember(userId),
     ))
     .innerJoin(bookingsTable, and(
       eq(bookingsTable.id, timeEntriesTable.jobId),
@@ -331,7 +335,7 @@ router.get("/time/member/:memberId", async (req, res): Promise<void> => {
     .from(teamMembersTable)
     .where(and(
       eq(teamMembersTable.id, params.data.memberId),
-      eq(teamMembersTable.clerkUserId, userId),
+      ownedMember(userId),
     ));
   if (!member) {
     res.status(404).json({ error: "Team member not found" });
@@ -346,7 +350,7 @@ router.get("/time/member/:memberId", async (req, res): Promise<void> => {
     .from(timeEntriesTable)
     .innerJoin(teamMembersTable, and(
       eq(teamMembersTable.id, timeEntriesTable.teamMemberId),
-      eq(teamMembersTable.clerkUserId, userId),
+      ownedMember(userId),
     ))
     .innerJoin(bookingsTable, and(
       eq(bookingsTable.id, timeEntriesTable.jobId),

@@ -1,5 +1,5 @@
 import { createContext, useContext, type ReactNode } from "react";
-import type { BusinessProfile } from "@workspace/api-client-react";
+import type { AssignmentAccess, BusinessProfile } from "@workspace/api-client-react";
 
 type BusinessRole = "Owner" | "Employee" | "Subcontractor";
 
@@ -14,6 +14,7 @@ interface ProfileAccess {
   isMasterBuilder: boolean;
   isOwner: boolean;
   isSubcontractor: boolean;
+  isAssignedWorker: boolean;
   canViewFinancials: boolean;
   canManageTeam: boolean;
   canViewDashboard: boolean;
@@ -25,16 +26,24 @@ const ProfileAccessContext = createContext<ProfileAccess | null>(null);
 
 export function ProfileAccessProvider({
   profile,
+  assignmentAccess,
   identity = {},
   children,
 }: {
   profile: BusinessProfile | null;
+  assignmentAccess?: AssignmentAccess | null;
   identity?: AccessIdentity;
   children: ReactNode;
 }) {
-  const role = (profile?.role as BusinessRole | undefined) ?? null;
+  const linkedRole = assignmentAccess?.role
+    ? `${assignmentAccess.role.charAt(0).toUpperCase()}${assignmentAccess.role.slice(1).toLowerCase()}` as BusinessRole
+    : null;
+  const role = assignmentAccess?.linked
+    ? linkedRole
+    : (profile?.role as BusinessRole | undefined) ?? null;
   const isOwner = role === "Owner";
   const isSubcontractor = role === "Subcontractor";
+  const isAssignedWorker = assignmentAccess?.linked === true;
   return (
     <ProfileAccessContext.Provider value={{
       profile,
@@ -42,10 +51,11 @@ export function ProfileAccessProvider({
       isMasterBuilder: profile?.isMasterBuilder === true,
       isOwner,
       isSubcontractor,
-      canViewFinancials: isOwner,
-      canManageTeam: isOwner,
-      canViewDashboard: !isSubcontractor,
-      canViewGeneralWorkspace: !isSubcontractor,
+      isAssignedWorker,
+      canViewFinancials: isOwner && !isAssignedWorker,
+      canManageTeam: isOwner && !isAssignedWorker,
+      canViewDashboard: !isAssignedWorker && !isSubcontractor,
+      canViewGeneralWorkspace: !isAssignedWorker && !isSubcontractor,
       identity,
     }}>
       {children}
@@ -75,6 +85,6 @@ export function isAssignedToIdentity(record: unknown, identity: AccessIdentity):
 }
 
 export function visibleToProfile<T>(records: T[] | undefined, access: ProfileAccess): T[] {
-  if (!records || !access.isSubcontractor) return records ?? [];
+  if (!records || !access.isSubcontractor || access.isAssignedWorker) return records ?? [];
   return records.filter((record) => isAssignedToIdentity(record, access.identity));
 }

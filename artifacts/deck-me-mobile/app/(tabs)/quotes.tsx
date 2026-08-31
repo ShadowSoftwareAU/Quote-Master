@@ -28,7 +28,10 @@ export default function QuotesScreen() {
   const access = useProfileAccess();
   const insets = useSafeAreaInsets();
   const { data, isLoading, refetch, isRefetching } = useListQuotes({
-    query: { queryKey: getListQuotesQueryKey() },
+    query: {
+      queryKey: getListQuotesQueryKey(),
+      refetchInterval: access.isAssignedWorker ? 10_000 : false,
+    },
   });
   const visibleQuotes = visibleToProfile(data, {
     ...access,
@@ -79,7 +82,7 @@ export default function QuotesScreen() {
           icon="file-text"
           title="No quotes yet"
           body="Open the Calc tab to size a job and save it as a quote."
-          action={access.isSubcontractor ? undefined : { label: "New quote", onPress: () => router.push("/calculator") }}
+          action={access.isAssignedWorker ? undefined : { label: "New quote", onPress: () => router.push("/calculator") }}
         />
       ) : (
         <FlatList

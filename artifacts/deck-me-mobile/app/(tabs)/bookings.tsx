@@ -147,7 +147,10 @@ export default function BookingsScreen() {
   const { user } = useUser();
   const access = useProfileAccess();
   const { data, isLoading, refetch, isRefetching } = useListBookings({
-    query: { queryKey: getListBookingsQueryKey() },
+    query: {
+      queryKey: getListBookingsQueryKey(),
+      refetchInterval: access.isAssignedWorker ? 10_000 : false,
+    },
   });
   const { data: teamMembers } = useListTeamMembers({
     query: { enabled: access.isOwner, queryKey: getListTeamMembersQueryKey() },
@@ -331,7 +334,7 @@ export default function BookingsScreen() {
                       <StatusBadge status={item.status} />
                     </View>
                     {/* Action buttons */}
-                    <View style={{ flexDirection: "row", gap: 8, marginTop: 10 }}>
+                    {!access.isAssignedWorker && <View style={{ flexDirection: "row", gap: 8, marginTop: 10 }}>
                       <Pressable
                         onPress={() => setSelectedBookingId(item.id)}
                         style={({ pressed }) => ({
@@ -363,7 +366,7 @@ export default function BookingsScreen() {
                           TIME
                         </Text>
                       </Pressable>
-                    </View>
+                    </View>}
                   </View>
                 </View>
               </Card>
@@ -491,7 +494,7 @@ export default function BookingsScreen() {
 
       {/* Photo modal */}
       <Modal
-        visible={selectedBookingId !== null}
+        visible={!access.isAssignedWorker && selectedBookingId !== null}
         animationType="slide"
         presentationStyle="pageSheet"
         onRequestClose={() => setSelectedBookingId(null)}

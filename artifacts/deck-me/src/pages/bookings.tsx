@@ -31,14 +31,17 @@ export default function Bookings() {
   const { user } = useUser();
   const access = useProfileAccess();
   const { data: bookings, isLoading } = useListBookings({
-    query: { queryKey: getListBookingsQueryKey() },
+    query: {
+      queryKey: getListBookingsQueryKey(),
+      refetchInterval: access.isAssignedWorker ? 10_000 : false,
+    },
   });
   const visibleBookings = visibleToProfile(bookings, {
     ...access,
     identity: { userId: user?.id, email: user?.primaryEmailAddress?.emailAddress },
   });
   const { data: customers } = useListCustomers({
-    query: { enabled: !access.isSubcontractor, queryKey: getListCustomersQueryKey() },
+    query: { enabled: !access.isAssignedWorker, queryKey: getListCustomersQueryKey() },
   });
   const createBooking = useCreateBooking();
   const updateBooking = useUpdateBooking();
@@ -147,7 +150,7 @@ export default function Bookings() {
           <h1 className="text-3xl font-black uppercase tracking-tight">Schedule</h1>
           <p className="text-muted-foreground font-medium">Upcoming jobs</p>
         </div>
-        {!access.isSubcontractor && <Dialog open={open} onOpenChange={setOpen}>
+        {!access.isAssignedWorker && <Dialog open={open} onOpenChange={setOpen}>
           <Button onClick={handleOpenCreate} className="font-bold uppercase">
             <Plus className="w-4 h-4 mr-2" /> Book Job
           </Button>
@@ -211,8 +214,14 @@ export default function Bookings() {
         ) : visibleBookings.length === 0 ? (
           <div className="text-center py-20 border-2 border-dashed rounded-lg">
             <CalIcon className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
-            <h2 className="text-xl font-bold uppercase mb-2">No Jobs Scheduled</h2>
-            <Button onClick={handleOpenCreate} className="font-bold uppercase"><Plus className="w-4 h-4 mr-2" /> Book a Job</Button>
+            <h2 className="text-xl font-bold uppercase mb-2">
+              {access.isAssignedWorker ? "No assigned jobs" : "No Jobs Scheduled"}
+            </h2>
+            {!access.isAssignedWorker && (
+              <Button onClick={handleOpenCreate} className="font-bold uppercase">
+                <Plus className="w-4 h-4 mr-2" /> Book a Job
+              </Button>
+            )}
           </div>
         ) : (
           visibleBookings.map(b => {
@@ -233,7 +242,7 @@ export default function Bookings() {
                           <MapPin className="w-4 h-4" /> {b.siteAddress}
                         </div>
                       )}
-                      {bPhotos.length > 0 && (
+                      {!access.isAssignedWorker && bPhotos.length > 0 && (
                         <button
                           className="flex items-center gap-1 text-xs text-primary font-bold mt-2 hover:underline"
                           onClick={() => setPhotosBookingId(b.id)}
@@ -244,7 +253,7 @@ export default function Bookings() {
                     </div>
                     <div className="flex items-start md:items-center gap-2 md:flex-col justify-between">
                       <div className="text-xs font-bold uppercase px-3 py-1 bg-muted rounded-sm">{b.status}</div>
-                      {!access.isSubcontractor && <div className="flex gap-1">
+                      {!access.isAssignedWorker && <div className="flex gap-1">
                         <Button
                           variant="outline"
                           size="sm"
@@ -272,7 +281,7 @@ export default function Bookings() {
         )}
       </div>
 
-      <Dialog open={photosBookingId !== null} onOpenChange={open => { if (!open) setPhotosBookingId(null); }}>
+      {!access.isAssignedWorker && <Dialog open={photosBookingId !== null} onOpenChange={open => { if (!open) setPhotosBookingId(null); }}>
         <DialogContent className="max-w-2xl">
           <DialogHeader>
             <DialogTitle className="font-display font-black uppercase text-xl flex items-center gap-2">
@@ -343,7 +352,7 @@ export default function Bookings() {
             )}
           </div>
         </DialogContent>
-      </Dialog>
+      </Dialog>}
     </div>
   );
 }

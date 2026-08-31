@@ -209,9 +209,6 @@ export const ListCustomersResponseItem = zod.object({
 export const ListCustomersResponse = zod.array(ListCustomersResponseItem)
 
 
-
-
-
 export const CreateCustomerBody = zod.object({
   "name": zod.string().min(1),
   "company": zod.string().optional(),
@@ -241,8 +238,6 @@ export const GetCustomerResponse = zod.object({
 export const UpdateCustomerParams = zod.object({
   "id": zod.coerce.number()
 })
-
-
 
 
 export const UpdateCustomerBody = zod.object({
@@ -294,9 +289,6 @@ export const ListMaterialsResponseItem = zod.object({
 export const ListMaterialsResponse = zod.array(ListMaterialsResponseItem)
 
 
-
-
-
 export const CreateMaterialBody = zod.object({
   "name": zod.string().min(1),
   "sku": zod.string().optional(),
@@ -313,8 +305,6 @@ export const CreateMaterialBody = zod.object({
 export const UpdateMaterialParams = zod.object({
   "id": zod.coerce.number()
 })
-
-
 
 
 export const UpdateMaterialBody = zod.object({
@@ -367,7 +357,6 @@ export const ListQuotesResponseItem = zod.object({
   "createdAt": zod.coerce.date()
 })
 export const ListQuotesResponse = zod.array(ListQuotesResponseItem)
-
 
 
 export const createQuoteBodyTradeTypeDefault = `decking`;
@@ -522,8 +511,6 @@ export const GetQuoteResponse = zod.object({
 export const UpdateQuoteParams = zod.object({
   "id": zod.coerce.number()
 })
-
-
 
 
 export const UpdateQuoteBody = zod.object({
@@ -1298,11 +1285,9 @@ export const ListMasterProjectsResponseItem = zod.object({
 export const ListMasterProjectsResponse = zod.array(ListMasterProjectsResponseItem)
 
 
-
 export const createMasterProjectBodyBuilderMarginPctDefault = 0;
 export const createMasterProjectBodyBuilderMarginPctMin = 0;
 export const createMasterProjectBodyBuilderMarginPctMax = 99.99;
-
 
 
 export const CreateMasterProjectBody = zod.object({
@@ -1404,7 +1389,6 @@ export const UpdateMasterProjectParams = zod.object({
 
 export const updateMasterProjectBodyBuilderMarginPctMin = 0;
 export const updateMasterProjectBodyBuilderMarginPctMax = 99.99;
-
 
 
 export const UpdateMasterProjectBody = zod.object({
@@ -1824,9 +1808,6 @@ export const ListBookingsResponseItem = zod.object({
 export const ListBookingsResponse = zod.array(ListBookingsResponseItem)
 
 
-
-
-
 export const CreateBookingBody = zod.object({
   "title": zod.string().min(1),
   "customerId": zod.number().optional(),
@@ -1842,8 +1823,6 @@ export const CreateBookingBody = zod.object({
 export const UpdateBookingParams = zod.object({
   "id": zod.coerce.number()
 })
-
-
 
 
 export const UpdateBookingBody = zod.object({
@@ -1943,8 +1922,6 @@ export const RemoveBookingPhotoResponse = zod.object({
 export const requestStorageUploadUrlBodySizeMin = 0;
 
 
-
-
 export const RequestStorageUploadUrlBody = zod.object({
   "name": zod.string().min(1),
   "size": zod.number().min(requestStorageUploadUrlBodySizeMin),
@@ -1965,8 +1942,6 @@ export const CreateQuoteVariationParams = zod.object({
 })
 
 
-
-
 export const CreateQuoteVariationBody = zod.object({
   "title": zod.string().min(1).describe('Title for the variation quote'),
   "notes": zod.string().optional().describe('Description of what\'s different in this variation'),
@@ -1977,7 +1952,14 @@ export const CreateQuoteVariationBody = zod.object({
   "labourRate": zod.number().optional()
 })
 
-
+/**
+ * @summary Resolve the signed-in user's linked team-member access
+ */
+export const GetAssignmentAccessResponse = zod.object({
+  "linked": zod.boolean(),
+  "teamMemberId": zod.number().nullish(),
+  "role": zod.string().nullish().describe('employee | subcontractor')
+})
 /**
  * @summary List all team members
  */
@@ -1989,10 +1971,11 @@ export const ListTeamMembersResponseItem = zod.object({
   "phone": zod.string().nullish(),
   "role": zod.string().describe('owner | employee | subcontractor'),
   "active": zod.boolean(),
+  "accountLinked": zod.boolean(),
+  "accountUserId": zod.string().nullish(),
   "createdAt": zod.coerce.date()
 })
 export const ListTeamMembersResponse = zod.array(ListTeamMembersResponseItem)
-
 
 
 export const createTeamMemberBodyLinkedClerkUserIdRegExp = new RegExp('^user_[A-Za-z0-9]+$');
@@ -2034,6 +2017,8 @@ export const UpdateTeamMemberResponse = zod.object({
   "phone": zod.string().nullish(),
   "role": zod.string().describe('owner | employee | subcontractor'),
   "active": zod.boolean(),
+  "accountLinked": zod.boolean(),
+  "accountUserId": zod.string().nullish(),
   "createdAt": zod.coerce.date()
 })
 
@@ -2046,7 +2031,12 @@ export const DeleteTeamMemberResponse = zod.object({
   "deleted": zod.boolean()
 })
 
-
+/**
+ * @summary Link a Clerk account to a team member
+ */
+export const LinkTeamMemberAccountParams = zod.object({
+  "memberId": zod.coerce.number()
+})
 export const AssignTeamMemberToJobParams = zod.object({
   "memberId": zod.coerce.number(),
   "jobId": zod.coerce.number()
@@ -2183,9 +2173,7 @@ export const ListPortfolioEntriesResponseItem = zod.object({
 export const ListPortfolioEntriesResponse = zod.array(ListPortfolioEntriesResponseItem)
 
 
-
 export const createPortfolioEntryBodyRatingMax = 5;
-
 
 
 export const CreatePortfolioEntryBody = zod.object({
@@ -2209,7 +2197,6 @@ export const UpdatePortfolioEntryParams = zod.object({
 
 
 export const updatePortfolioEntryBodyRatingMax = 5;
-
 
 
 export const UpdatePortfolioEntryBody = zod.object({
@@ -2294,10 +2281,6 @@ export const ListReferralSourcesResponseItem = zod.object({
 export const ListReferralSourcesResponse = zod.array(ListReferralSourcesResponseItem)
 
 
-
-
-
-
 export const CreateReferralSourceBody = zod.object({
   "code": zod.string().min(1),
   "name": zod.string().min(1),
@@ -2327,9 +2310,6 @@ export const ListSignUpLeadsResponseItem = zod.object({
 export const ListSignUpLeadsResponse = zod.array(ListSignUpLeadsResponseItem)
 
 
-
-
-
 export const CreateSignUpLeadBody = zod.object({
   "name": zod.string().min(1),
   "email": zod.string().optional(),
@@ -2343,3 +2323,37 @@ export const CreateSignUpLeadBody = zod.object({
 })
 
 
+export const LinkTeamMemberAccountResponse = zod.object({
+  "id": zod.number(),
+  "name": zod.string(),
+  "email": zod.string().nullish(),
+  "phone": zod.string().nullish(),
+  "role": zod.string().describe('owner | employee | subcontractor'),
+  "active": zod.boolean(),
+  "accountLinked": zod.boolean(),
+  "accountUserId": zod.string().nullish(),
+  "createdAt": zod.coerce.date()
+})
+
+export const LinkTeamMemberAccountBody = zod.object({
+  "accountUserId": zod.string().min(1).describe('Clerk user ID for the authenticated worker account')
+})
+
+/**
+ * @summary Remove a Clerk account link from a team member
+ */
+export const UnlinkTeamMemberAccountParams = zod.object({
+  "memberId": zod.coerce.number()
+})
+
+export const UnlinkTeamMemberAccountResponse = zod.object({
+  "id": zod.number(),
+  "name": zod.string(),
+  "email": zod.string().nullish(),
+  "phone": zod.string().nullish(),
+  "role": zod.string().describe('owner | employee | subcontractor'),
+  "active": zod.boolean(),
+  "accountLinked": zod.boolean(),
+  "accountUserId": zod.string().nullish(),
+  "createdAt": zod.coerce.date()
+})

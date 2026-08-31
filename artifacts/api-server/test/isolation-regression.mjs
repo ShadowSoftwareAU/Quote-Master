@@ -210,6 +210,17 @@ check(
   "NULL clerkUserId rows must not be included as shared records",
 );
 
+check(
+  "assigned quote responses hide portal tokens",
+  quotes.includes("portalToken: userId && !member ? row.q.portalToken : null"),
+  "assigned quote detail must not return a customer portal write token",
+);
+check(
+  "booking customer joins stay tenant scoped",
+  bookings.split("customersTable.clerkUserId, bookingsTable.clerkUserId").length - 1 >= 2,
+  "booking list/detail customer joins must use the booking owner",
+);
+
 if (failures.length) {
   console.error(`API isolation regression check failed (${failures.length}):`);
   for (const failure of failures) console.error(`  - ${failure}`);

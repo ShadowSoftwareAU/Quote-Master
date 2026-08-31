@@ -18,10 +18,24 @@ import {
   ListJobAssignmentsParams,
   RemoveJobAssignmentParams,
   RemoveJobAssignmentBody,
+  LinkTeamMemberAccountParams,
+  LinkTeamMemberAccountBody,
+  UnlinkTeamMemberAccountParams,
 } from "@workspace/api-zod";
 import { requireOwner } from "../middlewares/businessRoleAuth";
+import { getLinkedTeamMember } from "../lib/assignmentAccess";
 
 const router: IRouter = Router();
+router.get("/assignment-access", async (req, res): Promise<void> => {
+  const userId = getAuth(req).userId;
+  if (!userId) { res.status(401).json({ error: "Unauthorized" }); return; }
+  const member = await getLinkedTeamMember(userId);
+  res.json({
+    linked: Boolean(member),
+    teamMemberId: member?.id ?? null,
+    role: member?.role ?? null,
+  });
+});
 router.use("/team", requireOwner);
 router.use("/bookings/:jobId/assignments", requireOwner);
 
@@ -33,11 +47,68 @@ function memberToJson(row: typeof teamMembersTable.$inferSelect) {
     phone: row.phone,
     email: row.email,
     linkedClerkUserId: row.linkedClerkUserId,
+    accountLinked: Boolean(row.linkedClerkUserId),
+    accountUserId: row.linkedClerkUserId,
     pin: row.pin,
     active: row.active,
     createdAt: row.createdAt.toISOString(),
   };
 }
+
+router.put("/team/:memberId/account", async (req, res): Promise<void> => {
+  const userId = getAuth(req).userId;
+  if (!userId) { res.status(401).json({ error: "Unauthorized" }); return; }
+  const params = LinkTeamMemberAccountParams.safeParse(req.params);
+  const body = LinkTeamMemberAccountBody.safeParse(req.body);
+  if (!params.success) { res.status(400).json({ error: params.error.message }); return; }
+  if (!body.success) { res.status(400).json({ error: body.error.message }); return; }
+  const [linkedProfile] = await db
+    .select({ role: businessProfilesTable.role })
+    .from(businessProfilesTable)
+    .where(and(
+      eq(businessProfilesTable.clerkUserId, body.data.accountUserId),
+      eq(businessProfilesTable.role, "Subcontractor"),
+    ));
+  if (!linkedProfile) {
+    res.status(400).json({ error: "Linked Clerk user must have a Subcontractor profile" });
+    return;
+  }
+  try {
+    const [row] = await db
+      .update(teamMembersTable)
+      .set({ linkedClerkUserId: body.data.accountUserId })
+      .where(and(
+        eq(teamMembersTable.id, params.data.memberId),
+        eq(teamMembersTable.clerkUserId, userId),
+      ))
+      .returning();
+    if (!row) { res.status(404).json({ error: "Team member not found" }); return; }
+    res.json(memberToJson(row));
+  } catch (error) {
+    if ((error as { code?: string }).code === "23505") {
+      res.status(409).json({ error: "That Clerk account is already linked to a team member" });
+      return;
+    }
+    throw error;
+  }
+});
+
+router.delete("/team/:memberId/account", async (req, res): Promise<void> => {
+  const userId = getAuth(req).userId;
+  if (!userId) { res.status(401).json({ error: "Unauthorized" }); return; }
+  const params = UnlinkTeamMemberAccountParams.safeParse(req.params);
+  if (!params.success) { res.status(400).json({ error: params.error.message }); return; }
+  const [row] = await db
+    .update(teamMembersTable)
+    .set({ linkedClerkUserId: null })
+    .where(and(
+      eq(teamMembersTable.id, params.data.memberId),
+      eq(teamMembersTable.clerkUserId, userId),
+    ))
+    .returning();
+  if (!row) { res.status(404).json({ error: "Team member not found" }); return; }
+  res.json(memberToJson(row));
+});
 
 function assignmentToJson(
   row: typeof jobAssignmentsTable.$inferSelect & {

@@ -803,6 +803,18 @@ paths:
 
 
   # ── Team Members ───────────────────────────────────────────────────────
+  /assignment-access:
+    get:
+      operationId: getAssignmentAccess
+      tags: [team]
+      summary: Resolve the signed-in user's linked team-member access
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AssignmentAccess" }
+
   /team:
     get:
       operationId: listTeamMembers
@@ -865,6 +877,43 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/DeletionSuccess" }
+
+  /team/{memberId}/account:
+    put:
+      operationId: linkTeamMemberAccount
+      tags: [team]
+      summary: Link a Clerk account to a team member
+      parameters:
+        - in: path
+          name: memberId
+          required: true
+          schema: { type: integer }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/TeamMemberAccountLinkInput" }
+      responses:
+        "200":
+          description: Linked
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/TeamMember" }
+    delete:
+      operationId: unlinkTeamMemberAccount
+      tags: [team]
+      summary: Remove a Clerk account link from a team member
+      parameters:
+        - in: path
+          name: memberId
+          required: true
+          schema: { type: integer }
+      responses:
+        "200":
+          description: Unlinked
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/TeamMember" }
 
   /team/{memberId}/assign/{jobId}:
     post:
@@ -1907,7 +1956,7 @@ components:
 
     TeamMember:
       type: object
-      required: [id, name, role, active, createdAt]
+      required: [id, name, role, active, accountLinked, createdAt]
       properties:
         id: { type: integer }
         linkedClerkUserId: { type: ["string", "null"] }
@@ -1916,7 +1965,17 @@ components:
         phone: { type: ["string", "null"] }
         role: { type: string, description: "owner | employee | subcontractor" }
         active: { type: boolean }
+        accountLinked: { type: boolean }
+        accountUserId: { type: ["string", "null"] }
         createdAt: { type: string, format: date-time }
+
+    AssignmentAccess:
+      type: object
+      required: [linked]
+      properties:
+        linked: { type: boolean }
+        teamMemberId: { type: ["integer", "null"] }
+        role: { type: ["string", "null"], description: "employee | subcontractor" }
 
     TeamMemberInput:
       type: object
@@ -1939,6 +1998,15 @@ components:
         role: { type: string }
         pin: { type: string }
         active: { type: boolean }
+
+    TeamMemberAccountLinkInput:
+      type: object
+      required: [accountUserId]
+      properties:
+        accountUserId:
+          type: string
+          minLength: 1
+          description: Clerk user ID for the authenticated worker account
 
     JobAssignment:
       type: object
