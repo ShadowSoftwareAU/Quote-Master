@@ -186,7 +186,7 @@ function RootLayoutNav() {
   const isOtherError = profileError && !is404 && !assignmentAccess?.linked;
   const redirectTarget =
     isLoaded && !isSignedIn && (!isAuthRoute || isOnboardingRoute)
-      ? "/sign-in"
+      ? "/(auth)/sign-in"
       : isLoaded && isSignedIn && is404 && !assignmentAccess?.linked && !isOnboardingRoute
         ? "/(auth)/onboarding"
         : isLoaded && isSignedIn && (profile || assignmentAccess?.linked) && isAuthRoute

@@ -16,7 +16,7 @@ export default function TabLayout() {
   const insets = useSafeAreaInsets();
 
   if (!isSignedIn) {
-    return <Redirect href="/sign-in" />;
+    return <Redirect href="/(auth)/sign-in" />;
   }
 
   return (
