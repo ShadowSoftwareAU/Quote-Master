@@ -7,6 +7,7 @@ import {
   useRemoveBookingPhoto,
   getListBookingsQueryKey,
   useListCustomers,
+  customFetch,
 } from "@workspace/api-client-react";
 import { useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
@@ -296,12 +297,15 @@ export default function Bookings() {
                 maxNumberOfFiles={10}
                 maxFileSize={20 * 1024 * 1024}
                 onGetUploadParameters={async (file) => {
-                  const res = await fetch("/api/storage/uploads/request-url", {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ name: file.name, size: file.size, contentType: file.type }),
-                  });
-                  const data = await res.json();
+                  const data = await customFetch<{ uploadURL: string }>(
+                    "/api/storage/uploads/request-url",
+                    {
+                      method: "POST",
+                      headers: { "Content-Type": "application/json" },
+                      body: JSON.stringify({ name: file.name, size: file.size, contentType: file.type }),
+                      responseType: "json",
+                    },
+                  );
                   return { method: "PUT", url: data.uploadURL, headers: { "Content-Type": file.type } };
                 }}
                 onComplete={(result) => {

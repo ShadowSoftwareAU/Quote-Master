@@ -9,6 +9,7 @@ import {
   useClockOn,
   useClockOff,
   getListBookingsQueryKey,
+  customFetch,
 } from "@workspace/api-client-react";
 import * as ImagePicker from "expo-image-picker";
 import React, { useState } from "react";
@@ -31,15 +32,19 @@ import { Button, Card, EmptyState, StatusBadge, StripedBar } from "@/components/
 import { useColors } from "@/hooks/useColors";
 
 async function requestUploadUrl(file: { name: string; size: number; type: string }): Promise<{ uploadURL: string; objectPath: string }> {
-  const domain = process.env.EXPO_PUBLIC_DOMAIN ?? "";
-  const base = domain ? `https://${domain}` : "";
-  const res = await fetch(`${base}/api/storage/uploads/request-url`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ name: file.name, size: file.size, contentType: file.type }),
-  });
-  if (!res.ok) throw new Error("Failed to get upload URL");
-  return res.json();
+  return customFetch<{ uploadURL: string; objectPath: string }>(
+    "/api/storage/uploads/request-url",
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        name: file.name,
+        size: file.size,
+        contentType: file.type,
+      }),
+      responseType: "json",
+    },
+  );
 }
 
 async function uploadToPresigned(uploadURL: string, uri: string, contentType: string): Promise<void> {
