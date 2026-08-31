@@ -47,6 +47,22 @@ export const CreateOnboardingProfileBody = zod.object({
 
 
 /**
+ * @summary Get the authenticated user's business profile
+ */
+export const GetProfileSettingsResponse = zod.object({
+  "id": zod.number(),
+  "businessName": zod.string(),
+  "phoneNumber": zod.string(),
+  "tradeType": zod.string(),
+  "licenseNumber": zod.string().nullish(),
+  "role": zod.enum(['Owner', 'Employee', 'Subcontractor']),
+  "metadataSyncStatus": zod.enum(['pending', 'synced', 'failed']),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+})
+
+
+/**
  * @summary Update the authenticated user's trade and role details
  */
 export const updateProfileSettingsBodyTradeTypeMin = 2;

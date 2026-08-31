@@ -122,6 +122,14 @@ test("database-backed onboarding and profile settings stay user scoped", { skip:
   assert.equal(onboarding.json.metadataSyncStatus, "synced");
   assert.equal(onboarding.json.clerkUserId, undefined);
 
+  const profileRead = await api(userA, "GET", "/settings/profile");
+  assert.equal(profileRead.response.status, 200);
+  assert.equal(profileRead.json.businessName, `${fixture} Carpentry Pty Ltd`);
+  assert.equal(profileRead.json.clerkUserId, undefined);
+
+  const missingProfileRead = await api(userB, "GET", "/settings/profile");
+  assert.equal(missingProfileRead.response.status, 404);
+
   const foreignUpdate = await api(userB, "PUT", "/settings/profile", {
     tradeType: "Plumber",
     role: "Employee",

@@ -2,3 +2,4 @@
 - [Legacy data ownership](legacy-data-ownership.md) — keep ownership nullable and indexed until legacy rows have a confirmed Clerk user mapping.
 - [Public quote API boundary](public-quote-api-boundary.md) — keep customer acceptance public, but restrict anonymous writes to upgrade choices and acceptance only.
 - [Clerk profile metadata consistency](clerk-profile-metadata-consistency.md) — sync business roles through an atomic versioned outbox, preserving access roles and retrying failures.
+- [Profile-gated navigation](profile-gated-navigation.md) — key profile state by Clerk user and keep Expo's root navigator mounted while guarded redirects settle.

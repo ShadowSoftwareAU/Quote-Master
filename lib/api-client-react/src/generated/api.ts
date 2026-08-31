@@ -236,6 +236,83 @@ export const useCreateOnboardingProfile = <TError = ErrorType<void>,
       return useMutation(getCreateOnboardingProfileMutationOptions(options));
     }
 
+export const getGetProfileSettingsUrl = () => {
+
+
+
+
+  return `/api/settings/profile`
+}
+
+/**
+ * @summary Get the authenticated user's business profile
+ */
+export const getProfileSettings = async ( options?: RequestInit): Promise<BusinessProfile> => {
+
+  return customFetch<BusinessProfile>(getGetProfileSettingsUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetProfileSettingsQueryKey = () => {
+    return [
+    `/api/settings/profile`
+    ] as const;
+    }
+
+
+export const getGetProfileSettingsQueryOptions = <TData = Awaited<ReturnType<typeof getProfileSettings>>, TError = ErrorType<void>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getProfileSettings>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetProfileSettingsQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getProfileSettings>>> = ({ signal }) => getProfileSettings({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getProfileSettings>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetProfileSettingsQueryResult = NonNullable<Awaited<ReturnType<typeof getProfileSettings>>>
+export type GetProfileSettingsQueryError = ErrorType<void>
+
+
+/**
+ * @summary Get the authenticated user's business profile
+ */
+
+export function useGetProfileSettings<TData = Awaited<ReturnType<typeof getProfileSettings>>, TError = ErrorType<void>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getProfileSettings>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetProfileSettingsQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
+
 export const getUpdateProfileSettingsUrl = () => {
 
 

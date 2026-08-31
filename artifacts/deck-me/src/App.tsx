@@ -23,6 +23,8 @@ import PortfolioPage from "@/pages/portfolio";
 import ReferralsPage from "@/pages/referrals";
 import FinancePage from "@/pages/finance";
 import Projects from "@/pages/projects";
+import Onboarding from "@/pages/onboarding";
+import { useGetProfileSettings, getGetProfileSettingsQueryKey } from "@workspace/api-client-react";
 
 const queryClient = new QueryClient();
 const basePath = import.meta.env.BASE_URL.replace(/\/$/, "");
@@ -56,8 +58,17 @@ function ClerkQueryClientCacheInvalidator() {
 }
 
 function ProtectedWorkspace() {
-  const { isLoaded, isSignedIn } = useAuth();
-  const [, setLocation] = useLocation();
+  const { isLoaded, isSignedIn, userId } = useAuth();
+  const [location, setLocation] = useLocation();
+  const profileQueryKey = [...getGetProfileSettingsQueryKey(), userId];
+
+  const { data: profile, isLoading: profileLoading, error: profileError, refetch: refetchProfile } = useGetProfileSettings({
+    query: {
+      enabled: isLoaded && isSignedIn,
+      retry: false,
+      queryKey: profileQueryKey,
+    }
+  });
 
   useEffect(() => {
     if (isLoaded && !isSignedIn) {
@@ -65,8 +76,69 @@ function ProtectedWorkspace() {
     }
   }, [isLoaded, isSignedIn, setLocation]);
 
+  const is404 =
+    profileError &&
+    typeof profileError === "object" &&
+    "status" in profileError &&
+    profileError.status === 404;
+  const isOtherError = profileError && !is404;
+
+  useEffect(() => {
+    if (!isLoaded || !isSignedIn || profileLoading) return;
+    if (is404 && location !== "/onboarding") {
+      setLocation("/onboarding");
+    } else if (profile && location === "/onboarding") {
+      setLocation("/");
+    }
+  }, [
+    is404,
+    isLoaded,
+    isSignedIn,
+    location,
+    profile,
+    profileLoading,
+    setLocation,
+  ]);
+
   if (!isLoaded || !isSignedIn) {
     return <div className="min-h-[100dvh] bg-background" aria-label="Loading" />;
+  }
+
+  if (profileLoading) {
+    return (
+      <div className="min-h-[100dvh] bg-background flex flex-col items-center justify-center space-y-4">
+        <div className="w-10 h-10 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
+        <p className="text-muted-foreground font-medium animate-pulse uppercase tracking-widest text-sm">Loading Workspace</p>
+      </div>
+    );
+  }
+
+  if (isOtherError) {
+    return (
+      <div className="min-h-[100dvh] bg-background flex flex-col items-center justify-center p-4">
+        <div className="text-center max-w-md space-y-4">
+          <h1 className="font-display font-black text-4xl uppercase tracking-tight text-foreground">Ah, bugger</h1>
+          <p className="text-muted-foreground text-lg">We couldn't connect to the server to grab your profile. Check your connection.</p>
+          <button
+            onClick={() => refetchProfile()}
+            className="inline-flex items-center justify-center gap-2 rounded-md bg-primary text-primary-foreground min-h-12 px-8 font-bold uppercase tracking-wide hover:bg-primary/90 transition-colors"
+          >
+            Try Again
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  if (
+    (is404 && location !== "/onboarding") ||
+    (profile && location === "/onboarding")
+  ) {
+    return null;
+  }
+
+  if (location === "/onboarding") {
+    return <Onboarding />;
   }
 
   return (

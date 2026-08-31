@@ -5,6 +5,7 @@ import {
 } from "@workspace/api-zod";
 import { getAuthenticatedClerkUserId } from "../middlewares/apiAuth";
 import {
+  getBusinessProfile,
   onboardBusinessProfile,
   ProfileMetadataSyncError,
   ProfileMetadataSupersededError,
@@ -88,6 +89,15 @@ router.post("/onboarding", async (req: Request, res: Response) => {
   } catch (error) {
     requestFailure(req, res, error);
   }
+});
+
+router.get("/settings/profile", async (req: Request, res: Response) => {
+  const profile = await getBusinessProfile(getAuthenticatedClerkUserId(req));
+  if (!profile) {
+    res.status(404).json({ error: "Profile not found" });
+    return;
+  }
+  res.json(publicProfile(profile));
 });
 
 router.put("/settings/profile", async (req: Request, res: Response) => {

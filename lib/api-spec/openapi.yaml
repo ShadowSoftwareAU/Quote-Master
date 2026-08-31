@@ -53,6 +53,18 @@ paths:
           description: Profile saved but Clerk metadata synchronisation failed
 
   /settings/profile:
+    get:
+      operationId: getProfileSettings
+      tags: [profile]
+      summary: Get the authenticated user's business profile
+      responses:
+        "200":
+          description: Current business profile
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/BusinessProfile" }
+        "404":
+          description: Profile not found
     put:
       operationId: updateProfileSettings
       tags: [profile]

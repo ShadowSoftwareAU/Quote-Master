@@ -210,6 +210,18 @@ export async function processDueProfileMetadataJobs(
   }
 }
 
+export async function getBusinessProfile(
+  clerkUserId: string,
+  database: BusinessProfileDb = db,
+): Promise<BusinessProfileRow | null> {
+  const [profile] = await database
+    .select()
+    .from(businessProfilesTable)
+    .where(eq(businessProfilesTable.clerkUserId, clerkUserId))
+    .limit(1);
+  return profile ?? null;
+}
+
 export async function onboardBusinessProfile(
   clerkUserId: string,
   input: OnboardingProfileInput,
