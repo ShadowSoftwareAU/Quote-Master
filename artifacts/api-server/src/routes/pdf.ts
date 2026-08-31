@@ -7,7 +7,9 @@ import {
   quotesTable,
   quoteLineItemsTable,
   customersTable,
+  businessProfilesTable,
 } from "@workspace/db";
+import { complianceDisclaimerForTrade } from "../lib/quoteCompliance";
 
 const router: IRouter = Router();
 
@@ -67,6 +69,19 @@ router.get("/quotes/:id/pdf", async (req, res): Promise<void> => {
     .then((rows) => rows.map((line) => line.line));
 
   const q = row.q;
+  const [profile] = await db
+    .select({
+      licenseNumber: businessProfilesTable.licenseNumber,
+      tradeType: businessProfilesTable.tradeType,
+    })
+    .from(businessProfilesTable)
+    .where(eq(businessProfilesTable.clerkUserId, clerkUserId))
+    .limit(1);
+  const complianceDisclaimer =
+    q.complianceDisclaimer ??
+    complianceDisclaimerForTrade(profile?.tradeType ?? q.tradeType);
+  const contractorLicenseNumber =
+    q.contractorLicenseNumber ?? profile?.licenseNumber ?? null;
   const customerName = row.customerName ?? "Customer";
   const deckArea = Math.round(Number(q.lengthM) * Number(q.widthM) * 100) / 100;
   const councilWarning = Number(q.heightM) >= 1.0;
@@ -225,6 +240,20 @@ router.get("/quotes/:id/pdf", async (req, res): Promise<void> => {
     doc.fontSize(8).font("Helvetica-Bold").fillColor(MUTED).text("NOTES", margin, y);
     doc.fontSize(9).font("Helvetica").fillColor(TEXT).text(q.notes, margin, y + 12, { width: contentW });
     y += 40;
+  }
+
+  if (y > 700) {
+    doc.addPage();
+    y = 50;
+  }
+  doc.fontSize(8).font("Helvetica-Bold").fillColor(MUTED)
+    .text("COMPLIANCE", margin, y);
+  doc.fontSize(9).font("Helvetica").fillColor(TEXT)
+    .text(complianceDisclaimer, margin, y + 12, { width: contentW });
+  y += 38;
+  if (contractorLicenseNumber) {
+    doc.fontSize(9).font("Helvetica-Bold").fillColor(TEXT)
+      .text(`Builder / Contractor Licence: ${contractorLicenseNumber}`, margin, y, { width: contentW });
   }
 
   // ── Footer ──

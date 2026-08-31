@@ -18,6 +18,9 @@ export interface QuotePortal {
   siteAddress: string | null;
   /** @nullable */
   notes: string | null;
+  complianceDisclaimer: string;
+  /** @nullable */
+  contractorLicenseNumber: string | null;
   spec: DeckSpecInput;
   lineItems: QuoteLineItem[];
   materialsSubtotal: number;

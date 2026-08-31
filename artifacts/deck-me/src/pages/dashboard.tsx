@@ -1,7 +1,7 @@
 import { useGetDashboardSummary } from "@workspace/api-client-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { formatCurrency } from "@/lib/format";
-import { Hammer, FileText, CheckCircle, Calendar, TrendingUp } from "lucide-react";
+import { Hammer, FileText, CheckCircle, Calendar, TrendingUp, UserCog } from "lucide-react";
 import { Link } from "wouter";
 import { Skeleton } from "@/components/ui/skeleton";
 
@@ -32,10 +32,16 @@ export default function Dashboard() {
           <h1 className="text-4xl md:text-5xl font-black uppercase tracking-tight text-foreground">G'day</h1>
           <p className="text-muted-foreground mt-2 font-medium">Here's how the jobs are lookin'.</p>
         </div>
-        <Link href="/calculator" className="hidden md:flex items-center gap-2 bg-primary text-primary-foreground px-6 py-3 rounded-md font-bold hover:bg-primary/90 transition-colors uppercase">
-          <Hammer className="w-5 h-5" />
-          New Quote
-        </Link>
+        <div className="flex items-center gap-2">
+          <Link href="/settings/profile" className="hidden md:flex items-center gap-2 bg-muted text-foreground border border-border px-4 py-3 rounded-md font-bold hover:bg-muted/80 transition-colors uppercase">
+            <UserCog className="w-5 h-5" />
+            Profile
+          </Link>
+          <Link href="/calculator" className="hidden md:flex items-center gap-2 bg-primary text-primary-foreground px-6 py-3 rounded-md font-bold hover:bg-primary/90 transition-colors uppercase">
+            <Hammer className="w-5 h-5" />
+            New Quote
+          </Link>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">

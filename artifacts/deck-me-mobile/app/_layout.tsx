@@ -123,6 +123,15 @@ function RootStack() {
           headerTitleStyle: { fontFamily: "Chivo_700Bold" },
         }}
       />
+      <Stack.Screen
+        name="settings/profile"
+        options={{
+          title: "Profile",
+          headerStyle: { backgroundColor: "#1a1e26" },
+          headerTintColor: "#ffffff",
+          headerTitleStyle: { fontFamily: "Chivo_700Bold" },
+        }}
+      />
     </Stack>
   );
 }

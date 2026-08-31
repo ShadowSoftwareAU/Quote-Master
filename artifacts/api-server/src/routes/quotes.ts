@@ -7,6 +7,7 @@ import {
   quoteLineItemsTable,
   materialsTable,
   customersTable,
+  businessProfilesTable,
 } from "@workspace/db";
 import {
   CreateQuoteBody,
@@ -22,6 +23,7 @@ import {
 } from "@workspace/api-zod";
 import { estimateDeck, calcTotals, type DeckSpec } from "../lib/estimator";
 import { recalculateMasterProjectTotals } from "../services/masterProjects";
+import { complianceDisclaimerForTrade } from "../lib/quoteCompliance";
 
 const router: IRouter = Router();
 
@@ -170,6 +172,16 @@ async function loadQuoteJson(id: number, userId?: string) {
     );
   if (!row) return null;
   if (userId && row.customerName === null) return null;
+  const [profile] = row.q.clerkUserId
+    ? await db
+        .select({
+          licenseNumber: businessProfilesTable.licenseNumber,
+          tradeType: businessProfilesTable.tradeType,
+        })
+        .from(businessProfilesTable)
+        .where(eq(businessProfilesTable.clerkUserId, row.q.clerkUserId))
+        .limit(1)
+    : [];
   const spec = specFromStoredQuote(row.q);
   const storedLines = userId
     ? await db
@@ -216,6 +228,11 @@ async function loadQuoteJson(id: number, userId?: string) {
     customerId: row.q.customerId,
     masterProjectId: row.q.masterProjectId,
     tradeType: row.q.tradeType,
+    complianceDisclaimer:
+      row.q.complianceDisclaimer ??
+      complianceDisclaimerForTrade(profile?.tradeType ?? row.q.tradeType),
+    contractorLicenseNumber:
+      row.q.contractorLicenseNumber ?? profile?.licenseNumber ?? null,
     customerName: row.customerName,
     siteAddress: row.q.siteAddress,
     notes: row.q.notes,
@@ -275,6 +292,8 @@ function publicQuoteResponse(quote: LoadedQuote) {
     status: quote.status,
     customerName: quote.customerName,
     siteAddress: quote.siteAddress,
+    complianceDisclaimer: quote.complianceDisclaimer,
+    contractorLicenseNumber: quote.contractorLicenseNumber,
     spec: publicSpec,
     lineItems: quote.lineItems.map(publicLineItem),
     materialsSubtotal: quote.materialsSubtotal,
@@ -390,6 +409,15 @@ router.post("/quotes", async (req, res): Promise<void> => {
     return;
   }
   const data = parsed.data;
+  const [profile] = await db
+    .select()
+    .from(businessProfilesTable)
+    .where(eq(businessProfilesTable.clerkUserId, userId))
+    .limit(1);
+  if (!profile) {
+    res.status(409).json({ error: "Complete onboarding before creating a quote" });
+    return;
+  }
   if (!(await customerBelongsToUser(data.customerId, userId))) {
     res.status(400).json({ error: "Customer not found" });
     return;
@@ -416,6 +444,8 @@ router.post("/quotes", async (req, res): Promise<void> => {
         title: data.title,
         customerId: data.customerId,
         tradeType: data.tradeType ?? "decking",
+        complianceDisclaimer: complianceDisclaimerForTrade(profile.tradeType),
+        contractorLicenseNumber: profile.licenseNumber,
         siteAddress: data.siteAddress ?? null,
         notes: data.notes ?? null,
         lengthM: String(data.lengthM),
@@ -697,6 +727,15 @@ router.post("/quotes/:id/variation", async (req, res): Promise<void> => {
     return;
   }
   const b = body.data;
+  const [profile] = await db
+    .select()
+    .from(businessProfilesTable)
+    .where(eq(businessProfilesTable.clerkUserId, userId))
+    .limit(1);
+  if (!profile) {
+    res.status(409).json({ error: "Complete onboarding before creating a quote" });
+    return;
+  }
   const spec = specFromQuoteInput({
     ...original.spec,
     lengthM: b.lengthM ?? original.spec.lengthM,
@@ -722,6 +761,8 @@ router.post("/quotes/:id/variation", async (req, res): Promise<void> => {
       title: b.title,
       customerId: original.customerId,
       tradeType: original.tradeType,
+      complianceDisclaimer: complianceDisclaimerForTrade(profile.tradeType),
+      contractorLicenseNumber: profile.licenseNumber,
       siteAddress: original.siteAddress ?? null,
       notes: b.notes ?? `Variation of: ${original.title}`,
       lengthM: String(spec.lengthM),

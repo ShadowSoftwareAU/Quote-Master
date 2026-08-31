@@ -23,6 +23,8 @@ export const quotesTable = pgTable(
       { onDelete: "set null" },
     ),
     tradeType: text("trade_type").notNull().default("decking"),
+    complianceDisclaimer: text("compliance_disclaimer"),
+    contractorLicenseNumber: text("contractor_license_number"),
     siteAddress: text("site_address"),
     notes: text("notes"),
     lengthM: numeric("length_m", { precision: 10, scale: 3 }).notNull(),

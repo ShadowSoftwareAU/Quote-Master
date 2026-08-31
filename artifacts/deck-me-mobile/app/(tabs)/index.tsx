@@ -243,31 +243,50 @@ export default function HomeScreen() {
             </View>
           </View>
 
-          {/* Privacy indicator */}
-          <View
-            style={{
-              flexDirection: "row",
-              alignItems: "center",
-              gap: 5,
-              backgroundColor: "#1a1a1a",
-              borderRadius: 8,
-              paddingHorizontal: 10,
-              paddingVertical: 6,
-              borderWidth: 1,
-              borderColor: "#2e2e2e",
-            }}
-          >
-            <Feather name="shield" size={12} color="#22c55e" />
-            <Text
+          {/* Privacy indicator & Profile */}
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
+            <View
               style={{
-                fontFamily: "Inter_700Bold",
-                color: "#22c55e",
-                fontSize: 10,
-                letterSpacing: 0.8,
+                flexDirection: "row",
+                alignItems: "center",
+                gap: 5,
+                backgroundColor: "#1a1a1a",
+                borderRadius: 8,
+                paddingHorizontal: 10,
+                paddingVertical: 6,
+                borderWidth: 1,
+                borderColor: "#2e2e2e",
               }}
             >
-              PRIVATE
-            </Text>
+              <Feather name="shield" size={12} color="#22c55e" />
+              <Text
+                style={{
+                  fontFamily: "Inter_700Bold",
+                  color: "#22c55e",
+                  fontSize: 10,
+                  letterSpacing: 0.8,
+                }}
+              >
+                PRIVATE
+              </Text>
+            </View>
+            <Pressable
+              accessibilityLabel="Open profile settings"
+              accessibilityRole="button"
+              onPress={() => router.push("/settings/profile")}
+              style={({ pressed }) => ({
+                width: 32,
+                height: 32,
+                borderRadius: 16,
+                backgroundColor: pressed ? "#2e2e2e" : "#1a1a1a",
+                alignItems: "center",
+                justifyContent: "center",
+                borderWidth: 1,
+                borderColor: "#2e2e2e",
+              })}
+            >
+              <Feather name="user" size={14} color={colors.mutedForeground} />
+            </Pressable>
           </View>
         </View>
         <StripedBar height={6} />

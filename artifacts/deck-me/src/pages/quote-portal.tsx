@@ -233,6 +233,20 @@ export default function QuotePortalPage() {
             )}
           </section>
 
+          <section className="rounded-2xl border border-primary/20 bg-primary/5 p-6 md:p-8">
+            <h3 className="text-lg font-display font-bold text-foreground mb-3">
+              Australian Building Compliance
+            </h3>
+            <p className="text-sm leading-relaxed text-muted-foreground">
+              {quote.complianceDisclaimer}
+            </p>
+            {quote.contractorLicenseNumber && (
+              <p className="mt-4 text-sm font-bold text-foreground">
+                Builder / Contractor Licence: {quote.contractorLicenseNumber}
+              </p>
+            )}
+          </section>
+
           {/* Upgrades Section */}
           {activeSpec && !isAccepted && (
             <section className="space-y-6">

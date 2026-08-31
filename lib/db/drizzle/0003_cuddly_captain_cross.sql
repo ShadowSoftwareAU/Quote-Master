@@ -1,0 +1,2 @@
+ALTER TABLE "quotes" ADD COLUMN "compliance_disclaimer" text DEFAULT 'All specified works conform to the current Australian National Construction Code (NCC) and relevant Australian Standards (AS).' NOT NULL;--> statement-breakpoint
+ALTER TABLE "quotes" ADD COLUMN "contractor_license_number" text;

@@ -415,6 +415,9 @@ export interface Quote {
   /** @nullable */
   masterProjectId: number | null;
   tradeType: string;
+  complianceDisclaimer: string;
+  /** @nullable */
+  contractorLicenseNumber: string | null;
   /** @nullable */
   customerName?: string | null;
   /** @nullable */
@@ -547,6 +550,9 @@ export interface QuotePortal {
   siteAddress: string | null;
   /** @nullable */
   notes: string | null;
+  complianceDisclaimer: string;
+  /** @nullable */
+  contractorLicenseNumber: string | null;
   spec: DeckSpecInput;
   lineItems: QuoteLineItem[];
   materialsSubtotal: number;

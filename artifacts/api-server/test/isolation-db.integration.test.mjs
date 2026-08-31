@@ -264,6 +264,14 @@ test("database-backed customer and nested route isolation", { skip: !hasDatabase
     labourRate: 100,
   });
   assert.equal(quote.response.status, 201);
+  assert.equal(
+    quote.json.complianceDisclaimer.startsWith(
+      "All specified works conform to the current Australian National Construction Code (NCC) and relevant Australian Standards (AS).",
+    ),
+    true,
+  );
+  assert.equal(quote.json.complianceDisclaimer.includes("Primary trade classification: Builder."), true);
+  assert.equal(quote.json.contractorLicenseNumber, "QBCC 7654321");
   createdQuoteIds.push(quote.json.id);
 
   // Master-project writes require a role, so use direct disposable setup for
@@ -280,7 +288,19 @@ test("database-backed customer and nested route isolation", { skip: !hasDatabase
 
   // No auth context is installed: the actual portal and its deliberately
   // limited upgrade PATCH remain available to the customer.
-  assert.equal((await api(null, "GET", `/quotes/${quote.json.id}/portal`)).response.status, 200);
+  const publicPortal = await api(null, "GET", `/quotes/${quote.json.id}/portal`);
+  assert.equal(publicPortal.response.status, 200);
+  assert.equal(publicPortal.json.complianceDisclaimer, quote.json.complianceDisclaimer);
+  assert.equal(publicPortal.json.contractorLicenseNumber, "QBCC 7654321");
+
+  await pool.query(
+    "UPDATE quotes SET compliance_disclaimer = NULL, contractor_license_number = NULL WHERE id = $1",
+    [quote.json.id],
+  );
+  const legacyPortal = await api(null, "GET", `/quotes/${quote.json.id}/portal`);
+  assert.equal(legacyPortal.response.status, 200);
+  assert.equal(legacyPortal.json.complianceDisclaimer.includes("Primary trade classification: Builder."), true);
+  assert.equal(legacyPortal.json.contractorLicenseNumber, "QBCC 7654321");
   const upgraded = await api(null, "PATCH", `/quotes/${quote.json.id}`, {
     deckBoardType: "public-upgrade-fixture",
   });

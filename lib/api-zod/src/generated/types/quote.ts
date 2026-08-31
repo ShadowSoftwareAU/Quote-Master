@@ -17,6 +17,9 @@ export interface Quote {
   /** @nullable */
   masterProjectId: number | null;
   tradeType: string;
+  complianceDisclaimer: string;
+  /** @nullable */
+  contractorLicenseNumber: string | null;
   /** @nullable */
   customerName?: string | null;
   /** @nullable */

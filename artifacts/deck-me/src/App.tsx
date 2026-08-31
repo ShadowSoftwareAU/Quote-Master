@@ -24,6 +24,7 @@ import ReferralsPage from "@/pages/referrals";
 import FinancePage from "@/pages/finance";
 import Projects from "@/pages/projects";
 import Onboarding from "@/pages/onboarding";
+import ProfileSettings from "@/pages/settings-profile";
 import { useGetProfileSettings, getGetProfileSettingsQueryKey } from "@workspace/api-client-react";
 
 const queryClient = new QueryClient();
@@ -158,6 +159,7 @@ function ProtectedWorkspace() {
         <Route path="/finance" component={FinancePage} />
         <Route path="/projects" component={Projects} />
         <Route path="/projects/:id" component={Projects} />
+        <Route path="/settings/profile" component={ProfileSettings} />
         <Route component={NotFound} />
       </Switch>
     </Layout>
