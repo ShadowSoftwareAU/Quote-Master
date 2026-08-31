@@ -30,6 +30,11 @@ const [
   pdf,
   masterProjects,
   masterProjectService,
+  access,
+  bookingsPage,
+  quotesPage,
+  quoteDetailPage,
+  layout,
 ] = await Promise.all([
   read("src/app.ts"),
   read("src/middlewares/apiAuth.ts"),
@@ -45,6 +50,11 @@ const [
   read("src/routes/pdf.ts"),
   read("src/routes/master-projects.ts"),
   read("src/services/masterProjects.ts"),
+  read("../deck-me/src/lib/access.tsx"),
+  read("../deck-me/src/pages/bookings.tsx"),
+  read("../deck-me/src/pages/quotes.tsx"),
+  read("../deck-me/src/pages/quote-detail.tsx"),
+  read("../deck-me/src/components/layout.tsx"),
 ]);
 
 // Boundary/auth transport checks. Clerk's middleware is the component which
@@ -219,6 +229,61 @@ check(
   "booking customer joins stay tenant scoped",
   bookings.split("customersTable.clerkUserId, bookingsTable.clerkUserId").length - 1 >= 2,
   "booking list/detail customer joins must use the booking owner",
+);
+
+// Linked workers are allowed to see assigned work but must not inherit owner
+// controls from a profile or receive a customer portal write capability.
+check(
+  "linked worker access is fail closed",
+  containsAll(access, [
+    "const role = assignmentAccess?.linked",
+    "const isAssignedWorker = assignmentAccess?.linked === true",
+    "canViewFinancials: isOwner && !isAssignedWorker",
+    "canManageTeam: isOwner && !isAssignedWorker",
+  ]),
+  "a linked assignment must override profile-derived owner access",
+);
+check(
+  "linked worker booking controls are read only",
+  containsAll(bookingsPage, [
+    "enabled: !access.isAssignedWorker",
+    "{!access.isAssignedWorker && <Dialog",
+    "{!access.isAssignedWorker && <div className=\"flex gap-1\">",
+    "{!access.isAssignedWorker && <Dialog open={photosBookingId !== null}",
+  ]),
+  "assigned workers must not receive booking creation, editing, deletion, or photo controls",
+);
+check(
+  "linked worker quote controls are read only",
+  containsAll(quotesPage, [
+    "refetchInterval: access.isAssignedWorker ? 10_000 : false",
+    "{!access.isAssignedWorker && <Link href=\"/calculator\">",
+  ]) &&
+    quoteDetailPage.includes("if (access.isAssignedWorker) return <ReadOnlyAssignedQuote quote={quote} />;"),
+  "assigned workers must see assigned quotes without quote creation or mutation controls",
+);
+const readOnlyQuoteSource = quoteDetailPage.slice(
+  quoteDetailPage.indexOf("function ReadOnlyAssignedQuote"),
+);
+check(
+  "assigned quote detail has no privileged controls or portal token",
+  ![
+    "portalToken",
+    "Client Portal",
+    "Delete Quote",
+    "Mark Sent",
+    "Variation",
+    "PDF",
+  ].some((fragment) => readOnlyQuoteSource.includes(fragment)),
+  "the read-only assigned quote projection must not expose owner actions or a portal token",
+);
+check(
+  "linked worker navigation is read only",
+  containsAll(layout, [
+    "if (item.href === \"/team\" || item.href === \"/planner\") return canManageTeam;",
+    "if ([\"/customers\", \"/materials\", \"/portfolio\", \"/referrals\"].includes(item.href)) return canViewGeneralWorkspace;",
+  ]),
+  "linked workers must not receive team, planner, or general-workspace navigation",
 );
 
 if (failures.length) {

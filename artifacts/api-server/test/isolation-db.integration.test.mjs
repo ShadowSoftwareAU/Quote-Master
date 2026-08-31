@@ -10,6 +10,11 @@ const hasDatabase = Boolean(process.env.DATABASE_URL);
 const fixture = `isolation-${process.pid}-${Date.now()}-${Math.random().toString(36).slice(2)}`;
 const userA = `${fixture}-user-a`;
 const userB = `${fixture}-user-b`;
+const assignmentOwner = `${fixture}-assignment-owner`;
+const linkedWorker = `${fixture}-linked-worker`;
+const profilelessWorker = `${fixture}-profileless-worker`;
+const unlinkedWorker = `${fixture}-unlinked-worker`;
+const assignmentUsers = [assignmentOwner, linkedWorker, profilelessWorker, unlinkedWorker];
 let tempDir;
 let server;
 let baseUrl;
@@ -18,6 +23,8 @@ let processDueProfileMetadataJobs;
 const createdCustomerIds = [];
 const createdQuoteIds = [];
 const createdProjectIds = [];
+const createdBookingIds = [];
+const createdMemberIds = [];
 
 async function api(userId, method, pathname, body) {
   const response = await fetch(`${baseUrl}${pathname}`, {
@@ -95,11 +102,24 @@ after(async () => {
     if (createdProjectIds.length) {
       await pool.query("DELETE FROM master_projects WHERE id = ANY($1::int[])", [createdProjectIds]);
     }
+    if (createdBookingIds.length) {
+      await pool.query("DELETE FROM job_assignments WHERE job_id = ANY($1::int[])", [createdBookingIds]);
+    }
+    if (createdMemberIds.length) {
+      await pool.query("DELETE FROM job_assignments WHERE team_member_id = ANY($1::int[])", [createdMemberIds]);
+      await pool.query("DELETE FROM team_members WHERE id = ANY($1::int[])", [createdMemberIds]);
+    }
     if (createdCustomerIds.length) {
       await pool.query("DELETE FROM bookings WHERE customer_id = ANY($1::int[])", [createdCustomerIds]);
     }
-    await pool.query("DELETE FROM profile_metadata_outbox WHERE clerk_user_id = ANY($1::text[])", [[userA, userB]]);
-    await pool.query("DELETE FROM business_profiles WHERE clerk_user_id = ANY($1::text[])", [[userA, userB]]);
+    await pool.query(
+      "DELETE FROM profile_metadata_outbox WHERE clerk_user_id = ANY($1::text[])",
+      [[userA, userB, ...assignmentUsers]],
+    );
+    await pool.query(
+      "DELETE FROM business_profiles WHERE clerk_user_id = ANY($1::text[])",
+      [[userA, userB, ...assignmentUsers]],
+    );
     await pool.query("DELETE FROM customers WHERE name LIKE $1", [`${fixture}%`]);
   } finally {
     if (server) {
@@ -403,4 +423,196 @@ test("database-backed customer and nested route isolation", { skip: !hasDatabase
     200,
   );
   assert.equal((await api(null, "GET", `/quote/${regenerated.json.portalToken}`)).response.status, 404);
+});
+
+test("linked workers only receive assigned work, including profileless linked accounts", { skip: !hasDatabase }, async () => {
+  for (const [userId, role, label] of [
+    [assignmentOwner, "Owner", "assignment-owner"],
+    [linkedWorker, "Subcontractor", "linked-worker"],
+    [profilelessWorker, "Subcontractor", "profileless-worker"],
+    [unlinkedWorker, "Subcontractor", "unlinked-worker"],
+  ]) {
+    const onboarding = await api(userId, "POST", "/onboarding", {
+      businessName: `${fixture} ${label}`,
+      phoneNumber: "+61 400 000 000",
+      tradeType: "Builder",
+      licenseNumber: `${label}-licence`,
+      role,
+    });
+    assert.equal(onboarding.response.status, 201, `${label} onboarding`);
+  }
+
+  const customer = await api(assignmentOwner, "POST", "/customers", {
+    name: `${fixture}-assigned-customer`,
+  });
+  assert.equal(customer.response.status, 201);
+  createdCustomerIds.push(customer.json.id);
+
+  const createQuote = async (title) => {
+    const result = await api(assignmentOwner, "POST", "/quotes", {
+      title,
+      customerId: customer.json.id,
+      lengthM: 3,
+      widthM: 2,
+      labourHours: 8,
+      labourRate: 100,
+    });
+    assert.equal(result.response.status, 201, title);
+    createdQuoteIds.push(result.json.id);
+    assert.match(result.json.portalToken, /^[A-Za-z0-9_-]{43}$/);
+    return result.json;
+  };
+  const quoteForLinkedWorker = await createQuote(`${fixture}-quote-linked`);
+  const quoteForProfilelessWorker = await createQuote(`${fixture}-quote-profileless`);
+  const unassignedQuote = await createQuote(`${fixture}-quote-unassigned`);
+
+  const createBooking = async (title, quoteId, startAt) => {
+    const result = await api(assignmentOwner, "POST", "/bookings", {
+      title,
+      customerId: customer.json.id,
+      quoteId,
+      startAt,
+      endAt: new Date(new Date(startAt).getTime() + 60 * 60 * 1000).toISOString(),
+    });
+    assert.equal(result.response.status, 201, title);
+    createdBookingIds.push(result.json.id);
+    return result.json;
+  };
+  const bookingForLinkedWorker = await createBooking(
+    `${fixture}-booking-linked`,
+    quoteForLinkedWorker.id,
+    "2030-02-01T09:00:00.000Z",
+  );
+  const bookingForProfilelessWorker = await createBooking(
+    `${fixture}-booking-profileless`,
+    quoteForProfilelessWorker.id,
+    "2030-02-02T09:00:00.000Z",
+  );
+
+  const memberForLinkedWorker = await api(assignmentOwner, "POST", "/team", {
+    name: `${fixture} Linked Worker`,
+    role: "subcontractor",
+  });
+  assert.equal(memberForLinkedWorker.response.status, 201);
+  createdMemberIds.push(memberForLinkedWorker.json.id);
+  const linked = await api(
+    assignmentOwner,
+    "PUT",
+    `/team/${memberForLinkedWorker.json.id}/account`,
+    { accountUserId: linkedWorker },
+  );
+  assert.equal(linked.response.status, 200);
+  assert.equal(linked.json.accountLinked, true);
+  assert.equal(linked.json.accountUserId, linkedWorker);
+
+  const memberForProfilelessWorker = await api(assignmentOwner, "POST", "/team", {
+    name: `${fixture} Profileless Worker`,
+    role: "subcontractor",
+  });
+  assert.equal(memberForProfilelessWorker.response.status, 201);
+  createdMemberIds.push(memberForProfilelessWorker.json.id);
+  const profilelessLink = await api(
+    assignmentOwner,
+    "PUT",
+    `/team/${memberForProfilelessWorker.json.id}/account`,
+    { accountUserId: profilelessWorker },
+  );
+  assert.equal(profilelessLink.response.status, 200);
+  // A linked account must remain assignment-scoped even if its own business
+  // profile is later removed. This models accounts linked before onboarding
+  // was made mandatory and prevents profile state from becoming an access
+  // boundary.
+  await pool.query("DELETE FROM business_profiles WHERE clerk_user_id = $1", [profilelessWorker]);
+
+  const assignmentForLinkedWorker = await api(
+    assignmentOwner,
+    "POST",
+    `/team/${memberForLinkedWorker.json.id}/assign/${bookingForLinkedWorker.id}`,
+    { roleOnJob: "Lead carpenter" },
+  );
+  assert.equal(assignmentForLinkedWorker.response.status, 201);
+  const assignmentForProfilelessWorker = await api(
+    assignmentOwner,
+    "POST",
+    `/team/${memberForProfilelessWorker.json.id}/assign/${bookingForProfilelessWorker.id}`,
+    { roleOnJob: "Carpenter" },
+  );
+  assert.equal(assignmentForProfilelessWorker.response.status, 201);
+
+  for (const [workerId, expectedMemberId] of [
+    [linkedWorker, memberForLinkedWorker.json.id],
+    [profilelessWorker, memberForProfilelessWorker.json.id],
+  ]) {
+    const access = await api(workerId, "GET", "/assignment-access");
+    assert.equal(access.response.status, 200);
+    assert.deepEqual(access.json, {
+      linked: true,
+      teamMemberId: expectedMemberId,
+      role: "subcontractor",
+    });
+  }
+  const profilelessProfile = await api(profilelessWorker, "GET", "/settings/profile");
+  assert.equal(profilelessProfile.response.status, 404);
+  const unlinkedAccess = await api(unlinkedWorker, "GET", "/assignment-access");
+  assert.deepEqual(unlinkedAccess.json, { linked: false, teamMemberId: null, role: null });
+
+  const ownerBookings = await api(assignmentOwner, "GET", "/bookings");
+  assert.equal(ownerBookings.response.status, 200);
+  assert.deepEqual(
+    ownerBookings.json.map((booking) => booking.id).sort((a, b) => a - b),
+    [bookingForLinkedWorker.id, bookingForProfilelessWorker.id].sort((a, b) => a - b),
+  );
+  const linkedBookings = await api(linkedWorker, "GET", "/bookings");
+  assert.equal(linkedBookings.response.status, 200);
+  assert.deepEqual(linkedBookings.json.map((booking) => booking.id), [bookingForLinkedWorker.id]);
+  const profilelessBookings = await api(profilelessWorker, "GET", "/bookings");
+  assert.equal(profilelessBookings.response.status, 200);
+  assert.deepEqual(profilelessBookings.json.map((booking) => booking.id), [bookingForProfilelessWorker.id]);
+  const unlinkedBookings = await api(unlinkedWorker, "GET", "/bookings");
+  assert.equal(unlinkedBookings.response.status, 200);
+  assert.deepEqual(unlinkedBookings.json, []);
+
+  const assignQuote = async (quoteId, memberId) => {
+    const result = await api(assignmentOwner, "PATCH", `/quotes/${quoteId}`, {
+      assignedTeamMemberId: memberId,
+    });
+    assert.equal(result.response.status, 200);
+    return result.json;
+  };
+  await assignQuote(quoteForLinkedWorker.id, memberForLinkedWorker.json.id);
+  await assignQuote(quoteForProfilelessWorker.id, memberForProfilelessWorker.json.id);
+
+  const ownerQuotes = await api(assignmentOwner, "GET", "/quotes");
+  assert.equal(ownerQuotes.response.status, 200);
+  assert.deepEqual(
+    ownerQuotes.json.map((quote) => quote.id).sort((a, b) => a - b),
+    createdQuoteIds.slice(-3).sort((a, b) => a - b),
+  );
+  const linkedQuotes = await api(linkedWorker, "GET", "/quotes");
+  assert.equal(linkedQuotes.response.status, 200);
+  assert.deepEqual(linkedQuotes.json.map((quote) => quote.id), [quoteForLinkedWorker.id]);
+  const profilelessQuotes = await api(profilelessWorker, "GET", "/quotes");
+  assert.equal(profilelessQuotes.response.status, 200);
+  assert.deepEqual(profilelessQuotes.json.map((quote) => quote.id), [quoteForProfilelessWorker.id]);
+  const unlinkedQuotes = await api(unlinkedWorker, "GET", "/quotes");
+  assert.equal(unlinkedQuotes.response.status, 200);
+  assert.deepEqual(unlinkedQuotes.json, []);
+
+  for (const [workerId, assignedQuote, foreignQuote] of [
+    [linkedWorker, quoteForLinkedWorker, quoteForProfilelessWorker],
+    [profilelessWorker, quoteForProfilelessWorker, quoteForLinkedWorker],
+  ]) {
+    const detail = await api(workerId, "GET", `/quotes/${assignedQuote.id}`);
+    assert.equal(detail.response.status, 200);
+    assert.equal(detail.json.portalToken, null);
+    assert.equal(detail.json.id, assignedQuote.id);
+    assert.equal(
+      (await api(workerId, "GET", `/quotes/${foreignQuote.id}`)).response.status,
+      404,
+    );
+  }
+  assert.equal(
+    (await api(unlinkedWorker, "GET", `/quotes/${quoteForLinkedWorker.id}`)).response.status,
+    404,
+  );
 });
