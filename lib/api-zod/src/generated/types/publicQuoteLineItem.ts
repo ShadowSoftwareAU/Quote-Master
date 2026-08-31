@@ -6,17 +6,11 @@
  * OpenAPI spec version: 0.1.0
  */
 
-export interface QuoteLineItem {
-  id: number;
-  quoteId: number;
-  /** @nullable */
-  materialId?: number | null;
+export interface PublicQuoteLineItem {
   description: string;
   category: string;
   quantity: number;
   unit: string;
   unitPrice: number;
-  unitCost?: number;
-  markupPercentage?: number;
   lineTotal: number;
 }

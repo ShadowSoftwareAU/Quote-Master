@@ -135,7 +135,7 @@ async function loadMasterProject(
       category: line.category,
       quantity: Number(line.quantity),
       unit: line.unit,
-      unitPrice: Number(line.unitPrice),
+      unitPrice: Number(line.lineTotal) / Number(line.quantity),
       lineTotal: Number(line.lineTotal),
     })),
     createdAt: quote.createdAt.toISOString(),

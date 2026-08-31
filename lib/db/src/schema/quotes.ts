@@ -85,6 +85,9 @@ export const quoteLineItemsTable = pgTable("quote_line_items", {
   quantity: numeric("quantity", { precision: 12, scale: 3 }).notNull(),
   unit: text("unit").notNull(),
   unitPrice: numeric("unit_price", { precision: 12, scale: 2 }).notNull(),
+  markupPercentage: numeric("markup_percentage", { precision: 7, scale: 2 })
+    .notNull()
+    .default("0"),
   lineTotal: numeric("line_total", { precision: 12, scale: 2 }).notNull(),
 });
 

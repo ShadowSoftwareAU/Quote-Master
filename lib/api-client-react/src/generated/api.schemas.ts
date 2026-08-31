@@ -275,7 +275,46 @@ export interface QuoteLineItem {
   quantity: number;
   unit: string;
   unitPrice: number;
+  unitCost?: number;
+  markupPercentage?: number;
   lineTotal: number;
+}
+
+export interface PublicQuoteLineItem {
+  description: string;
+  category: string;
+  quantity: number;
+  unit: string;
+  unitPrice: number;
+  lineTotal: number;
+}
+
+export interface QuoteLineItemInput {
+  /**
+     * @minLength 1
+     * @maxLength 200
+     */
+  description: string;
+  /**
+     * @maximum 100000
+     * @exclusiveMinimum 0
+     */
+  quantity: number;
+  /**
+     * @minimum 0
+     * @maximum 9000
+     */
+  unitCost: number;
+  /**
+     * @minimum 0
+     * @maximum 1000
+     */
+  markupPercentage: number;
+  /**
+     * @minLength 1
+     * @maxLength 40
+     */
+  unit?: string;
 }
 
 export interface QuoteEstimateLine {
@@ -359,9 +398,10 @@ export interface MasterProjectPortalQuote {
   labourCost: number;
   gst: number;
   total: number;
-  lineItems: QuoteLineItem[];
+  lineItems: PublicQuoteLineItem[];
   createdAt: string;
 }
+
 export interface MasterTradeGroup {
   tradeType: string;
   label: string;
@@ -373,6 +413,7 @@ export interface MasterProjectPortalTradeGroup {
   label: string;
   quotes: MasterProjectPortalQuote[];
 }
+
 export interface MasterBillOfMaterialsLine {
   /** @nullable */
   materialId?: number | null;
@@ -384,6 +425,33 @@ export interface MasterBillOfMaterialsLine {
   lineTotal: number;
   quoteCount: number;
 }
+
+export interface MasterProjectPortal {
+  id: number;
+  title: string;
+  status: string;
+  /** @nullable */
+  notes: string | null;
+  builderMarginPct: number;
+  materialsSubtotal: number;
+  labourSubtotal: number;
+  marginAmount: number;
+  gst: number;
+  total: number;
+  complianceDisclaimer: string;
+  quotes: MasterProjectPortalQuote[];
+  tradeGroups: MasterProjectPortalTradeGroup[];
+  billOfMaterials: MasterBillOfMaterialsLine[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface MasterProjectAcceptance {
+  id: number;
+  acceptedAt: string;
+  snapshot: MasterProjectPortal;
+}
+
 export interface MasterProject {
   id: number;
   title: string;
@@ -418,31 +486,7 @@ export const MasterProjectPortalRevocationValue = {
   revoked: true,
 } as const;
 export type MasterProjectPortalRevocation = typeof MasterProjectPortalRevocationValue;
-export interface MasterProjectPortal {
-  id: number;
-  title: string;
-  status: string;
-  /** @nullable */
-  notes: string | null;
-  builderMarginPct: number;
-  materialsSubtotal: number;
-  labourSubtotal: number;
-  marginAmount: number;
-  gst: number;
-  total: number;
-  complianceDisclaimer: string;
-  quotes: MasterProjectPortalQuote[];
-  tradeGroups: MasterProjectPortalTradeGroup[];
-  billOfMaterials: MasterBillOfMaterialsLine[];
-  createdAt: string;
-  updatedAt: string;
-}
 
-export interface MasterProjectAcceptance {
-  id: number;
-  acceptedAt: string;
-  snapshot: MasterProjectPortal;
-}
 export interface MasterProjectInput {
   /** @minLength 1 */
   title: string;
@@ -568,6 +612,8 @@ export interface QuoteInput {
   includeAwning?: boolean;
   awningWidthM?: number;
   awningLengthM?: number;
+  /** @maxItems 200 */
+  lineItems?: QuoteLineItemInput[];
 }
 
 export interface QuoteUpdate {
@@ -642,7 +688,7 @@ export interface QuotePortal {
   /** @nullable */
   contractorLicenseNumber: string | null;
   spec: DeckSpecInput;
-  lineItems: QuoteLineItem[];
+  lineItems: PublicQuoteLineItem[];
   materialsSubtotal: number;
   labourCost: number;
   gst: number;
@@ -806,6 +852,7 @@ export interface AssignmentAccess {
      */
   role?: string | null;
 }
+
 export interface TeamMemberInput {
   /** @minLength 1 */
   name: string;
@@ -839,6 +886,7 @@ export interface TeamMemberAccountLinkInput {
      */
   accountUserId: string;
 }
+
 export interface JobAssignment {
   id: number;
   jobId: number;
@@ -1010,3 +1058,4 @@ export interface AddPortfolioPhotoInput {
 export type ListMaterialsParams = {
 category?: string;
 };
+

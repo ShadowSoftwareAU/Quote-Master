@@ -339,6 +339,179 @@ test("database-backed customer and nested route isolation", { skip: !hasDatabase
   assert.equal(quote.json.contractorLicenseNumber, "QBCC 7654321");
   createdQuoteIds.push(quote.json.id);
 
+  const customQuote = await api(userA, "POST", "/quotes", {
+    title: `${fixture}-custom-line-items-quote`,
+    customerId: quoteCustomer.json.id,
+    lengthM: 3,
+    widthM: 2,
+    labourHours: 10,
+    labourRate: 100,
+    lineItems: [
+      {
+        description: "Skip bin hire",
+        quantity: 2,
+        unitCost: 100,
+        markupPercentage: 25,
+      },
+      {
+        description: "Council permit",
+        quantity: 1,
+        unitCost: 300,
+        markupPercentage: 0,
+      },
+    ],
+  });
+  assert.equal(customQuote.response.status, 201);
+  createdQuoteIds.push(customQuote.json.id);
+  assert.equal(customQuote.json.materialsSubtotal, quote.json.materialsSubtotal + 550);
+  assert.equal(customQuote.json.gst, quote.json.gst + 55);
+  assert.equal(customQuote.json.total, quote.json.total + 605);
+  const savedCustomLines = customQuote.json.lineItems.filter((line) => line.category === "custom");
+  assert.deepEqual(
+    savedCustomLines.map((line) => ({
+      description: line.description,
+      quantity: line.quantity,
+      unitCost: line.unitCost,
+      markupPercentage: line.markupPercentage,
+      lineTotal: line.lineTotal,
+    })),
+    [
+      {
+        description: "Skip bin hire",
+        quantity: 2,
+        unitCost: 100,
+        markupPercentage: 25,
+        lineTotal: 250,
+      },
+      {
+        description: "Council permit",
+        quantity: 1,
+        unitCost: 300,
+        markupPercentage: 0,
+        lineTotal: 300,
+      },
+    ],
+  );
+  const persistedCustomLines = await pool.query(
+    "SELECT material_id, category, unit_price, markup_percentage, line_total FROM quote_line_items WHERE quote_id = $1 AND category = 'custom' ORDER BY id",
+    [customQuote.json.id],
+  );
+  assert.equal(persistedCustomLines.rowCount, 2);
+  assert.equal(persistedCustomLines.rows.every((line) => line.material_id === null), true);
+  assert.equal(Number(persistedCustomLines.rows[0].markup_percentage), 25);
+  assert.equal(savedCustomLines[0].unitPrice, 125);
+
+  const updatedCustomQuote = await api(userA, "PATCH", `/quotes/${customQuote.json.id}`, {
+    notes: "Owner edit must preserve additional charges",
+  });
+  assert.equal(updatedCustomQuote.response.status, 200);
+  assert.equal(
+    updatedCustomQuote.json.lineItems.filter((line) => line.category === "custom").length,
+    2,
+  );
+  assert.equal(updatedCustomQuote.json.total, customQuote.json.total);
+
+  const portalUpdatedCustomQuote = await api(
+    null,
+    "PATCH",
+    `/quote/${customQuote.json.portalToken}`,
+    { deckBoardType: "composite" },
+  );
+  assert.equal(portalUpdatedCustomQuote.response.status, 200);
+  for (const line of portalUpdatedCustomQuote.json.lineItems) {
+    assert.equal("unitCost" in line, false);
+    assert.equal("markupPercentage" in line, false);
+  }
+  assert.equal(
+    portalUpdatedCustomQuote.json.lineItems.filter((line) => line.category === "custom").length,
+    2,
+  );
+  const portalCustomSubtotal = portalUpdatedCustomQuote.json.lineItems
+    .filter((line) => line.category === "custom")
+    .reduce((sum, line) => sum + line.lineTotal, 0);
+  assert.equal(portalCustomSubtotal, 550);
+
+  const variation = await api(userA, "POST", `/quotes/${customQuote.json.id}/variation`, {
+    title: `${fixture}-custom-line-items-variation`,
+  });
+  assert.equal(variation.response.status, 201);
+  createdQuoteIds.push(variation.json.id);
+  assert.equal(
+    variation.json.lineItems.filter((line) => line.category === "custom").length,
+    2,
+  );
+  assert.equal(
+    variation.json.lineItems
+      .filter((line) => line.category === "custom")
+      .reduce((sum, line) => sum + line.lineTotal, 0),
+    550,
+  );
+  const acceptedCustomQuote = await api(
+    null,
+    "PATCH",
+    `/quote/${customQuote.json.portalToken}/status`,
+    { status: "accepted" },
+  );
+  assert.equal(acceptedCustomQuote.response.status, 200);
+  for (const line of acceptedCustomQuote.json.lineItems) {
+    assert.equal("unitCost" in line, false);
+    assert.equal("markupPercentage" in line, false);
+  }
+
+  const preciseQuote = await api(userA, "POST", "/quotes", {
+    title: `${fixture}-normalised-line-item-quote`,
+    customerId: quoteCustomer.json.id,
+    lengthM: 3,
+    widthM: 2,
+    lineItems: [{
+      description: "Precision-safe item",
+      quantity: 1.23456,
+      unitCost: 1.999,
+      markupPercentage: 12.345,
+    }],
+  });
+  assert.equal(preciseQuote.response.status, 201);
+  createdQuoteIds.push(preciseQuote.json.id);
+  const preciseLine = preciseQuote.json.lineItems.find((line) => line.category === "custom");
+  assert.equal(preciseLine.quantity, 1.235);
+  assert.equal(preciseLine.unitCost, 2);
+  assert.equal(preciseLine.markupPercentage, 12.35);
+  const preciseOwnerUpdate = await api(userA, "PATCH", `/quotes/${preciseQuote.json.id}`, {
+    notes: "Normalised values stay stable",
+  });
+  assert.equal(preciseOwnerUpdate.response.status, 200);
+  assert.equal(
+    preciseOwnerUpdate.json.lineItems.find((line) => line.category === "custom").lineTotal,
+    preciseLine.lineTotal,
+  );
+  const precisePortalUpdate = await api(
+    null,
+    "PATCH",
+    `/quote/${preciseQuote.json.portalToken}`,
+    { deckBoardType: "hardwood" },
+  );
+  assert.equal(precisePortalUpdate.response.status, 200);
+  assert.equal(
+    precisePortalUpdate.json.lineItems.find((line) => line.category === "custom").lineTotal,
+    preciseLine.lineTotal,
+  );
+
+  for (const invalidLineItem of [
+    { description: "", quantity: 1, unitCost: 10, markupPercentage: 0 },
+    { description: "Bad quantity", quantity: 0, unitCost: 10, markupPercentage: 0 },
+    { description: "Bad cost", quantity: 1, unitCost: -1, markupPercentage: 0 },
+    { description: "Bad mark-up", quantity: 1, unitCost: 10, markupPercentage: -1 },
+  ]) {
+    const invalidQuote = await api(userA, "POST", "/quotes", {
+      title: `${fixture}-invalid-line-item`,
+      customerId: quoteCustomer.json.id,
+      lengthM: 3,
+      widthM: 2,
+      lineItems: [invalidLineItem],
+    });
+    assert.equal(invalidQuote.response.status, 400);
+  }
+
   const quoteB = await api(userB, "POST", "/quotes", {
     title: `${fixture}-user-b-secure-quote`,
     customerId: createdB.json.id,

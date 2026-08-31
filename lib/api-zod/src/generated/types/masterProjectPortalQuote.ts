@@ -5,7 +5,7 @@
  * Deck Me API — decking quotes, materials, customers, and bookings.
  * OpenAPI spec version: 0.1.0
  */
-import type { QuoteLineItem } from './quoteLineItem';
+import type { PublicQuoteLineItem } from './publicQuoteLineItem';
 
 export interface MasterProjectPortalQuote {
   id: number;
@@ -16,6 +16,6 @@ export interface MasterProjectPortalQuote {
   labourCost: number;
   gst: number;
   total: number;
-  lineItems: QuoteLineItem[];
+  lineItems: PublicQuoteLineItem[];
   createdAt: Date;
 }

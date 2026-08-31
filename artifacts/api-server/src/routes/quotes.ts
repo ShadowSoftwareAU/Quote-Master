@@ -39,6 +39,75 @@ import { getBusinessRole, requireBusinessRole } from "../middlewares/businessRol
 const router: IRouter = Router();
 const requireQuoteManager = requireBusinessRole("Owner", "Employee");
 
+type CustomQuoteLineItemInput = {
+  description: string;
+  quantity: number;
+  unitCost: number;
+  markupPercentage: number;
+  unit?: string;
+};
+
+function roundMoney(value: number): number {
+  return Math.round((value + Number.EPSILON) * 100) / 100;
+}
+
+function roundQuantity(value: number): number {
+  return Math.round((value + Number.EPSILON) * 1000) / 1000;
+}
+
+function buildCustomQuoteLines(items: CustomQuoteLineItemInput[] = []) {
+  return items.map((item) => {
+    const quantity = roundQuantity(item.quantity);
+    const unitCost = roundMoney(item.unitCost);
+    const markupPercentage = roundMoney(item.markupPercentage);
+    return {
+      materialId: null,
+      description: item.description.trim(),
+      category: "custom",
+      quantity,
+      unit: item.unit?.trim() || "each",
+      unitPrice: unitCost,
+      markupPercentage,
+      lineTotal: roundMoney(
+        quantity * unitCost * (1 + markupPercentage / 100),
+      ),
+    };
+  });
+}
+
+async function loadStoredCustomQuoteLines(quoteId: number) {
+  const rows = await db
+    .select()
+    .from(quoteLineItemsTable)
+    .where(and(
+      eq(quoteLineItemsTable.quoteId, quoteId),
+      eq(quoteLineItemsTable.category, "custom"),
+    ))
+    .orderBy(quoteLineItemsTable.id);
+  return buildCustomQuoteLines(rows.map((row) => ({
+    description: row.description,
+    quantity: Number(row.quantity),
+    unitCost: Number(row.unitPrice),
+    markupPercentage: Number(row.markupPercentage),
+    unit: row.unit,
+  })));
+}
+
+function combineEstimateAndCustomLines(
+  estimate: ReturnType<typeof estimateDeck>,
+  customLines: ReturnType<typeof buildCustomQuoteLines>,
+) {
+  const lines = [
+    ...estimate.lines.map((line) => ({ ...line, markupPercentage: 0 })),
+    ...customLines,
+  ];
+  const materialsSubtotal = roundMoney(
+    estimate.materialsSubtotal
+      + customLines.reduce((sum, line) => sum + line.lineTotal, 0),
+  );
+  return { lines, materialsSubtotal };
+}
+
 function generatePortalToken(): string {
   return randomBytes(32).toString("base64url");
 }
@@ -297,7 +366,9 @@ async function loadQuoteJson(id: number, userId?: string) {
       category: l.category,
       quantity: Number(l.quantity),
       unit: l.unit,
-      unitPrice: Number(l.unitPrice),
+      unitPrice: roundMoney(Number(l.lineTotal) / Number(l.quantity)),
+      unitCost: Number(l.unitPrice),
+      markupPercentage: Number(l.markupPercentage),
       lineTotal: Number(l.lineTotal),
     })),
     createdAt: row.q.createdAt.toISOString(),
@@ -488,7 +559,9 @@ router.post("/quotes", requireQuoteManager, async (req, res): Promise<void> => {
   }
   const spec = specFromQuoteInput(data);
   const materials = await ownedMaterials(userId);
-  const { lines, materialsSubtotal } = estimateDeck(spec, materials);
+  const estimate = estimateDeck(spec, materials);
+  const customLines = buildCustomQuoteLines(data.lineItems);
+  const { lines, materialsSubtotal } = combineEstimateAndCustomLines(estimate, customLines);
   const labourHours = data.labourHours ?? 0;
   const labourRate = data.labourRate ?? 85;
   const { labourCost, gst, total } = calcTotals({
@@ -540,6 +613,7 @@ router.post("/quotes", requireQuoteManager, async (req, res): Promise<void> => {
           quantity: String(l.quantity),
           unit: l.unit,
           unitPrice: String(l.unitPrice),
+          markupPercentage: String(l.markupPercentage ?? 0),
           lineTotal: String(l.lineTotal),
         })),
       );
@@ -649,7 +723,9 @@ router.patch("/quotes/:id", requireQuoteManager, async (req, res): Promise<void>
     widthM: d.widthM ?? savedSpec.widthM,
   });
   const materials = await ownedMaterials(userId ?? existing.clerkUserId);
-  const { lines, materialsSubtotal } = estimateDeck(spec, materials);
+  const customLines = await loadStoredCustomQuoteLines(existing.id);
+  const estimate = estimateDeck(spec, materials);
+  const { lines, materialsSubtotal } = combineEstimateAndCustomLines(estimate, customLines);
   const labourHours = d.labourHours ?? Number(existing.labourHours);
   const labourRate = d.labourRate ?? Number(existing.labourRate);
   const { labourCost, gst, total } = calcTotals({
@@ -723,6 +799,7 @@ router.patch("/quotes/:id", requireQuoteManager, async (req, res): Promise<void>
           quantity: String(l.quantity),
           unit: l.unit,
           unitPrice: String(l.unitPrice),
+          markupPercentage: String(l.markupPercentage),
           lineTotal: String(l.lineTotal),
         })),
       );
@@ -802,7 +879,9 @@ router.patch("/quote/:token", async (req, res): Promise<void> => {
     widthM: savedSpec.widthM,
   });
   const materials = await ownedMaterials(existing.clerkUserId);
-  const { lines, materialsSubtotal } = estimateDeck(spec, materials);
+  const customLines = await loadStoredCustomQuoteLines(existing.id);
+  const estimate = estimateDeck(spec, materials);
+  const { lines, materialsSubtotal } = combineEstimateAndCustomLines(estimate, customLines);
   const labourHours = Number(existing.labourHours);
   const labourRate = Number(existing.labourRate);
   const { labourCost, gst, total } = calcTotals({ materialsSubtotal, labourHours, labourRate });
@@ -825,6 +904,7 @@ router.patch("/quote/:token", async (req, res): Promise<void> => {
         quantity: String(l.quantity),
         unit: l.unit,
         unitPrice: String(l.unitPrice),
+        markupPercentage: String(l.markupPercentage),
         lineTotal: String(l.lineTotal),
       })));
     }
@@ -904,7 +984,19 @@ router.post("/quotes/:id/variation", requireQuoteManager, async (req, res): Prom
     widthM: b.widthM ?? original.spec.widthM,
   });
   const materials = await ownedMaterials(userId);
-  const { lines, materialsSubtotal } = estimateDeck(spec, materials);
+  const customLines = buildCustomQuoteLines(
+    original.lineItems
+      .filter((line) => line.category === "custom")
+      .map((line) => ({
+        description: line.description,
+        quantity: line.quantity,
+        unitCost: line.unitCost ?? line.unitPrice,
+        markupPercentage: line.markupPercentage ?? 0,
+        unit: line.unit,
+      })),
+  );
+  const estimate = estimateDeck(spec, materials);
+  const { lines, materialsSubtotal } = combineEstimateAndCustomLines(estimate, customLines);
   const labourHours = b.labourHours ?? original.labourHours;
   const labourRate = b.labourRate ?? original.labourRate;
   const { labourCost, gst, total } = calcTotals({ materialsSubtotal, labourHours, labourRate });
@@ -954,6 +1046,7 @@ router.post("/quotes/:id/variation", requireQuoteManager, async (req, res): Prom
         quantity: String(l.quantity),
         unit: l.unit,
         unitPrice: String(l.unitPrice),
+        markupPercentage: String(l.markupPercentage),
         lineTotal: String(l.lineTotal),
         })),
       );

@@ -6,7 +6,7 @@
  * OpenAPI spec version: 0.1.0
  */
 import type { DeckSpecInput } from './deckSpecInput';
-import type { QuoteLineItem } from './quoteLineItem';
+import type { PublicQuoteLineItem } from './publicQuoteLineItem';
 
 export interface QuotePortal {
   id: number;
@@ -22,7 +22,7 @@ export interface QuotePortal {
   /** @nullable */
   contractorLicenseNumber: string | null;
   spec: DeckSpecInput;
-  lineItems: QuoteLineItem[];
+  lineItems: PublicQuoteLineItem[];
   materialsSubtotal: number;
   labourCost: number;
   gst: number;

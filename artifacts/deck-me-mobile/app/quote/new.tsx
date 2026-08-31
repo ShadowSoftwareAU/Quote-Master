@@ -9,8 +9,8 @@ import { Redirect, router, useLocalSearchParams } from "expo-router";
 import React, { useMemo, useState } from "react";
 import {
   Alert,
+  FlatList,
   Pressable,
-  ScrollView,
   Text,
   View,
 } from "react-native";
@@ -23,6 +23,30 @@ import {
 } from "@/components/ui";
 import { useColors } from "@/hooks/useColors";
 import { useProfileAccess } from "@/lib/access";
+
+type LineItemDraft = {
+  id: number;
+  description: string;
+  quantity: string;
+  unitCost: string;
+  markupPercentage: string;
+};
+
+let nextLineItemId = 1;
+
+function lineTotal(item: LineItemDraft) {
+  const quantity = Number(item.quantity) || 0;
+  const unitCost = Number(item.unitCost) || 0;
+  const markup = Number(item.markupPercentage) || 0;
+  return Math.round(quantity * unitCost * (1 + markup / 100) * 100) / 100;
+}
+
+function currency(value: number) {
+  return new Intl.NumberFormat("en-AU", {
+    style: "currency",
+    currency: "AUD",
+  }).format(value);
+}
 
 export default function NewQuoteRoute() {
   const { isSubcontractor } = useProfileAccess();
@@ -52,6 +76,33 @@ function NewQuoteScreen() {
   const [title, setTitle] = useState("");
   const [customerId, setCustomerId] = useState<number | null>(null);
   const [siteAddress, setSiteAddress] = useState("");
+  const [lineItems, setLineItems] = useState<LineItemDraft[]>([]);
+
+  const additionalSubtotal = useMemo(
+    () => lineItems.reduce((sum, item) => sum + lineTotal(item), 0),
+    [lineItems],
+  );
+  const additionalGst = Math.round(additionalSubtotal * 0.1 * 100) / 100;
+  const additionalTotal = additionalSubtotal + additionalGst;
+
+  function addLineItem() {
+    setLineItems((items) => [
+      ...items,
+      {
+        id: nextLineItemId++,
+        description: "",
+        quantity: "1",
+        unitCost: "0",
+        markupPercentage: "0",
+      },
+    ]);
+  }
+
+  function updateLineItem(id: number, field: Exclude<keyof LineItemDraft, "id">, value: string) {
+    setLineItems((items) => items.map((item) =>
+      item.id === id ? { ...item, [field]: value } : item,
+    ));
+  }
 
   function save() {
     if (!title.trim()) {
@@ -60,6 +111,18 @@ function NewQuoteScreen() {
     }
     if (!customerId) {
       Alert.alert("Pick a client", "Who's this quote for?");
+      return;
+    }
+    if (lineItems.some((item) =>
+      !item.description.trim()
+      || Number(item.quantity) <= 0
+      || Number(item.unitCost) < 0
+      || Number(item.markupPercentage) < 0
+    )) {
+      Alert.alert(
+        "Check additional items",
+        "Each item needs a description, a quantity above zero, and non-negative cost and mark-up values.",
+      );
       return;
     }
     createMut.mutate(
@@ -78,6 +141,13 @@ function NewQuoteScreen() {
           wastageFactor: spec.wastageFactor,
           labourHours: Number(params.labourHours ?? 0),
           labourRate: Number(params.labourRate ?? 85),
+          lineItems: lineItems.map((item) => ({
+            description: item.description.trim(),
+            quantity: Number(item.quantity),
+            unitCost: Number(item.unitCost),
+            markupPercentage: Number(item.markupPercentage),
+            unit: "each",
+          })),
         },
       },
       {
@@ -94,11 +164,14 @@ function NewQuoteScreen() {
   }
 
   return (
-    <ScrollView
+    <FlatList
       style={{ flex: 1, backgroundColor: colors.background }}
       contentContainerStyle={{ padding: 20, gap: 14 }}
       keyboardShouldPersistTaps="handled"
-    >
+      data={lineItems}
+      keyExtractor={(item) => String(item.id)}
+      ListHeaderComponent={(
+        <View style={{ gap: 14 }}>
       <Card>
         <Text
           style={{
@@ -203,13 +276,119 @@ function NewQuoteScreen() {
           )}
         </View>
       </View>
-
+          <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
+            <View style={{ flex: 1 }}>
+              <Text style={{ fontFamily: "Chivo_700Bold", fontSize: 18, color: colors.foreground }}>
+                Additional line items
+              </Text>
+              <Text style={{ fontFamily: "Inter_500Medium", fontSize: 12, color: colors.mutedForeground, marginTop: 3 }}>
+                Add hire, permits, disposal, or other costs.
+              </Text>
+            </View>
+            <Button label="Add item" icon="plus" onPress={addLineItem} />
+          </View>
+          {lineItems.length === 0 ? (
+            <Card>
+              <Text style={{ textAlign: "center", color: colors.mutedForeground, fontFamily: "Inter_500Medium" }}>
+                No additional items added.
+              </Text>
+            </Card>
+          ) : null}
+        </View>
+      )}
+      renderItem={({ item, index }) => (
+        <Card>
+          <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
+            <Text style={{ fontFamily: "Inter_700Bold", fontSize: 11, letterSpacing: 1.2, color: colors.mutedForeground }}>
+              ITEM {index + 1}
+            </Text>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={`Remove item ${index + 1}`}
+              onPress={() => setLineItems((items) => items.filter((entry) => entry.id !== item.id))}
+              style={({ pressed }) => ({ padding: 8, opacity: pressed ? 0.6 : 1 })}
+            >
+              <Text style={{ color: colors.destructive, fontFamily: "Inter_700Bold" }}>Remove</Text>
+            </Pressable>
+          </View>
+          <View style={{ gap: 12 }}>
+            <LabeledInput label="Description">
+              <TextInputStyled
+                value={item.description}
+                onChangeText={(value) => updateLineItem(item.id, "description", value)}
+                placeholder="Skip bin hire"
+              />
+            </LabeledInput>
+            <View style={{ flexDirection: "row", gap: 10 }}>
+              <View style={{ flex: 1 }}>
+                <LabeledInput label="Quantity">
+                  <TextInputStyled
+                    value={item.quantity}
+                    onChangeText={(value) => updateLineItem(item.id, "quantity", value)}
+                    keyboardType="decimal-pad"
+                  />
+                </LabeledInput>
+              </View>
+              <View style={{ flex: 1 }}>
+                <LabeledInput label="Unit cost">
+                  <TextInputStyled
+                    value={item.unitCost}
+                    onChangeText={(value) => updateLineItem(item.id, "unitCost", value)}
+                    keyboardType="decimal-pad"
+                  />
+                </LabeledInput>
+              </View>
+            </View>
+            <View style={{ flexDirection: "row", alignItems: "flex-end", gap: 10 }}>
+              <View style={{ flex: 1 }}>
+                <LabeledInput label="Mark-up %">
+                  <TextInputStyled
+                    value={item.markupPercentage}
+                    onChangeText={(value) => updateLineItem(item.id, "markupPercentage", value)}
+                    keyboardType="decimal-pad"
+                  />
+                </LabeledInput>
+              </View>
+              <View style={{ flex: 1, paddingBottom: 11 }}>
+                <Text style={{ fontFamily: "Inter_700Bold", fontSize: 10, letterSpacing: 1.2, color: colors.mutedForeground }}>
+                  LINE TOTAL
+                </Text>
+                <Text style={{ fontFamily: "Chivo_700Bold", fontSize: 18, color: colors.foreground, marginTop: 5 }}>
+                  {currency(lineTotal(item))}
+                </Text>
+              </View>
+            </View>
+          </View>
+        </Card>
+      )}
+      ItemSeparatorComponent={() => <View style={{ height: 12 }} />}
+      ListFooterComponent={(
+        <View style={{ gap: 14, marginTop: lineItems.length ? 14 : 0 }}>
+          <Card>
+            <View style={{ gap: 10 }}>
+              <View style={{ flexDirection: "row", justifyContent: "space-between" }}>
+                <Text style={{ color: colors.mutedForeground, fontFamily: "Inter_500Medium" }}>Additional subtotal</Text>
+                <Text style={{ color: colors.foreground, fontFamily: "Inter_700Bold" }}>{currency(additionalSubtotal)}</Text>
+              </View>
+              <View style={{ flexDirection: "row", justifyContent: "space-between" }}>
+                <Text style={{ color: colors.mutedForeground, fontFamily: "Inter_500Medium" }}>GST (10%)</Text>
+                <Text style={{ color: colors.foreground, fontFamily: "Inter_700Bold" }}>{currency(additionalGst)}</Text>
+              </View>
+              <View style={{ height: 1, backgroundColor: colors.border }} />
+              <View style={{ flexDirection: "row", justifyContent: "space-between" }}>
+                <Text style={{ color: colors.foreground, fontFamily: "Chivo_700Bold", fontSize: 16 }}>Additional total</Text>
+                <Text style={{ color: colors.primary, fontFamily: "Chivo_700Bold", fontSize: 18 }}>{currency(additionalTotal)}</Text>
+              </View>
+            </View>
+          </Card>
       <Button
         label="Save quote"
         icon="save"
         onPress={save}
         loading={createMut.isPending}
       />
-    </ScrollView>
+        </View>
+      )}
+    />
   );
 }

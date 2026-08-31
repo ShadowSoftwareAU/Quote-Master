@@ -25,6 +25,10 @@ import {
   ChevronUp,
   ShoppingCart,
   TrendingDown,
+  Plus,
+  Trash2,
+  ArrowUp,
+  ArrowDown,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
@@ -69,6 +73,22 @@ interface EnrichedLine {
   lineTotal: number;
   supplierPrices: SupplierPrice[];
   cheapestTotal: number;
+}
+
+interface CustomLineItemDraft {
+  id: number;
+  description: string;
+  quantity: number;
+  unitCost: number;
+  markupPercentage: number;
+}
+
+let nextLineItemId = 1;
+
+function customLineTotal(item: CustomLineItemDraft) {
+  return Math.round(
+    item.quantity * item.unitCost * (1 + item.markupPercentage / 100) * 100,
+  ) / 100;
 }
 
 const DEFAULT_SPEC = {
@@ -118,6 +138,7 @@ export default function Calculator() {
   const [quoteTitle, setQuoteTitle] = useState("New Deck Quote");
   const [customerId, setCustomerId] = useState("");
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [lineItems, setLineItems] = useState<CustomLineItemDraft[]>([]);
 
   const councilWarning = spec.heightM >= COUNCIL_HEIGHT_M;
 
@@ -209,14 +230,82 @@ export default function Calculator() {
 
   const estData = estimate.data;
   const complianceWarnings = estData?.complianceWarnings ?? [];
+  const customSubtotal = useMemo(
+    () => lineItems.reduce((sum, item) => sum + customLineTotal(item), 0),
+    [lineItems],
+  );
+  const quoteSubtotal = (estData?.materialsSubtotal ?? 0)
+    + (estData?.labourCost ?? 0)
+    + customSubtotal;
+  const quoteGst = Math.round(quoteSubtotal * 0.1 * 100) / 100;
+  const quoteTotal = Math.round((quoteSubtotal + quoteGst) * 100) / 100;
+
+  const addLineItem = () => {
+    setLineItems((items) => [
+      ...items,
+      {
+        id: nextLineItemId++,
+        description: "",
+        quantity: 1,
+        unitCost: 0,
+        markupPercentage: 0,
+      },
+    ]);
+  };
+
+  const updateLineItem = (
+    id: number,
+    field: keyof Omit<CustomLineItemDraft, "id">,
+    value: string,
+  ) => {
+    setLineItems((items) => items.map((item) => item.id === id
+      ? {
+          ...item,
+          [field]: field === "description"
+            ? value
+            : Math.max(0, Number(value) || 0),
+        }
+      : item));
+  };
+
+  const moveLineItem = (index: number, direction: -1 | 1) => {
+    const nextIndex = index + direction;
+    if (nextIndex < 0 || nextIndex >= lineItems.length) return;
+    setLineItems((items) => {
+      const reordered = [...items];
+      [reordered[index], reordered[nextIndex]] = [reordered[nextIndex], reordered[index]];
+      return reordered;
+    });
+  };
 
   const handleSaveQuote = () => {
     if (!customerId) {
       toast({ title: "Select a customer", variant: "destructive" });
       return;
     }
+    if (lineItems.some((item) => !item.description.trim() || item.quantity <= 0)) {
+      toast({
+        title: "Check additional items",
+        description: "Each item needs a description and a quantity above zero.",
+        variant: "destructive",
+      });
+      return;
+    }
     createQuote.mutate(
-      { data: { ...spec, title: quoteTitle, customerId: parseInt(customerId) } },
+      {
+        data: {
+          ...spec,
+          title: quoteTitle,
+          customerId: parseInt(customerId),
+          lineItems: lineItems.map(({ description, quantity, unitCost, markupPercentage }) => ({
+            description: description.trim(),
+            quantity,
+            unitCost,
+            markupPercentage,
+            unit: "each",
+          })),
+        },
+      },
       {
         onSuccess: (data) => {
           toast({ title: "Quote saved!" });
@@ -615,13 +704,13 @@ export default function Calculator() {
                 Estimated Total (inc GST)
               </h2>
               <div className="text-5xl font-black tracking-tighter">
-                {estData ? formatCurrency(estData.total) : "$0.00"}
+                {formatCurrency(quoteTotal)}
               </div>
             </div>
             <div className="grid grid-cols-3 divide-x divide-border bg-muted/20">
               <div className="p-3 text-center">
                 <div className="text-xs font-bold uppercase text-muted-foreground">Materials</div>
-                <div className="font-mono font-bold mt-0.5">{formatCurrency(estData?.materialsSubtotal ?? 0)}</div>
+                <div className="font-mono font-bold mt-0.5">{formatCurrency((estData?.materialsSubtotal ?? 0) + customSubtotal)}</div>
               </div>
               <div className="p-3 text-center">
                 <div className="text-xs font-bold uppercase text-muted-foreground">Labour</div>
@@ -629,9 +718,85 @@ export default function Calculator() {
               </div>
               <div className="p-3 text-center">
                 <div className="text-xs font-bold uppercase text-muted-foreground">GST</div>
-                <div className="font-mono font-bold mt-0.5">{formatCurrency(estData?.gst ?? 0)}</div>
+                <div className="font-mono font-bold mt-0.5">{formatCurrency(quoteGst)}</div>
               </div>
             </div>
+          </Card>
+
+          <Card>
+            <CardHeader className="flex-row items-center justify-between gap-3">
+              <div>
+                <CardTitle className="font-black uppercase text-lg">Additional line items</CardTitle>
+                <p className="text-sm text-muted-foreground mt-1">
+                  Add labour, hire, disposal, permits, or other job costs.
+                </p>
+              </div>
+              <Button type="button" size="sm" onClick={addLineItem}>
+                <Plus className="w-4 h-4 mr-2" /> Add item
+              </Button>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              {lineItems.length === 0 ? (
+                <div className="rounded-sm border border-dashed p-5 text-sm text-center text-muted-foreground">
+                  No additional items added.
+                </div>
+              ) : lineItems.map((item, index) => (
+                <div key={item.id} className="rounded-sm border p-3 space-y-3">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-xs font-bold uppercase text-muted-foreground">
+                      Item {index + 1}
+                    </span>
+                    <div className="flex items-center gap-1">
+                      <Button type="button" variant="ghost" size="icon" onClick={() => moveLineItem(index, -1)} disabled={index === 0} aria-label="Move item up">
+                        <ArrowUp className="w-4 h-4" />
+                      </Button>
+                      <Button type="button" variant="ghost" size="icon" onClick={() => moveLineItem(index, 1)} disabled={index === lineItems.length - 1} aria-label="Move item down">
+                        <ArrowDown className="w-4 h-4" />
+                      </Button>
+                      <Button type="button" variant="ghost" size="icon" onClick={() => setLineItems((items) => items.filter((entry) => entry.id !== item.id))} aria-label="Remove item">
+                        <Trash2 className="w-4 h-4 text-destructive" />
+                      </Button>
+                    </div>
+                  </div>
+                  <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                    <div className="space-y-1 sm:col-span-2">
+                      <Label htmlFor={`line-description-${item.id}`}>Description</Label>
+                      <Input id={`line-description-${item.id}`} value={item.description} onChange={(event) => updateLineItem(item.id, "description", event.target.value)} placeholder="Skip bin hire" />
+                    </div>
+                    <div className="space-y-1">
+                      <Label htmlFor={`line-quantity-${item.id}`}>Quantity</Label>
+                      <Input id={`line-quantity-${item.id}`} type="number" min="0.001" step="0.001" value={item.quantity} onChange={(event) => updateLineItem(item.id, "quantity", event.target.value)} />
+                    </div>
+                    <div className="space-y-1">
+                      <Label>Line total</Label>
+                      <div className="h-10 flex items-center font-mono font-bold">{formatCurrency(customLineTotal(item))}</div>
+                    </div>
+                    <div className="space-y-1">
+                      <Label htmlFor={`line-cost-${item.id}`}>Unit cost</Label>
+                      <Input id={`line-cost-${item.id}`} type="number" min="0" step="0.01" value={item.unitCost} onChange={(event) => updateLineItem(item.id, "unitCost", event.target.value)} />
+                    </div>
+                    <div className="space-y-1">
+                      <Label htmlFor={`line-markup-${item.id}`}>Mark-up %</Label>
+                      <Input id={`line-markup-${item.id}`} type="number" min="0" max="1000" step="0.01" value={item.markupPercentage} onChange={(event) => updateLineItem(item.id, "markupPercentage", event.target.value)} />
+                    </div>
+                  </div>
+                </div>
+              ))}
+              <div className="rounded-sm bg-muted/40 p-4 grid grid-cols-3 gap-3 text-right">
+                <div>
+                  <div className="text-xs uppercase text-muted-foreground">Subtotal</div>
+                  <div className="font-mono font-bold">{formatCurrency(quoteSubtotal)}</div>
+                </div>
+                <div>
+                  <div className="text-xs uppercase text-muted-foreground">GST</div>
+                  <div className="font-mono font-bold">{formatCurrency(quoteGst)}</div>
+                </div>
+                <div>
+                  <div className="text-xs uppercase text-muted-foreground">Total price</div>
+                  <div className="font-mono font-black text-primary">{formatCurrency(quoteTotal)}</div>
+                </div>
+              </div>
+            </CardContent>
           </Card>
 
           {/* Supplier totals comparison */}

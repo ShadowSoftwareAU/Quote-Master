@@ -97,8 +97,8 @@ export default function MasterProjectPortalPage() {
                       <strong className="font-mono text-lg">{formatCurrency(quote.total)}</strong>
                     </div>
                     <div className="space-y-2">
-                      {quote.lineItems.map((line) => (
-                        <div key={line.id} className="flex justify-between gap-4 text-sm">
+                      {quote.lineItems.map((line, lineIndex) => (
+                        <div key={`${line.description}-${lineIndex}`} className="flex justify-between gap-4 text-sm">
                           <span className="text-muted-foreground">
                             {line.description} · {line.quantity} {line.unit}
                           </span>

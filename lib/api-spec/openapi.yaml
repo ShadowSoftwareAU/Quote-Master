@@ -1439,7 +1439,31 @@ components:
         quantity: { type: number }
         unit: { type: string }
         unitPrice: { type: number }
+        unitCost: { type: number }
+        markupPercentage: { type: number }
         lineTotal: { type: number }
+
+    PublicQuoteLineItem:
+      type: object
+      required: [description, category, quantity, unit, unitPrice, lineTotal]
+      properties:
+        description: { type: string }
+        category: { type: string }
+        quantity: { type: number }
+        unit: { type: string }
+        unitPrice: { type: number }
+        lineTotal: { type: number }
+
+    QuoteLineItemInput:
+      type: object
+      required: [description, quantity, unitCost, markupPercentage]
+      additionalProperties: false
+      properties:
+        description: { type: string, minLength: 1, maxLength: 200 }
+        quantity: { type: number, exclusiveMinimum: 0, maximum: 100000 }
+        unitCost: { type: number, minimum: 0, maximum: 9000 }
+        markupPercentage: { type: number, minimum: 0, maximum: 1000 }
+        unit: { type: string, minLength: 1, maxLength: 40, default: each }
 
     QuoteEstimateLine:
       type: object
@@ -1534,7 +1558,7 @@ components:
         total: { type: number }
         lineItems:
           type: array
-          items: { $ref: "#/components/schemas/QuoteLineItem" }
+          items: { $ref: "#/components/schemas/PublicQuoteLineItem" }
         createdAt: { type: string, format: date-time }
 
     MasterTradeGroup:
@@ -1771,6 +1795,10 @@ components:
         includeAwning: { type: boolean }
         awningWidthM: { type: number }
         awningLengthM: { type: number }
+        lineItems:
+          type: array
+          maxItems: 200
+          items: { $ref: "#/components/schemas/QuoteLineItemInput" }
     QuoteUpdate:
       type: object
       properties:
@@ -1846,7 +1874,7 @@ components:
         spec: { $ref: "#/components/schemas/DeckSpecInput" }
         lineItems:
           type: array
-          items: { $ref: "#/components/schemas/QuoteLineItem" }
+          items: { $ref: "#/components/schemas/PublicQuoteLineItem" }
         materialsSubtotal: { type: number }
         labourCost: { type: number }
         gst: { type: number }
