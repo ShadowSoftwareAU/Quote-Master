@@ -121,6 +121,8 @@ before(async () => {
 after(async () => {
   if (!hasDatabase) return;
   try {
+    await pool.query("DROP TRIGGER IF EXISTS job_assignment_race_barrier ON job_assignments");
+    await pool.query("DROP FUNCTION IF EXISTS job_assignment_race_barrier()");
     // Every inserted row has a unique test-only name/prefix. Delete children
     // first so cleanup remains safe if a future fixture adds a reference.
     if (createdQuoteIds.length) {
@@ -762,6 +764,11 @@ test("linked workers only receive assigned work, including profileless linked ac
     quoteForProfilelessWorker.id,
     "2030-02-02T09:00:00.000Z",
   );
+  const bookingForConcurrentAssignment = await createBooking(
+    `${fixture}-booking-concurrent-assignment`,
+    unassignedQuote.id,
+    "2030-02-03T09:00:00.000Z",
+  );
 
   const memberForLinkedWorker = await api(assignmentOwner, "POST", "/team", {
     name: `${fixture} Linked Worker`,
@@ -813,6 +820,115 @@ test("linked workers only receive assigned work, including profileless linked ac
   );
   assert.equal(assignmentForProfilelessWorker.response.status, 201);
 
+  const raceBarrierClient = await pool.connect();
+  let raceBarrierLocked = false;
+  let pendingAssignments;
+  let concurrentAssignments;
+  try {
+    await pool.query(`
+      CREATE OR REPLACE FUNCTION job_assignment_race_barrier()
+      RETURNS trigger
+      LANGUAGE plpgsql
+      AS $$
+      BEGIN
+        PERFORM pg_advisory_xact_lock_shared(NEW.job_id::bigint);
+        RETURN NEW;
+      END;
+      $$
+    `);
+    await pool.query(`
+      CREATE TRIGGER job_assignment_race_barrier
+      BEFORE INSERT ON job_assignments
+      FOR EACH ROW
+      EXECUTE FUNCTION job_assignment_race_barrier()
+    `);
+    await raceBarrierClient.query(
+      "SELECT pg_advisory_lock($1::bigint)",
+      [bookingForConcurrentAssignment.id],
+    );
+    raceBarrierLocked = true;
+    pendingAssignments = Promise.all([
+      api(
+        assignmentOwner,
+        "POST",
+        `/team/${memberForLinkedWorker.json.id}/assign/${bookingForConcurrentAssignment.id}`,
+        { roleOnJob: "Lead carpenter" },
+      ),
+      api(
+        assignmentOwner,
+        "POST",
+        `/team/${memberForLinkedWorker.json.id}/assign/${bookingForConcurrentAssignment.id}`,
+        { roleOnJob: "Supervisor" },
+      ),
+    ]);
+    const waitDeadline = Date.now() + 3_000;
+    let waitingInsertCount = 0;
+    while (Date.now() < waitDeadline && waitingInsertCount < 2) {
+      const waiters = await pool.query(`
+        SELECT count(*)::int AS count
+        FROM pg_locks
+        WHERE locktype = 'advisory'
+          AND classid = 0
+          AND objid = $1::oid
+          AND objsubid = 1
+          AND NOT granted
+      `, [bookingForConcurrentAssignment.id]);
+      waitingInsertCount = waiters.rows[0].count;
+      if (waitingInsertCount < 2) {
+        await new Promise((resolve) => setTimeout(resolve, 10));
+      }
+    }
+    assert.equal(waitingInsertCount, 2, "both assignment inserts reached the race barrier");
+    await raceBarrierClient.query(
+      "SELECT pg_advisory_unlock($1::bigint)",
+      [bookingForConcurrentAssignment.id],
+    );
+    raceBarrierLocked = false;
+    concurrentAssignments = await pendingAssignments;
+  } finally {
+    if (raceBarrierLocked) {
+      await raceBarrierClient.query(
+        "SELECT pg_advisory_unlock($1::bigint)",
+        [bookingForConcurrentAssignment.id],
+      );
+    }
+    if (pendingAssignments && !concurrentAssignments) {
+      await Promise.allSettled([pendingAssignments]);
+    }
+    raceBarrierClient.release();
+    await pool.query("DROP TRIGGER IF EXISTS job_assignment_race_barrier ON job_assignments");
+    await pool.query("DROP FUNCTION IF EXISTS job_assignment_race_barrier()");
+  }
+  assert.deepEqual(
+    concurrentAssignments.map(({ response }) => response.status).sort((a, b) => a - b),
+    [201, 409],
+  );
+  assert.deepEqual(
+    concurrentAssignments.find(({ response }) => response.status === 409).json,
+    { error: "Already assigned" },
+  );
+  const concurrentAssignmentRows = await pool.query(
+    "SELECT id FROM job_assignments WHERE job_id = $1 AND team_member_id = $2",
+    [bookingForConcurrentAssignment.id, memberForLinkedWorker.json.id],
+  );
+  assert.equal(concurrentAssignmentRows.rowCount, 1);
+  const removedConcurrentAssignment = await api(
+    assignmentOwner,
+    "DELETE",
+    `/bookings/${bookingForConcurrentAssignment.id}/assignments`,
+    { teamMemberId: memberForLinkedWorker.json.id },
+  );
+  assert.equal(removedConcurrentAssignment.response.status, 200);
+  const removedConcurrentAssignmentRows = await pool.query(
+    "SELECT id FROM job_assignments WHERE job_id = $1 AND team_member_id = $2",
+    [bookingForConcurrentAssignment.id, memberForLinkedWorker.json.id],
+  );
+  assert.equal(removedConcurrentAssignmentRows.rowCount, 0);
+  assert.equal(
+    (await api(linkedWorker, "GET", `/time/job/${bookingForConcurrentAssignment.id}`)).response.status,
+    404,
+  );
+
   for (const [workerId, expectedMemberId] of [
     [linkedWorker, memberForLinkedWorker.json.id],
     [profilelessWorker, memberForProfilelessWorker.json.id],
@@ -834,7 +950,11 @@ test("linked workers only receive assigned work, including profileless linked ac
   assert.equal(ownerBookings.response.status, 200);
   assert.deepEqual(
     ownerBookings.json.map((booking) => booking.id).sort((a, b) => a - b),
-    [bookingForLinkedWorker.id, bookingForProfilelessWorker.id].sort((a, b) => a - b),
+    [
+      bookingForLinkedWorker.id,
+      bookingForProfilelessWorker.id,
+      bookingForConcurrentAssignment.id,
+    ].sort((a, b) => a - b),
   );
   const linkedBookings = await api(linkedWorker, "GET", "/bookings");
   assert.equal(linkedBookings.response.status, 200);
@@ -1101,6 +1221,11 @@ test("linked workers only receive assigned work, including profileless linked ac
     })).response.status,
     404,
   );
+  const removedAssignmentRows = await pool.query(
+    "SELECT id FROM job_assignments WHERE job_id = $1 AND team_member_id = $2",
+    [bookingForLinkedWorker.id, memberForLinkedWorker.json.id],
+  );
+  assert.equal(removedAssignmentRows.rowCount, 0);
 
   const unlinked = await api(
     assignmentOwner,

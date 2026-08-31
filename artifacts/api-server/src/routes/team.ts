@@ -127,6 +127,25 @@ function assignmentToJson(
   };
 }
 
+function isAssignmentConflict(error: unknown): boolean {
+  let currentError: unknown = error;
+  for (let depth = 0; depth < 3 && currentError && typeof currentError === "object"; depth += 1) {
+    const databaseError = currentError as {
+      code?: string;
+      constraint?: string;
+      cause?: unknown;
+    };
+    if (
+      databaseError.code === "23505" &&
+      databaseError.constraint === "job_assignments_job_id_team_member_id_uidx"
+    ) {
+      return true;
+    }
+    currentError = databaseError.cause;
+  }
+  return false;
+}
+
 router.get("/team", async (req, res): Promise<void> => {
   const userId = getAuth(req).userId;
   if (!userId) { res.status(401).json({ error: "Unauthorized" }); return; }
@@ -240,37 +259,45 @@ router.post("/team/:memberId/assign/:jobId", async (req, res): Promise<void> => 
   }
   const roleOnJob = body.data.roleOnJob ?? null;
 
-  const result = await db.transaction(async (tx) => {
-    const [member] = await tx.select({ name: teamMembersTable.name }).from(teamMembersTable)
-      .where(and(eq(teamMembersTable.id, params.data.memberId), eq(teamMembersTable.clerkUserId, userId)));
-    if (!member) return { ok: false, error: "Team member not found", status: 404 } as const;
-    const [booking] = await tx.select({ title: bookingsTable.title }).from(bookingsTable)
-      .where(and(eq(bookingsTable.id, params.data.jobId), eq(bookingsTable.clerkUserId, userId)));
-    if (!booking) return { ok: false, error: "Booking not found", status: 404 } as const;
-    const [existing] = await tx
-      .select()
-      .from(jobAssignmentsTable)
-      .where(and(
-        eq(jobAssignmentsTable.teamMemberId, params.data.memberId),
-        eq(jobAssignmentsTable.jobId, params.data.jobId),
-      ));
-    if (existing) return { ok: false, error: "Already assigned", status: 409 } as const;
-    const [row] = await tx.insert(jobAssignmentsTable).values({
-      teamMemberId: params.data.memberId,
-      jobId: params.data.jobId,
-      roleOnJob,
-    }).returning();
-    if (!row) return { ok: false, error: "Assignment could not be created", status: 500 } as const;
-    return { ok: true, row, member, booking } as const;
-  });
-  if (!result.ok) { res.status(result.status).json({ error: result.error }); return; }
-  res.status(201).json(
-    assignmentToJson({
-      ...result.row,
-      memberName: result.member.name,
-      jobTitle: result.booking.title,
-    })
-  );
+  try {
+    const result = await db.transaction(async (tx) => {
+      const [member] = await tx.select({ name: teamMembersTable.name }).from(teamMembersTable)
+        .where(and(eq(teamMembersTable.id, params.data.memberId), eq(teamMembersTable.clerkUserId, userId)));
+      if (!member) return { ok: false, error: "Team member not found", status: 404 } as const;
+      const [booking] = await tx.select({ title: bookingsTable.title }).from(bookingsTable)
+        .where(and(eq(bookingsTable.id, params.data.jobId), eq(bookingsTable.clerkUserId, userId)));
+      if (!booking) return { ok: false, error: "Booking not found", status: 404 } as const;
+      const [existing] = await tx
+        .select()
+        .from(jobAssignmentsTable)
+        .where(and(
+          eq(jobAssignmentsTable.teamMemberId, params.data.memberId),
+          eq(jobAssignmentsTable.jobId, params.data.jobId),
+        ));
+      if (existing) return { ok: false, error: "Already assigned", status: 409 } as const;
+      const [row] = await tx.insert(jobAssignmentsTable).values({
+        teamMemberId: params.data.memberId,
+        jobId: params.data.jobId,
+        roleOnJob,
+      }).returning();
+      if (!row) return { ok: false, error: "Assignment could not be created", status: 500 } as const;
+      return { ok: true, row, member, booking } as const;
+    });
+    if (!result.ok) { res.status(result.status).json({ error: result.error }); return; }
+    res.status(201).json(
+      assignmentToJson({
+        ...result.row,
+        memberName: result.member.name,
+        jobTitle: result.booking.title,
+      })
+    );
+  } catch (error) {
+    if (isAssignmentConflict(error)) {
+      res.status(409).json({ error: "Already assigned" });
+      return;
+    }
+    throw error;
+  }
 });
 
 router.get("/bookings/:jobId/assignments", async (req, res): Promise<void> => {

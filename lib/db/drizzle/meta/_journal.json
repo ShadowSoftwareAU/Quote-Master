@@ -50,6 +50,34 @@
       "when": 1788220800000,
       "tag": "0006_master_project_portals",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1788221700000,
+      "tag": "0007_subcontractor_assignment_identity",
+      "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1788222600000,
+      "tag": "0007_master_project_acceptances",
+      "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1788223500000,
+      "tag": "0008_quote_line_item_markup",
+      "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1788224400000,
+      "tag": "0009_unique_job_assignments",
+      "breakpoints": true
     }
   ]
 }

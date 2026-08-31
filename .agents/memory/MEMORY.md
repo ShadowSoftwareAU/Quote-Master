@@ -6,3 +6,4 @@
 - [Quote compliance snapshots](quote-compliance-snapshots.md) — snapshot profile compliance on new quotes, while null legacy fields deliberately fall back to the current profile.
 - [Assignment identity](assignment-identity.md) — fail closed until authenticated users have an explicit link to team-member assignments.
 - [Master Proposal acceptance evidence](master-proposal-acceptance-evidence.md) — keep accepted snapshots customer-safe, append-only, and independent of portal-token lifecycle.
+- [Drizzle constraint errors](drizzle-constraint-errors.md) — inspect bounded error causes when mapping exact PostgreSQL constraint violations to API responses.

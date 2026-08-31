@@ -46,13 +46,22 @@ export const timeEntriesTable = pgTable("time_entries", {
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
-export const jobAssignmentsTable = pgTable("job_assignments", {
-  id: serial("id").primaryKey(),
-  jobId: integer("job_id").notNull(),
-  teamMemberId: integer("team_member_id").notNull(),
-  roleOnJob: text("role_on_job"),
-  assignedAt: timestamp("assigned_at", { withTimezone: true }).notNull().defaultNow(),
-});
+export const jobAssignmentsTable = pgTable(
+  "job_assignments",
+  {
+    id: serial("id").primaryKey(),
+    jobId: integer("job_id").notNull(),
+    teamMemberId: integer("team_member_id").notNull(),
+    roleOnJob: text("role_on_job"),
+    assignedAt: timestamp("assigned_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("job_assignments_job_id_team_member_id_uidx").on(
+      table.jobId,
+      table.teamMemberId,
+    ),
+  ],
+);
 
 export type TeamMemberRow = typeof teamMembersTable.$inferSelect;
 export type TimeEntryRow = typeof timeEntriesTable.$inferSelect;
