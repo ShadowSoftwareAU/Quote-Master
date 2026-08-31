@@ -95,7 +95,13 @@ export const UpdateProfileSettingsResponse = zod.object({
   "updatedAt": zod.coerce.date()
 })
 
+/**
+ * Development-only action that creates a scoped sample workspace. It is unavailable in production and can only be run once per workspace.
+ * @summary Seed temporary presentation data for the authenticated Owner
+ */
+export const SeedDemoDataBody = zod.object({
 
+})
 /**
  * @summary Set the authenticated Owner's Master Builder test flag
  */
@@ -219,9 +225,6 @@ export const ListCustomersResponseItem = zod.object({
 export const ListCustomersResponse = zod.array(ListCustomersResponseItem)
 
 
-
-
-
 export const CreateCustomerBody = zod.object({
   "name": zod.string().min(1),
   "company": zod.string().optional(),
@@ -251,8 +254,6 @@ export const GetCustomerResponse = zod.object({
 export const UpdateCustomerParams = zod.object({
   "id": zod.coerce.number()
 })
-
-
 
 
 export const UpdateCustomerBody = zod.object({
@@ -304,9 +305,6 @@ export const ListMaterialsResponseItem = zod.object({
 export const ListMaterialsResponse = zod.array(ListMaterialsResponseItem)
 
 
-
-
-
 export const CreateMaterialBody = zod.object({
   "name": zod.string().min(1),
   "sku": zod.string().optional(),
@@ -323,8 +321,6 @@ export const CreateMaterialBody = zod.object({
 export const UpdateMaterialParams = zod.object({
   "id": zod.coerce.number()
 })
-
-
 
 
 export const UpdateMaterialBody = zod.object({
@@ -402,7 +398,6 @@ export const ListQuotesResponseItem = zod.object({
 export const ListQuotesResponse = zod.array(ListQuotesResponseItem)
 
 
-
 export const createQuoteBodyTradeTypeDefault = `decking`;
 export const createQuoteBodyLineItemsItemDescriptionMax = 200;
 
@@ -425,7 +420,6 @@ export const createQuoteBodyLineItemsItemWastagePercentageMax = 100;
 
 export const createQuoteBodyLineItemsItemIsBulkItemDefault = false;
 export const createQuoteBodyLineItemsMax = 200;
-
 
 
 export const CreateQuoteBody = zod.object({
@@ -593,8 +587,6 @@ export const GetQuoteResponse = zod.object({
 export const UpdateQuoteParams = zod.object({
   "id": zod.coerce.number()
 })
-
-
 
 
 export const UpdateQuoteBody = zod.object({
@@ -1390,11 +1382,9 @@ export const ListMasterProjectsResponseItem = zod.object({
 export const ListMasterProjectsResponse = zod.array(ListMasterProjectsResponseItem)
 
 
-
 export const createMasterProjectBodyBuilderMarginPctDefault = 0;
 export const createMasterProjectBodyBuilderMarginPctMin = 0;
 export const createMasterProjectBodyBuilderMarginPctMax = 99.99;
-
 
 
 export const CreateMasterProjectBody = zod.object({
@@ -1577,7 +1567,6 @@ export const UpdateMasterProjectParams = zod.object({
 
 export const updateMasterProjectBodyBuilderMarginPctMin = 0;
 export const updateMasterProjectBodyBuilderMarginPctMax = 99.99;
-
 
 
 export const UpdateMasterProjectBody = zod.object({
@@ -2141,9 +2130,6 @@ export const ListBookingsResponseItem = zod.object({
 export const ListBookingsResponse = zod.array(ListBookingsResponseItem)
 
 
-
-
-
 export const CreateBookingBody = zod.object({
   "title": zod.string().min(1),
   "customerId": zod.number().optional(),
@@ -2159,8 +2145,6 @@ export const CreateBookingBody = zod.object({
 export const UpdateBookingParams = zod.object({
   "id": zod.coerce.number()
 })
-
-
 
 
 export const UpdateBookingBody = zod.object({
@@ -2260,8 +2244,6 @@ export const RemoveBookingPhotoResponse = zod.object({
 export const requestStorageUploadUrlBodySizeMin = 0;
 
 
-
-
 export const RequestStorageUploadUrlBody = zod.object({
   "name": zod.string().min(1),
   "size": zod.number().min(requestStorageUploadUrlBodySizeMin),
@@ -2280,8 +2262,6 @@ export const RequestStorageUploadUrlResponse = zod.object({
 export const CreateQuoteVariationParams = zod.object({
   "id": zod.coerce.number()
 })
-
-
 
 
 export const CreateQuoteVariationBody = zod.object({
@@ -2321,7 +2301,6 @@ export const ListTeamMembersResponseItem = zod.object({
   "createdAt": zod.coerce.date()
 })
 export const ListTeamMembersResponse = zod.array(ListTeamMembersResponseItem)
-
 
 
 export const createTeamMemberBodyLinkedClerkUserIdRegExp = new RegExp('^user_[A-Za-z0-9]+$');
@@ -2384,8 +2363,6 @@ export const DeleteTeamMemberResponse = zod.object({
 export const LinkTeamMemberAccountParams = zod.object({
   "memberId": zod.coerce.number()
 })
-
-
 
 
 export const LinkTeamMemberAccountBody = zod.object({
@@ -2563,9 +2540,7 @@ export const ListPortfolioEntriesResponseItem = zod.object({
 export const ListPortfolioEntriesResponse = zod.array(ListPortfolioEntriesResponseItem)
 
 
-
 export const createPortfolioEntryBodyRatingMax = 5;
-
 
 
 export const CreatePortfolioEntryBody = zod.object({
@@ -2589,7 +2564,6 @@ export const UpdatePortfolioEntryParams = zod.object({
 
 
 export const updatePortfolioEntryBodyRatingMax = 5;
-
 
 
 export const UpdatePortfolioEntryBody = zod.object({
@@ -2674,10 +2648,6 @@ export const ListReferralSourcesResponseItem = zod.object({
 export const ListReferralSourcesResponse = zod.array(ListReferralSourcesResponseItem)
 
 
-
-
-
-
 export const CreateReferralSourceBody = zod.object({
   "code": zod.string().min(1),
   "name": zod.string().min(1),
@@ -2707,9 +2677,6 @@ export const ListSignUpLeadsResponseItem = zod.object({
 export const ListSignUpLeadsResponse = zod.array(ListSignUpLeadsResponseItem)
 
 
-
-
-
 export const CreateSignUpLeadBody = zod.object({
   "name": zod.string().min(1),
   "email": zod.string().optional(),
@@ -2721,5 +2688,4 @@ export const CreateSignUpLeadBody = zod.object({
   "utmCampaign": zod.string().optional(),
   "notes": zod.string().optional()
 })
-
 

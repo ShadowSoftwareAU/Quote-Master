@@ -87,6 +87,34 @@ paths:
         "502":
           description: Profile saved but Clerk metadata synchronisation failed
 
+  /settings/seed-demo-data:
+    post:
+      operationId: seedDemoData
+      tags: [profile]
+      summary: Seed temporary presentation data for the authenticated Owner
+      description: Development-only action that creates a scoped sample workspace. It is unavailable in production and can only be run once per workspace.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/SeedDemoDataInput" }
+      responses:
+        "201":
+          description: Demo workspace created
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/SeedDemoDataResponse" }
+        "400":
+          description: Invalid request
+        "401":
+          description: Authentication required
+        "403":
+          description: Owner role is required
+        "404":
+          description: Unavailable outside development
+        "409":
+          description: Demo data already exists for this workspace
+
   /settings/profile/master-builder:
     patch:
       operationId: setMasterBuilderFlag
@@ -1328,6 +1356,34 @@ components:
       required: [isMasterBuilder]
       properties:
         isMasterBuilder: { type: boolean }
+
+    SeedDemoDataInput:
+      type: object
+      additionalProperties: false
+
+    SeedDemoDataResponse:
+      type: object
+      required: [seeded, counts, customerIds, materialIds, quoteIds, masterProjectId]
+      properties:
+        seeded: { type: boolean, const: true }
+        counts:
+          type: object
+          required: [customers, materials, quotes, masterProjects]
+          properties:
+            customers: { type: integer, const: 5 }
+            materials: { type: integer, const: 10 }
+            quotes: { type: integer, const: 4 }
+            masterProjects: { type: integer, const: 1 }
+        customerIds:
+          type: array
+          items: { type: integer }
+        materialIds:
+          type: array
+          items: { type: integer }
+        quoteIds:
+          type: array
+          items: { type: integer }
+        masterProjectId: { type: integer }
 
     DeletionSuccess:
       type: object

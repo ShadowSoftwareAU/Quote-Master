@@ -6,7 +6,13 @@ import { useQueryClient } from "@tanstack/react-query";
 import { 
   useGetProfileSettings, 
   getGetProfileSettingsQueryKey, 
+  getGetDashboardSummaryQueryKey,
+  getGetPnlReportQueryKey,
+  getListCustomersQueryKey,
+  getListMaterialsQueryKey,
+  getListQuotesQueryKey,
   getListMasterProjectsQueryKey,
+  useSeedDemoData,
   useUpdateProfileSettings 
 } from "@workspace/api-client-react";
 import { useEffect, useRef } from "react";
@@ -23,7 +29,7 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { UserCog } from "lucide-react";
+import { Database, UserCog } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Skeleton } from "@/components/ui/skeleton";
 
@@ -50,6 +56,7 @@ export default function ProfileSettings() {
   });
 
   const updateProfile = useUpdateProfileSettings();
+  const seedDemoData = useSeedDemoData();
 
   const form = useForm<ProfileValues>({
     resolver: zodResolver(profileSchema),
@@ -104,6 +111,38 @@ export default function ProfileSettings() {
           });
         },
       }
+    );
+  }
+
+  function seedPresentationData() {
+    seedDemoData.mutate(
+      { data: {} },
+      {
+        onSuccess: (result) => {
+          void Promise.all([
+            queryClient.invalidateQueries({ queryKey: getListCustomersQueryKey() }),
+            queryClient.invalidateQueries({ queryKey: getListMaterialsQueryKey() }),
+            queryClient.invalidateQueries({ queryKey: getListQuotesQueryKey() }),
+            queryClient.invalidateQueries({ queryKey: getListMasterProjectsQueryKey() }),
+            queryClient.invalidateQueries({ queryKey: getGetDashboardSummaryQueryKey() }),
+            queryClient.invalidateQueries({ queryKey: getGetPnlReportQueryKey() }),
+          ]);
+          toast({
+            title: "Demo data ready",
+            description: `Created ${result.counts.customers} customers, ${result.counts.materials} materials, ${result.counts.quotes} quotes, and a Master Project.`,
+          });
+        },
+        onError: (err: unknown) => {
+          const apiError = err as { status?: number; message?: string };
+          toast({
+            title: apiError.status === 409 ? "Demo data already exists" : "Could not seed demo data",
+            description: apiError.status === 409
+              ? "This Owner workspace has already been prepared for the presentation."
+              : apiError.message || "Please try again.",
+            variant: apiError.status === 409 ? "default" : "destructive",
+          });
+        },
+      },
     );
   }
 
@@ -246,6 +285,36 @@ export default function ProfileSettings() {
           </Form>
         </CardContent>
       </Card>
+
+      {profile?.role === "Owner" && (
+        <Card className="border-2 border-dashed border-amber-500/60 shadow-sm">
+          <CardHeader className="bg-amber-500/10 border-b pb-6">
+            <div className="flex items-center gap-3">
+              <Database className="h-5 w-5 text-amber-700 dark:text-amber-400" />
+              <CardTitle className="font-display font-black uppercase text-xl">
+                Temporary Demo Setup
+              </CardTitle>
+            </div>
+            <CardDescription>
+              Development only. Creates presentation customers, materials, quotes, and one Master Project for this Owner workspace.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="pt-6 space-y-3">
+            <Button
+              type="button"
+              variant="outline"
+              className="w-full h-12 font-bold uppercase tracking-wider"
+              disabled={seedDemoData.isPending}
+              onClick={seedPresentationData}
+            >
+              {seedDemoData.isPending ? "Seeding Demo Data..." : "Seed Demo Data"}
+            </Button>
+            <p className="text-xs text-muted-foreground">
+              This action can only run once and is not available in production.
+            </p>
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 }

@@ -14,6 +14,7 @@ import pdfRouter from "./pdf";
 import masterProjectsRouter from "./master-projects";
 import profilesRouter from "./profiles";
 import tradeTemplatesRouter from "./trade-templates";
+import demoSeedRouter from "./demo-seed";
 
 const router: IRouter = Router();
 
@@ -32,5 +33,6 @@ router.use(pdfRouter);
 router.use(masterProjectsRouter);
 router.use(profilesRouter);
 router.use(tradeTemplatesRouter);
+router.use(demoSeedRouter);
 
 export default router;

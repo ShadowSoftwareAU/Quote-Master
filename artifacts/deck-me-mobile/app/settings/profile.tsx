@@ -16,7 +16,13 @@ import { useQueryClient } from "@tanstack/react-query";
 import {
   useGetProfileSettings,
   useUpdateProfileSettings,
+  useSeedDemoData,
   getGetProfileSettingsQueryKey,
+  getGetDashboardSummaryQueryKey,
+  getGetPnlReportQueryKey,
+  getListCustomersQueryKey,
+  getListMaterialsQueryKey,
+  getListQuotesQueryKey,
   getListMasterProjectsQueryKey,
   type BusinessRole,
 } from "@workspace/api-client-react";
@@ -41,6 +47,7 @@ export default function ProfileSettingsScreen() {
   });
 
   const updateProfile = useUpdateProfileSettings();
+  const seedDemoData = useSeedDemoData();
 
   const [role, setRole] = useState<BusinessRole | "">("");
   const [tradeType, setTradeType] = useState("");
@@ -92,6 +99,34 @@ export default function ProfileSettingsScreen() {
       onError: (err: any) => {
         Alert.alert("Could not save profile", err?.message || "Please check your inputs and try again.");
       }
+    });
+  }
+
+  function seedPresentationData() {
+    seedDemoData.mutate({ data: {} }, {
+      onSuccess: (result) => {
+        void Promise.all([
+          queryClient.invalidateQueries({ queryKey: getListCustomersQueryKey() }),
+          queryClient.invalidateQueries({ queryKey: getListMaterialsQueryKey() }),
+          queryClient.invalidateQueries({ queryKey: getListQuotesQueryKey() }),
+          queryClient.invalidateQueries({ queryKey: getListMasterProjectsQueryKey() }),
+          queryClient.invalidateQueries({ queryKey: getGetDashboardSummaryQueryKey() }),
+          queryClient.invalidateQueries({ queryKey: getGetPnlReportQueryKey() }),
+        ]);
+        Alert.alert(
+          "Demo Data Ready",
+          `Created ${result.counts.customers} customers, ${result.counts.materials} materials, ${result.counts.quotes} quotes, and a Master Project.`,
+        );
+      },
+      onError: (err: unknown) => {
+        const apiError = err as { status?: number; message?: string };
+        Alert.alert(
+          apiError.status === 409 ? "Demo Data Already Exists" : "Could Not Seed Demo Data",
+          apiError.status === 409
+            ? "This Owner workspace has already been prepared for the presentation."
+            : apiError.message || "Please try again.",
+        );
+      },
     });
   }
 
@@ -207,6 +242,48 @@ export default function ProfileSettingsScreen() {
             {busy ? "SAVING…" : "SAVE PROFILE"}
           </Text>
         </Pressable>
+
+        {profile?.role === "Owner" ? (
+          <View
+            style={{
+              backgroundColor: colors.card,
+              borderColor: colors.primary,
+              borderRadius: colors.radius,
+              borderStyle: "dashed",
+              borderWidth: 1,
+              gap: 10,
+              padding: 16,
+            }}
+          >
+            <View style={{ alignItems: "center", flexDirection: "row", gap: 8 }}>
+              <Feather color={colors.primary} name="database" size={18} />
+              <Text style={{ color: colors.foreground, fontFamily: "Chivo_900Black", fontSize: 16 }}>
+                TEMPORARY DEMO SETUP
+              </Text>
+            </View>
+            <Text style={{ color: colors.mutedForeground, fontFamily: "Inter_400Regular", fontSize: 12, lineHeight: 18 }}>
+              Development only. Creates presentation customers, materials, quotes, and one Master Project for this Owner workspace.
+            </Text>
+            <Pressable
+              disabled={seedDemoData.isPending}
+              onPress={seedPresentationData}
+              style={({ pressed }) => ({
+                alignItems: "center",
+                backgroundColor: colors.primary,
+                borderRadius: colors.radius,
+                opacity: seedDemoData.isPending ? 0.45 : pressed ? 0.75 : 1,
+                paddingVertical: 14,
+              })}
+            >
+              <Text style={{ color: colors.primaryForeground, fontFamily: "Inter_700Bold", letterSpacing: 1 }}>
+                {seedDemoData.isPending ? "SEEDING DEMO DATA…" : "SEED DEMO DATA"}
+              </Text>
+            </Pressable>
+            <Text style={{ color: colors.mutedForeground, fontFamily: "Inter_400Regular", fontSize: 11 }}>
+              This action can only run once and is not available in production.
+            </Text>
+          </View>
+        ) : null}
       </ScrollView>
     </View>
   );

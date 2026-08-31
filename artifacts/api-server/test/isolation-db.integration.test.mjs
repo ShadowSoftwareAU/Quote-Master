@@ -14,7 +14,10 @@ const assignmentOwner = `${fixture}-assignment-owner`;
 const linkedWorker = `${fixture}-linked-worker`;
 const profilelessWorker = `${fixture}-profileless-worker`;
 const unlinkedWorker = `${fixture}-unlinked-worker`;
+const demoOwner = `${fixture}-demo-owner`;
+const demoEmployee = `${fixture}-demo-employee`;
 const assignmentUsers = [assignmentOwner, linkedWorker, profilelessWorker, unlinkedWorker];
+const profileUsers = [userA, userB, demoOwner, demoEmployee, ...assignmentUsers];
 let tempDir;
 let server;
 let baseUrl;
@@ -23,6 +26,7 @@ let processDueProfileMetadataJobs;
 const createdCustomerIds = [];
 const createdQuoteIds = [];
 const createdProjectIds = [];
+const createdMaterialIds = [];
 const createdBookingIds = [];
 const createdMemberIds = [];
 
@@ -142,14 +146,18 @@ after(async () => {
     }
     if (createdCustomerIds.length) {
       await pool.query("DELETE FROM bookings WHERE customer_id = ANY($1::int[])", [createdCustomerIds]);
+      await pool.query("DELETE FROM customers WHERE id = ANY($1::int[])", [createdCustomerIds]);
+    }
+    if (createdMaterialIds.length) {
+      await pool.query("DELETE FROM materials WHERE id = ANY($1::int[])", [createdMaterialIds]);
     }
     await pool.query(
       "DELETE FROM profile_metadata_outbox WHERE clerk_user_id = ANY($1::text[])",
-      [[userA, userB, ...assignmentUsers]],
+      [profileUsers],
     );
     await pool.query(
       "DELETE FROM business_profiles WHERE clerk_user_id = ANY($1::text[])",
-      [[userA, userB, ...assignmentUsers]],
+      [profileUsers],
     );
     await pool.query("DELETE FROM customers WHERE name LIKE $1", [`${fixture}%`]);
   } finally {
@@ -297,6 +305,98 @@ test("failed Clerk metadata delivery retries from the durable outbox", { skip: !
     { clerk_user_id: userA, is_master_builder: true },
     { clerk_user_id: userB, is_master_builder: true },
   ]);
+});
+
+test("development demo seed enforces access, scope, counts, states, and linkage", { skip: !hasDatabase }, async () => {
+  for (const [userId, role] of [[demoOwner, "Owner"], [demoEmployee, "Employee"]]) {
+    const onboarding = await api(userId, "POST", "/onboarding", {
+      businessName: `${fixture} ${role} Demo`,
+      phoneNumber: "+61 412 345 678",
+      tradeType: "Builder",
+      licenseNumber: "NSW 123456C",
+      role,
+    });
+    assert.equal(onboarding.response.status, 201);
+  }
+
+  const originalNodeEnv = process.env.NODE_ENV;
+  try {
+    process.env.NODE_ENV = "production";
+    assert.equal(
+      (await api(demoOwner, "POST", "/settings/seed-demo-data", {})).response.status,
+      404,
+    );
+
+    process.env.NODE_ENV = "development";
+    assert.equal(
+      (await api(null, "POST", "/settings/seed-demo-data", {})).response.status,
+      401,
+    );
+    assert.equal(
+      (await api(demoEmployee, "POST", "/settings/seed-demo-data", {})).response.status,
+      403,
+    );
+    assert.equal(
+      (await api(demoOwner, "POST", "/settings/seed-demo-data", { clerkUserId: demoEmployee })).response.status,
+      400,
+    );
+
+    const seeded = await api(demoOwner, "POST", "/settings/seed-demo-data", {});
+    assert.equal(seeded.response.status, 201);
+    assert.deepEqual(seeded.json.counts, {
+      customers: 5,
+      materials: 10,
+      quotes: 4,
+      masterProjects: 1,
+    });
+    createdCustomerIds.push(...seeded.json.customerIds);
+    createdMaterialIds.push(...seeded.json.materialIds);
+    createdQuoteIds.push(...seeded.json.quoteIds);
+    createdProjectIds.push(seeded.json.masterProjectId);
+
+    const customerScope = await pool.query(
+      "SELECT count(*)::int AS count FROM customers WHERE clerk_user_id = $1 AND id = ANY($2::int[])",
+      [demoOwner, seeded.json.customerIds],
+    );
+    assert.equal(customerScope.rows[0].count, 5);
+    const materialScope = await pool.query(
+      "SELECT count(*)::int AS count FROM materials WHERE clerk_user_id = $1 AND id = ANY($2::int[])",
+      [demoOwner, seeded.json.materialIds],
+    );
+    assert.equal(materialScope.rows[0].count, 10);
+    const quoteScope = await pool.query(
+      "SELECT status, master_project_id FROM quotes WHERE clerk_user_id = $1 AND id = ANY($2::int[]) ORDER BY status",
+      [demoOwner, seeded.json.quoteIds],
+    );
+    assert.deepEqual(
+      quoteScope.rows.map(({ status }) => status).sort(),
+      ["accepted", "draft", "rejected", "sent"],
+    );
+    assert.equal(
+      quoteScope.rows.filter(({ master_project_id }) => master_project_id === seeded.json.masterProjectId).length,
+      2,
+    );
+    const projectScope = await pool.query(
+      `SELECT count(*)::int AS count
+         FROM master_projects mp
+         JOIN customers c ON c.id = mp.customer_id
+        WHERE mp.id = $1 AND c.clerk_user_id = $2`,
+      [seeded.json.masterProjectId, demoOwner],
+    );
+    assert.equal(projectScope.rows[0].count, 1);
+
+    const foreignCustomers = await api(demoEmployee, "GET", "/customers");
+    assert.ok(foreignCustomers.json.every(({ id }) => !seeded.json.customerIds.includes(id)));
+    const foreignQuotes = await api(demoEmployee, "GET", "/quotes");
+    assert.ok(foreignQuotes.json.every(({ id }) => !seeded.json.quoteIds.includes(id)));
+
+    const duplicate = await api(demoOwner, "POST", "/settings/seed-demo-data", {});
+    assert.equal(duplicate.response.status, 409);
+    assert.equal(duplicate.json.code, "DEMO_SEED_EXISTS");
+  } finally {
+    if (originalNodeEnv === undefined) delete process.env.NODE_ENV;
+    else process.env.NODE_ENV = originalNodeEnv;
+  }
 });
 
 test("database-backed customer and nested route isolation", { skip: !hasDatabase }, async () => {
