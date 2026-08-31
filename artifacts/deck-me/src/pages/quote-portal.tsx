@@ -176,10 +176,7 @@ export default function QuotePortalPage() {
       <header className="bg-secondary text-secondary-foreground py-6 px-6 md:px-12 sticky top-0 z-10 shadow-md">
         <div className="max-w-6xl mx-auto flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="bg-primary p-2 rounded-md">
-              <HardHat className="w-6 h-6 text-primary-foreground" />
-            </div>
-            <span className="font-display font-black text-xl tracking-tight uppercase">QUOTE MASTER</span>
+            <img src={`${import.meta.env.BASE_URL}quote-master-logo.jpg`} alt="Quote Master" className="w-48 h-auto object-contain" />
           </div>
           {isAccepted && (
             <div className="flex items-center gap-2 bg-green-500/20 text-green-400 px-4 py-1.5 rounded-full font-medium text-sm border border-green-500/30">

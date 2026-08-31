@@ -20,6 +20,7 @@ const navItems = [
   { href: "/finance", label: "Finance", icon: PieChart },
   { href: "/settings/profile", label: "Profile", icon: UserCog },
 ];
+const LOGO_SRC = `${import.meta.env.BASE_URL}quote-master-logo.jpg`;
 
 export function Layout({ children }: { children: ReactNode }) {
   const [location] = useLocation();
@@ -40,7 +41,7 @@ export function Layout({ children }: { children: ReactNode }) {
       <aside className="hidden md:flex w-64 flex-col bg-sidebar border-r border-sidebar-border text-sidebar-foreground">
         <div className="h-16 flex items-center px-6 border-b border-sidebar-border">
           <Link href="/" className="flex items-center gap-2 font-display font-black text-xl text-sidebar-primary">
-            <Hammer className="w-6 h-6" /> QUOTE MASTER
+            <img src={LOGO_SRC} alt="Quote Master" className="w-44 h-auto object-contain" />
           </Link>
         </div>
         <div className="px-6 py-4 border-b border-sidebar-border">
@@ -78,7 +79,7 @@ export function Layout({ children }: { children: ReactNode }) {
       {/* Mobile Header & Bottom Nav */}
       <div className="md:hidden flex h-14 items-center justify-between px-4 border-b bg-card">
         <Link href="/" className="flex items-center gap-2 font-display font-black text-xl text-primary">
-          <Hammer className="w-6 h-6" /> QUOTE MASTER
+          <img src={LOGO_SRC} alt="Quote Master" className="w-40 h-auto object-contain" />
         </Link>
         <div className="flex items-center gap-1">
           <Show when="signed-out">
@@ -98,7 +99,7 @@ export function Layout({ children }: { children: ReactNode }) {
             <SheetContent side="left" className="w-64 p-0 bg-sidebar text-sidebar-foreground border-r-sidebar-border">
             <div className="h-16 flex items-center px-6 border-b border-sidebar-border">
               <span className="flex items-center gap-2 font-display font-black text-xl text-sidebar-primary">
-                <Hammer className="w-6 h-6" /> QUOTE MASTER
+                <img src={LOGO_SRC} alt="Quote Master" className="w-44 h-auto object-contain" />
               </span>
             </div>
             <nav className="py-4 px-4 space-y-1 overflow-y-auto">

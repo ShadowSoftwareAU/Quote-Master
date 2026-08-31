@@ -222,7 +222,7 @@ function App() {
         }}
         appearance={{
           theme: shadcn,
-          options: { logoPlacement: "inside", logoImageUrl: `${window.location.origin}${basePath}/logo.svg`, logoLinkUrl: basePath || "/" },
+          options: { logoPlacement: "inside", logoImageUrl: `${window.location.origin}${basePath}/quote-master-logo.jpg`, logoLinkUrl: basePath || "/" },
           elements: {
             socialButtonsBlockButton: "!text-black",
             socialButtonsBlockButtonText: "!text-black",

@@ -7,6 +7,7 @@ import {
   Pressable,
   Text,
   View,
+  Image,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
@@ -223,29 +224,8 @@ export default function HomeScreen() {
           }}
         >
           <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
-            <View
-              style={{
-                width: 38,
-                height: 38,
-                backgroundColor: colors.primary,
-                alignItems: "center",
-                justifyContent: "center",
-                borderRadius: 5,
-              }}
-            >
-              <Feather name="tool" size={20} color="#fff" />
-            </View>
+            <Image source={require("../../assets/images/quote-master-logo.jpg")} style={{ width: 190, height: 54 }} resizeMode="contain" />
             <View>
-              <Text
-                style={{
-                  fontFamily: "Chivo_900Black",
-                  color: "#fff",
-                  fontSize: 22,
-                  letterSpacing: 1,
-                }}
-              >
-                QUOTE MASTER
-              </Text>
               <Text
                 style={{
                   fontFamily: "Inter_500Medium",

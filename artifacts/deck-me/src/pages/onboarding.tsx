@@ -83,9 +83,7 @@ export default function Onboarding() {
     <div className="min-h-[100dvh] bg-background flex flex-col items-center justify-center p-4">
       <div className="w-full max-w-lg space-y-6">
         <div className="flex flex-col items-center text-center space-y-2 mb-8">
-          <div className="flex items-center justify-center w-16 h-16 rounded-2xl bg-primary mb-4">
-            <Hammer className="w-8 h-8 text-primary-foreground" />
-          </div>
+          <img src={`${import.meta.env.BASE_URL}quote-master-logo.jpg`} alt="Quote Master" className="w-64 h-auto object-contain mb-4" />
           <h1 className="font-display font-black text-4xl uppercase tracking-tight text-foreground">Welcome to the Crew</h1>
           <p className="text-muted-foreground font-medium">Let's get your details set up so you can start quoting jobs.</p>
         </div>
