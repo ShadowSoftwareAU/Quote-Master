@@ -103,6 +103,7 @@ after(async () => {
       await pool.query("DELETE FROM master_projects WHERE id = ANY($1::int[])", [createdProjectIds]);
     }
     if (createdBookingIds.length) {
+      await pool.query("DELETE FROM time_entries WHERE job_id = ANY($1::int[])", [createdBookingIds]);
       await pool.query("DELETE FROM job_assignments WHERE job_id = ANY($1::int[])", [createdBookingIds]);
     }
     if (createdMemberIds.length) {
@@ -786,6 +787,240 @@ test("linked workers only receive assigned work, including profileless linked ac
   }
   assert.equal(
     (await api(unlinkedWorker, "GET", `/quotes/${quoteForLinkedWorker.id}`)).response.status,
+    404,
+  );
+
+  const photoPath = "/objects/uploads/not-owned/booking-photo.jpg";
+  for (const workerId of [linkedWorker, profilelessWorker, unlinkedWorker]) {
+    assert.equal(
+      (await api(workerId, "POST", `/bookings/${bookingForLinkedWorker.id}/photos`, {
+        objectPath: photoPath,
+      })).response.status,
+      403,
+    );
+    assert.equal(
+      (await api(workerId, "DELETE", `/bookings/${bookingForLinkedWorker.id}/photos`, {
+        objectPath: photoPath,
+      })).response.status,
+      403,
+    );
+    assert.equal(
+      (await api(
+        workerId,
+        "POST",
+        `/team/${memberForLinkedWorker.json.id}/assign/${bookingForProfilelessWorker.id}`,
+        { roleOnJob: "Supervisor" },
+      )).response.status,
+      403,
+    );
+    assert.equal(
+      (await api(
+        workerId,
+        "GET",
+        `/bookings/${bookingForLinkedWorker.id}/assignments`,
+      )).response.status,
+      403,
+    );
+    assert.equal(
+      (await api(
+        workerId,
+        "DELETE",
+        `/bookings/${bookingForLinkedWorker.id}/assignments`,
+        { teamMemberId: memberForLinkedWorker.json.id },
+      )).response.status,
+      403,
+    );
+    assert.equal(
+      (await api(workerId, "GET", `/quotes/${quoteForLinkedWorker.id}/pdf`)).response.status,
+      404,
+    );
+  }
+
+  const bookingsAfterPhotoAttempts = await api(assignmentOwner, "GET", "/bookings");
+  assert.equal(bookingsAfterPhotoAttempts.response.status, 200);
+  assert.deepEqual(
+    bookingsAfterPhotoAttempts.json.find(
+      (booking) => booking.id === bookingForLinkedWorker.id,
+    ).photos,
+    [],
+  );
+
+  const addOwnerTime = async (teamMemberId, jobId, minuteOffset) => {
+    const clockOn = new Date(Date.UTC(2030, 1, 3, 9, minuteOffset));
+    const clockOff = new Date(clockOn.getTime() + 30 * 60 * 1000);
+    const result = await api(assignmentOwner, "POST", "/time/manual", {
+      teamMemberId,
+      jobId,
+      durationMinutes: 30,
+      clockOn: clockOn.toISOString(),
+      clockOff: clockOff.toISOString(),
+      notes: `${fixture}-owner-time-${minuteOffset}`,
+    });
+    assert.equal(result.response.status, 201);
+    return result.json;
+  };
+
+  const workerCases = [
+    {
+      workerId: linkedWorker,
+      memberId: memberForLinkedWorker.json.id,
+      bookingId: bookingForLinkedWorker.id,
+      otherMemberId: memberForProfilelessWorker.json.id,
+      otherBookingId: bookingForProfilelessWorker.id,
+    },
+    {
+      workerId: profilelessWorker,
+      memberId: memberForProfilelessWorker.json.id,
+      bookingId: bookingForProfilelessWorker.id,
+      otherMemberId: memberForLinkedWorker.json.id,
+      otherBookingId: bookingForLinkedWorker.id,
+    },
+  ];
+
+  for (const [index, worker] of workerCases.entries()) {
+    const ownAssignedEntry = await addOwnerTime(
+      worker.memberId,
+      worker.bookingId,
+      index * 3,
+    );
+    const otherMemberAssignedEntry = await addOwnerTime(
+      worker.otherMemberId,
+      worker.bookingId,
+      index * 3 + 1,
+    );
+    const ownUnassignedEntry = await addOwnerTime(
+      worker.memberId,
+      worker.otherBookingId,
+      index * 3 + 2,
+    );
+
+    const workerManualEntry = await api(worker.workerId, "POST", "/time/manual", {
+      teamMemberId: worker.memberId,
+      jobId: worker.bookingId,
+      durationMinutes: 15,
+      clockOn: "2030-02-04T09:00:00.000Z",
+      clockOff: "2030-02-04T09:15:00.000Z",
+      notes: `${fixture}-worker-manual`,
+    });
+    assert.equal(workerManualEntry.response.status, 201);
+
+    const clockOn = await api(worker.workerId, "POST", "/time/clock-on", {
+      teamMemberId: worker.memberId,
+      jobId: worker.bookingId,
+      notes: `${fixture}-worker-clock`,
+    });
+    assert.equal(clockOn.response.status, 201);
+    const clockOff = await api(worker.workerId, "POST", "/time/clock-off", {
+      teamMemberId: worker.memberId,
+      jobId: worker.bookingId,
+    });
+    assert.equal(clockOff.response.status, 200);
+    assert.equal(clockOff.json.id, clockOn.json.id);
+
+    const jobEntries = await api(worker.workerId, "GET", `/time/job/${worker.bookingId}`);
+    assert.equal(jobEntries.response.status, 200);
+    assert.ok(jobEntries.json.some((entry) => entry.id === ownAssignedEntry.id));
+    assert.ok(jobEntries.json.some((entry) => entry.id === workerManualEntry.json.id));
+    assert.ok(jobEntries.json.every((entry) => entry.teamMemberId === worker.memberId));
+    assert.ok(!jobEntries.json.some((entry) => entry.id === otherMemberAssignedEntry.id));
+
+    const memberEntries = await api(
+      worker.workerId,
+      "GET",
+      `/time/member/${worker.memberId}`,
+    );
+    assert.equal(memberEntries.response.status, 200);
+    assert.ok(memberEntries.json.some((entry) => entry.id === ownAssignedEntry.id));
+    assert.ok(memberEntries.json.every((entry) => entry.jobId === worker.bookingId));
+    assert.ok(!memberEntries.json.some((entry) => entry.id === ownUnassignedEntry.id));
+
+    assert.equal(
+      (await api(worker.workerId, "GET", `/time/job/${worker.otherBookingId}`)).response.status,
+      404,
+    );
+    assert.equal(
+      (await api(worker.workerId, "GET", `/time/member/${worker.otherMemberId}`)).response.status,
+      404,
+    );
+    assert.equal(
+      (await api(worker.workerId, "POST", "/time/manual", {
+        teamMemberId: worker.memberId,
+        jobId: worker.otherBookingId,
+        durationMinutes: 10,
+      })).response.status,
+      404,
+    );
+    assert.equal(
+      (await api(worker.workerId, "POST", "/time/clock-on", {
+        teamMemberId: worker.otherMemberId,
+        jobId: worker.bookingId,
+      })).response.status,
+      404,
+    );
+  }
+
+  for (const [method, pathname, body] of [
+    ["POST", "/time/clock-on", {
+      teamMemberId: memberForLinkedWorker.json.id,
+      jobId: bookingForLinkedWorker.id,
+    }],
+    ["POST", "/time/clock-off", {
+      teamMemberId: memberForLinkedWorker.json.id,
+      jobId: bookingForLinkedWorker.id,
+    }],
+    ["POST", "/time/manual", {
+      teamMemberId: memberForLinkedWorker.json.id,
+      jobId: bookingForLinkedWorker.id,
+      durationMinutes: 10,
+    }],
+    ["GET", `/time/job/${bookingForLinkedWorker.id}`, undefined],
+    ["GET", `/time/member/${memberForLinkedWorker.json.id}`, undefined],
+  ]) {
+    assert.equal(
+      (await api(unlinkedWorker, method, pathname, body)).response.status,
+      404,
+    );
+  }
+
+  const removedAssignment = await api(
+    assignmentOwner,
+    "DELETE",
+    `/bookings/${bookingForLinkedWorker.id}/assignments`,
+    { teamMemberId: memberForLinkedWorker.json.id },
+  );
+  assert.equal(removedAssignment.response.status, 200);
+  assert.equal(
+    (await api(linkedWorker, "GET", `/time/job/${bookingForLinkedWorker.id}`)).response.status,
+    404,
+  );
+  assert.equal(
+    (await api(linkedWorker, "POST", "/time/manual", {
+      teamMemberId: memberForLinkedWorker.json.id,
+      jobId: bookingForLinkedWorker.id,
+      durationMinutes: 10,
+    })).response.status,
+    404,
+  );
+
+  const unlinked = await api(
+    assignmentOwner,
+    "DELETE",
+    `/team/${memberForProfilelessWorker.json.id}/account`,
+  );
+  assert.equal(unlinked.response.status, 200);
+  assert.equal(
+    (await api(
+      profilelessWorker,
+      "GET",
+      `/time/member/${memberForProfilelessWorker.json.id}`,
+    )).response.status,
+    404,
+  );
+  assert.equal(
+    (await api(profilelessWorker, "POST", "/time/clock-on", {
+      teamMemberId: memberForProfilelessWorker.json.id,
+      jobId: bookingForProfilelessWorker.id,
+    })).response.status,
     404,
   );
 });

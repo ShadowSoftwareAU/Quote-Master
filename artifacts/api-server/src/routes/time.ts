@@ -1,7 +1,13 @@
 import { Router, type IRouter } from "express";
 import { getAuth } from "@clerk/express";
-import { eq, asc, and, isNull } from "drizzle-orm";
-import { db, timeEntriesTable, teamMembersTable, bookingsTable } from "@workspace/db";
+import { eq, asc, and, isNull, exists } from "drizzle-orm";
+import {
+  db,
+  timeEntriesTable,
+  teamMembersTable,
+  bookingsTable,
+  jobAssignmentsTable,
+} from "@workspace/db";
 import {
   ClockOnBody,
   ClockOffBody,
@@ -9,11 +15,80 @@ import {
   ListTimeEntriesForJobParams,
   ListTimeEntriesForMemberParams,
 } from "@workspace/api-zod";
+import { getBusinessRole } from "../middlewares/businessRoleAuth";
+import { getLinkedTeamMember } from "../lib/assignmentAccess";
 
 const router: IRouter = Router();
 
-function ownedMember(userId: string) {
-  return eq(teamMembersTable.clerkUserId, userId);
+type LinkedMember = NonNullable<Awaited<ReturnType<typeof getLinkedTeamMember>>>;
+type TimeAccess =
+  | { kind: "owner"; userId: string }
+  | { kind: "linked"; userId: string; member: LinkedMember }
+  | { kind: "denied" };
+
+async function resolveTimeAccess(userId: string): Promise<TimeAccess> {
+  const member = await getLinkedTeamMember(userId);
+  if (member) return { kind: "linked", userId, member };
+  if (await getBusinessRole(userId) === "Subcontractor") return { kind: "denied" };
+  return { kind: "owner", userId };
+}
+
+function memberScope(access: Exclude<TimeAccess, { kind: "denied" }>, memberId: number) {
+  return access.kind === "linked"
+    ? and(
+        eq(teamMembersTable.id, access.member.id),
+        eq(teamMembersTable.id, memberId),
+        eq(teamMembersTable.clerkUserId, access.member.ownerClerkUserId!),
+        eq(teamMembersTable.linkedClerkUserId, access.userId),
+        eq(teamMembersTable.active, true),
+      )
+    : and(
+        eq(teamMembersTable.id, memberId),
+        eq(teamMembersTable.clerkUserId, access.userId),
+      );
+}
+
+function bookingScope(access: Exclude<TimeAccess, { kind: "denied" }>, jobId: number) {
+  return access.kind === "linked"
+    ? and(
+        eq(bookingsTable.id, jobId),
+        eq(bookingsTable.clerkUserId, access.member.ownerClerkUserId!),
+        exists(
+          db
+            .select({ id: jobAssignmentsTable.id })
+            .from(jobAssignmentsTable)
+            .where(and(
+              eq(jobAssignmentsTable.jobId, bookingsTable.id),
+              eq(jobAssignmentsTable.teamMemberId, access.member.id),
+            )),
+        ),
+      )
+    : and(
+        eq(bookingsTable.id, jobId),
+        eq(bookingsTable.clerkUserId, access.userId),
+      );
+}
+
+function ownerId(access: Exclude<TimeAccess, { kind: "denied" }>) {
+  return access.kind === "linked" ? access.member.ownerClerkUserId! : access.userId;
+}
+
+function linkedEntryScope(access: Exclude<TimeAccess, { kind: "denied" }>) {
+  if (access.kind !== "linked") return undefined;
+  return and(
+    eq(timeEntriesTable.teamMemberId, access.member.id),
+    eq(teamMembersTable.linkedClerkUserId, access.userId),
+    eq(teamMembersTable.active, true),
+    exists(
+      db
+        .select({ id: jobAssignmentsTable.id })
+        .from(jobAssignmentsTable)
+        .where(and(
+          eq(jobAssignmentsTable.jobId, timeEntriesTable.jobId),
+          eq(jobAssignmentsTable.teamMemberId, access.member.id),
+        )),
+    ),
+  );
 }
 
 function entryToJson(
@@ -48,25 +123,36 @@ router.post("/time/clock-on", async (req, res): Promise<void> => {
     return;
   }
   const d = parsed.data;
+  const access = await resolveTimeAccess(userId);
+  if (access.kind === "denied") {
+    res.status(404).json({ error: "Team member not found" });
+    return;
+  }
 
   const result = await db.transaction(async (tx) => {
     const [member] = await tx
       .select({ id: teamMembersTable.id, name: teamMembersTable.name })
       .from(teamMembersTable)
-      .where(and(
-        eq(teamMembersTable.id, d.teamMemberId),
-        ownedMember(userId),
-      ))
+      .where(memberScope(access, d.teamMemberId))
       .for("update");
     if (!member) return { error: "Team member not found" as const };
+
+    if (access.kind === "linked") {
+      const [assignment] = await tx
+        .select({ id: jobAssignmentsTable.id })
+        .from(jobAssignmentsTable)
+        .where(and(
+          eq(jobAssignmentsTable.jobId, d.jobId),
+          eq(jobAssignmentsTable.teamMemberId, access.member.id),
+        ))
+        .for("update");
+      if (!assignment) return { error: "Booking not found" as const };
+    }
 
     const [booking] = await tx
       .select({ id: bookingsTable.id, title: bookingsTable.title })
       .from(bookingsTable)
-      .where(and(
-        eq(bookingsTable.id, d.jobId),
-        eq(bookingsTable.clerkUserId, userId),
-      ))
+      .where(bookingScope(access, d.jobId))
       .for("update");
     if (!booking) return { error: "Booking not found" as const };
 
@@ -75,11 +161,11 @@ router.post("/time/clock-on", async (req, res): Promise<void> => {
       .from(timeEntriesTable)
       .innerJoin(teamMembersTable, and(
         eq(teamMembersTable.id, timeEntriesTable.teamMemberId),
-        ownedMember(userId),
+        eq(teamMembersTable.clerkUserId, ownerId(access)),
       ))
       .innerJoin(bookingsTable, and(
         eq(bookingsTable.id, timeEntriesTable.jobId),
-        eq(bookingsTable.clerkUserId, userId),
+        eq(bookingsTable.clerkUserId, ownerId(access)),
       ))
       .where(and(
         eq(timeEntriesTable.teamMemberId, d.teamMemberId),
@@ -128,25 +214,36 @@ router.post("/time/clock-off", async (req, res): Promise<void> => {
     return;
   }
   const d = parsed.data;
+  const access = await resolveTimeAccess(userId);
+  if (access.kind === "denied") {
+    res.status(404).json({ error: "Team member not found" });
+    return;
+  }
 
   const result = await db.transaction(async (tx) => {
     const [member] = await tx
       .select({ id: teamMembersTable.id, name: teamMembersTable.name })
       .from(teamMembersTable)
-      .where(and(
-        eq(teamMembersTable.id, d.teamMemberId),
-        ownedMember(userId),
-      ))
+      .where(memberScope(access, d.teamMemberId))
       .for("update");
     if (!member) return { error: "Team member not found" as const };
+
+    if (access.kind === "linked") {
+      const [assignment] = await tx
+        .select({ id: jobAssignmentsTable.id })
+        .from(jobAssignmentsTable)
+        .where(and(
+          eq(jobAssignmentsTable.jobId, d.jobId),
+          eq(jobAssignmentsTable.teamMemberId, access.member.id),
+        ))
+        .for("update");
+      if (!assignment) return { error: "Booking not found" as const };
+    }
 
     const [booking] = await tx
       .select({ id: bookingsTable.id, title: bookingsTable.title })
       .from(bookingsTable)
-      .where(and(
-        eq(bookingsTable.id, d.jobId),
-        eq(bookingsTable.clerkUserId, userId),
-      ))
+      .where(bookingScope(access, d.jobId))
       .for("update");
     if (!booking) return { error: "Booking not found" as const };
 
@@ -155,11 +252,11 @@ router.post("/time/clock-off", async (req, res): Promise<void> => {
       .from(timeEntriesTable)
       .innerJoin(teamMembersTable, and(
         eq(teamMembersTable.id, timeEntriesTable.teamMemberId),
-        ownedMember(userId),
+        eq(teamMembersTable.clerkUserId, ownerId(access)),
       ))
       .innerJoin(bookingsTable, and(
         eq(bookingsTable.id, timeEntriesTable.jobId),
-        eq(bookingsTable.clerkUserId, userId),
+        eq(bookingsTable.clerkUserId, ownerId(access)),
       ))
       .where(and(
         eq(timeEntriesTable.teamMemberId, member.id),
@@ -220,6 +317,11 @@ router.post("/time/manual", async (req, res): Promise<void> => {
     return;
   }
   const d = parsed.data;
+  const access = await resolveTimeAccess(userId);
+  if (access.kind === "denied") {
+    res.status(404).json({ error: "Team member not found" });
+    return;
+  }
   const clockedOn = d.clockOn ? new Date(d.clockOn) : null;
   const clockedOff = d.clockOff ? new Date(d.clockOff) : null;
   const durationMinutes = clockedOn && clockedOff
@@ -230,20 +332,26 @@ router.post("/time/manual", async (req, res): Promise<void> => {
     const [member] = await tx
       .select({ id: teamMembersTable.id, name: teamMembersTable.name })
       .from(teamMembersTable)
-      .where(and(
-        eq(teamMembersTable.id, d.teamMemberId),
-        ownedMember(userId),
-      ))
+      .where(memberScope(access, d.teamMemberId))
       .for("update");
     if (!member) return { error: "Team member not found" as const };
+
+    if (access.kind === "linked") {
+      const [assignment] = await tx
+        .select({ id: jobAssignmentsTable.id })
+        .from(jobAssignmentsTable)
+        .where(and(
+          eq(jobAssignmentsTable.jobId, d.jobId),
+          eq(jobAssignmentsTable.teamMemberId, access.member.id),
+        ))
+        .for("update");
+      if (!assignment) return { error: "Booking not found" as const };
+    }
 
     const [booking] = await tx
       .select({ id: bookingsTable.id, title: bookingsTable.title })
       .from(bookingsTable)
-      .where(and(
-        eq(bookingsTable.id, d.jobId),
-        eq(bookingsTable.clerkUserId, userId),
-      ))
+      .where(bookingScope(access, d.jobId))
       .for("update");
     if (!booking) return { error: "Booking not found" as const };
 
@@ -288,13 +396,15 @@ router.get("/time/job/:jobId", async (req, res): Promise<void> => {
     res.status(400).json({ error: params.error.message });
     return;
   }
+  const access = await resolveTimeAccess(userId);
+  if (access.kind === "denied") {
+    res.status(404).json({ error: "Booking not found" });
+    return;
+  }
   const [booking] = await db
     .select({ id: bookingsTable.id })
     .from(bookingsTable)
-    .where(and(
-      eq(bookingsTable.id, params.data.jobId),
-      eq(bookingsTable.clerkUserId, userId),
-    ));
+    .where(bookingScope(access, params.data.jobId));
   if (!booking) {
     res.status(404).json({ error: "Booking not found" });
     return;
@@ -308,13 +418,16 @@ router.get("/time/job/:jobId", async (req, res): Promise<void> => {
     .from(timeEntriesTable)
     .innerJoin(teamMembersTable, and(
       eq(teamMembersTable.id, timeEntriesTable.teamMemberId),
-      ownedMember(userId),
+      eq(teamMembersTable.clerkUserId, ownerId(access)),
     ))
     .innerJoin(bookingsTable, and(
       eq(bookingsTable.id, timeEntriesTable.jobId),
-      eq(bookingsTable.clerkUserId, userId),
+      eq(bookingsTable.clerkUserId, ownerId(access)),
     ))
-    .where(eq(timeEntriesTable.jobId, params.data.jobId))
+    .where(and(
+      eq(timeEntriesTable.jobId, params.data.jobId),
+      linkedEntryScope(access),
+    ))
     .orderBy(asc(timeEntriesTable.clockOn));
   res.json(rows.map((r) => entryToJson({ ...r.e, memberName: r.memberName, jobTitle: r.jobTitle })));
 });
@@ -330,13 +443,15 @@ router.get("/time/member/:memberId", async (req, res): Promise<void> => {
     res.status(400).json({ error: params.error.message });
     return;
   }
+  const access = await resolveTimeAccess(userId);
+  if (access.kind === "denied") {
+    res.status(404).json({ error: "Team member not found" });
+    return;
+  }
   const [member] = await db
     .select({ id: teamMembersTable.id })
     .from(teamMembersTable)
-    .where(and(
-      eq(teamMembersTable.id, params.data.memberId),
-      ownedMember(userId),
-    ));
+    .where(memberScope(access, params.data.memberId));
   if (!member) {
     res.status(404).json({ error: "Team member not found" });
     return;
@@ -350,13 +465,16 @@ router.get("/time/member/:memberId", async (req, res): Promise<void> => {
     .from(timeEntriesTable)
     .innerJoin(teamMembersTable, and(
       eq(teamMembersTable.id, timeEntriesTable.teamMemberId),
-      ownedMember(userId),
+      eq(teamMembersTable.clerkUserId, ownerId(access)),
     ))
     .innerJoin(bookingsTable, and(
       eq(bookingsTable.id, timeEntriesTable.jobId),
-      eq(bookingsTable.clerkUserId, userId),
+      eq(bookingsTable.clerkUserId, ownerId(access)),
     ))
-    .where(eq(timeEntriesTable.teamMemberId, params.data.memberId))
+    .where(and(
+      eq(timeEntriesTable.teamMemberId, params.data.memberId),
+      linkedEntryScope(access),
+    ))
     .orderBy(asc(timeEntriesTable.clockOn));
   res.json(rows.map((r) => entryToJson({ ...r.e, memberName: r.memberName, jobTitle: r.jobTitle })));
 });
