@@ -33,13 +33,12 @@ import { useProfileAccess } from "@/lib/access";
 const STATUSES = ["draft", "sent", "accepted", "rejected"];
 
 export default function QuoteDetailRoute() {
-  const { isSubcontractor } = useProfileAccess();
-  if (isSubcontractor) return <Redirect href="/quotes" />;
   return <QuoteDetail />;
 }
 
 function QuoteDetail() {
   const colors = useColors();
+  const { isSubcontractor } = useProfileAccess();
   const params = useLocalSearchParams<{ id: string }>();
   const id = Number(params.id);
   const qc = useQueryClient();
@@ -119,7 +118,7 @@ function QuoteDetail() {
       style={{ flex: 1, backgroundColor: colors.background }}
       contentContainerStyle={{ padding: 20, gap: 14, paddingBottom: 60 }}
     >
-      <View>
+      {!isSubcontractor && <View>
         <StatusBadge status={data.status} />
         <Text
           style={{
@@ -142,7 +141,7 @@ function QuoteDetail() {
         >
           {data.customerName ?? "—"} · {data.lengthM}×{data.widthM}m
         </Text>
-      </View>
+      </View>}
 
       <View
         style={{
@@ -302,13 +301,13 @@ function QuoteDetail() {
         </Card>
       ) : null}
 
-      <Button
+      {!isSubcontractor && <Button
         label="Delete quote"
         icon="trash-2"
         variant="destructive"
         onPress={confirmDelete}
         loading={deleteMut.isPending}
-      />
+      />}
     </ScrollView>
   );
 }

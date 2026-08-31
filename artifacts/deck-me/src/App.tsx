@@ -168,7 +168,7 @@ function WorkspaceRoutes() {
         <Route path="/" component={canViewDashboard ? Dashboard : () => <RestrictedPage title="Dashboard" />} />
         <Route path="/calculator" component={canViewGeneralWorkspace ? Calculator : () => <RestrictedPage title="Calculator" />} />
         <Route path="/quotes" component={Quotes} />
-        <Route path="/quotes/:id" component={isSubcontractor ? () => <RestrictedPage title="Quote" /> : QuoteDetail} />
+        <Route path="/quotes/:id" component={QuoteDetail} />
         <Route path="/customers" component={canViewGeneralWorkspace ? Customers : () => <RestrictedPage title="Customers" />} />
         <Route path="/materials" component={canViewGeneralWorkspace ? Materials : () => <RestrictedPage title="Materials" />} />
         <Route path="/bookings" component={Bookings} />

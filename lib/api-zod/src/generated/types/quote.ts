@@ -15,6 +15,8 @@ export interface Quote {
   status: string;
   customerId: number;
   /** @nullable */
+  assignedTeamMemberId: number | null;
+  /** @nullable */
   masterProjectId: number | null;
   tradeType: string;
   /** @nullable */

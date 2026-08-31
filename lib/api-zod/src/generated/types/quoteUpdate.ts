@@ -10,6 +10,8 @@ export interface QuoteUpdate {
   /** @minLength 1 */
   title?: string;
   customerId?: number;
+  /** @nullable */
+  assignedTeamMemberId?: number | null;
   tradeType?: string;
   siteAddress?: string;
   notes?: string;

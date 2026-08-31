@@ -31,7 +31,7 @@ export default function Bookings() {
   const { user } = useUser();
   const access = useProfileAccess();
   const { data: bookings, isLoading } = useListBookings({
-    query: { enabled: !access.isSubcontractor, queryKey: getListBookingsQueryKey() },
+    query: { queryKey: getListBookingsQueryKey() },
   });
   const visibleBookings = visibleToProfile(bookings, {
     ...access,
@@ -140,22 +140,6 @@ export default function Bookings() {
   const photosBooking = visibleBookings.find(b => b.id === photosBookingId);
   const photos: string[] = (photosBooking as any)?.photos ?? [];
 
-  if (access.isSubcontractor) {
-    return (
-      <div className="max-w-5xl mx-auto space-y-6">
-        <div>
-          <h1 className="text-3xl font-black uppercase tracking-tight">Bookings</h1>
-          <p className="text-muted-foreground font-medium">Jobs assigned to you.</p>
-        </div>
-        <div className="text-center py-20 border-2 border-dashed rounded-lg">
-          <CalIcon className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
-          <h2 className="text-xl font-bold uppercase mb-2">No assigned jobs</h2>
-          <p className="text-muted-foreground">An Owner will assign jobs from Team Management.</p>
-        </div>
-      </div>
-    );
-  }
-
   return (
     <div className="max-w-5xl mx-auto space-y-6">
       <div className="flex items-center justify-between">
@@ -163,7 +147,7 @@ export default function Bookings() {
           <h1 className="text-3xl font-black uppercase tracking-tight">Schedule</h1>
           <p className="text-muted-foreground font-medium">Upcoming jobs</p>
         </div>
-        <Dialog open={open} onOpenChange={setOpen}>
+        {!access.isSubcontractor && <Dialog open={open} onOpenChange={setOpen}>
           <Button onClick={handleOpenCreate} className="font-bold uppercase">
             <Plus className="w-4 h-4 mr-2" /> Book Job
           </Button>
@@ -218,7 +202,7 @@ export default function Bookings() {
               </Button>
             </div>
           </DialogContent>
-        </Dialog>
+        </Dialog>}
       </div>
 
       <div className="space-y-4">
@@ -260,7 +244,7 @@ export default function Bookings() {
                     </div>
                     <div className="flex items-start md:items-center gap-2 md:flex-col justify-between">
                       <div className="text-xs font-bold uppercase px-3 py-1 bg-muted rounded-sm">{b.status}</div>
-                      <div className="flex gap-1">
+                      {!access.isSubcontractor && <div className="flex gap-1">
                         <Button
                           variant="outline"
                           size="sm"
@@ -278,7 +262,7 @@ export default function Bookings() {
                             <DropdownMenuItem onClick={() => handleDelete(b.id)} className="text-destructive"><Trash2 className="w-4 h-4 mr-2" /> Delete</DropdownMenuItem>
                           </DropdownMenuContent>
                         </DropdownMenu>
-                      </div>
+                      </div>}
                     </div>
                   </CardContent>
                 </div>

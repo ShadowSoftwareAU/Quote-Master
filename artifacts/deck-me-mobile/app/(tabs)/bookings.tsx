@@ -147,7 +147,7 @@ export default function BookingsScreen() {
   const { user } = useUser();
   const access = useProfileAccess();
   const { data, isLoading, refetch, isRefetching } = useListBookings({
-    query: { enabled: !access.isSubcontractor, queryKey: getListBookingsQueryKey() },
+    query: { queryKey: getListBookingsQueryKey() },
   });
   const { data: teamMembers } = useListTeamMembers({
     query: { enabled: access.isOwner, queryKey: getListTeamMembersQueryKey() },

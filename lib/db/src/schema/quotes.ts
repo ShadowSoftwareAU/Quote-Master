@@ -10,6 +10,7 @@ import {
   uniqueIndex,
 } from "drizzle-orm/pg-core";
 import { masterProjectsTable } from "./master-projects";
+import { teamMembersTable } from "./team";
 
 export const quotesTable = pgTable(
   "quotes",
@@ -19,6 +20,10 @@ export const quotesTable = pgTable(
     title: text("title").notNull(),
     status: text("status").notNull().default("draft"),
     customerId: integer("customer_id").notNull(),
+    assignedTeamMemberId: integer("assigned_team_member_id").references(
+      () => teamMembersTable.id,
+      { onDelete: "set null" },
+    ),
     masterProjectId: integer("master_project_id").references(
       () => masterProjectsTable.id,
       { onDelete: "set null" },
@@ -66,6 +71,7 @@ export const quotesTable = pgTable(
   },
   (table) => [
     index("quotes_clerk_user_id_idx").on(table.clerkUserId),
+    index("quotes_assigned_team_member_id_idx").on(table.assignedTeamMemberId),
     uniqueIndex("quotes_portal_token_uidx").on(table.portalToken),
   ],
 );

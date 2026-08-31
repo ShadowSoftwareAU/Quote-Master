@@ -11,7 +11,7 @@ export default function Quotes() {
   const { user } = useUser();
   const access = useProfileAccess();
   const { data: quotes, isLoading } = useListQuotes({
-    query: { enabled: !access.isSubcontractor, queryKey: getListQuotesQueryKey() },
+    query: { queryKey: getListQuotesQueryKey() },
   });
   const visibleQuotes = visibleToProfile(quotes, {
     ...access,

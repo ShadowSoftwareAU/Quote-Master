@@ -3,8 +3,8 @@ name: Assignment identity
 description: Safety rule for matching authenticated users to team-member job assignments.
 ---
 
-Do not infer a Subcontractor's team-member identity from a name, email, or numeric ID. Assignment-filtered screens must fail closed until the account has an explicit, trusted team-member link.
+Do not infer a Subcontractor's team-member identity from a name, email, or numeric ID. Resolve assignment-filtered access only through the explicit Clerk user link on the intended team member, and require the assignment owner to match the record owner.
 
-**Why:** Team members and job assignments use numeric IDs owned by a business account, while authenticated identity uses Clerk user IDs. There is currently no trustworthy mapping between them, and guessing could expose another worker's quotes or bookings.
+**Why:** Team members and assignments use business-owned numeric IDs, while authenticated identity uses Clerk user IDs. Both the trusted link and same-business predicate are needed to prevent malformed or cross-business assignments exposing work.
 
-**How to apply:** Add an invitation or account-linking flow that stores the Clerk user ID against the intended team member, then return current-user assignment data from an authenticated API boundary. Only then show matched records.
+**How to apply:** Owners control the link and assignment. Quote, booking, and Master Project reads must join through the linked active team member server-side. Subcontractors receive read-only quote access, and unlinked users receive no assigned records.

@@ -14,6 +14,7 @@ export const teamMembersTable = pgTable(
   {
     id: serial("id").primaryKey(),
     clerkUserId: text("clerk_user_id"),
+    linkedClerkUserId: text("linked_clerk_user_id"),
     name: text("name").notNull(),
     email: text("email"),
     phone: text("phone"),
@@ -23,7 +24,10 @@ export const teamMembersTable = pgTable(
     active: boolean("active").notNull().default(true),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
-  (table) => [index("team_members_clerk_user_id_idx").on(table.clerkUserId)],
+  (table) => [
+    index("team_members_clerk_user_id_idx").on(table.clerkUserId),
+    index("team_members_linked_clerk_user_id_idx").on(table.linkedClerkUserId),
+  ],
 );
 
 export const timeEntriesTable = pgTable("time_entries", {

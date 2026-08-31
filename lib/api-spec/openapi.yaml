@@ -1594,7 +1594,7 @@ components:
 
     Quote:
       type: object
-      required: [id, title, status, customerId, masterProjectId, tradeType, portalToken, complianceDisclaimer, contractorLicenseNumber, lengthM, widthM, heightM, materialsSubtotal, labourCost, gst, total, lineItems, spec, createdAt, updatedAt]
+      required: [id, title, status, customerId, assignedTeamMemberId, masterProjectId, tradeType, portalToken, complianceDisclaimer, contractorLicenseNumber, lengthM, widthM, heightM, materialsSubtotal, labourCost, gst, total, lineItems, spec, createdAt, updatedAt]
       properties:
         id: { type: integer }
         title: { type: string }
@@ -1602,6 +1602,7 @@ components:
           type: string
           description: "draft | sent | accepted | rejected"
         customerId: { type: integer }
+        assignedTeamMemberId: { type: ["integer", "null"] }
         masterProjectId: { type: ["integer", "null"] }
         tradeType: { type: string }
         portalToken: { type: ["string", "null"] }
@@ -1632,12 +1633,13 @@ components:
         updatedAt: { type: string, format: date-time }
     QuoteSummary:
       type: object
-      required: [id, title, status, customerId, masterProjectId, tradeType, total, createdAt]
+      required: [id, title, status, customerId, assignedTeamMemberId, masterProjectId, tradeType, total, createdAt]
       properties:
         id: { type: integer }
         title: { type: string }
         status: { type: string }
         customerId: { type: integer }
+        assignedTeamMemberId: { type: ["integer", "null"] }
         masterProjectId: { type: ["integer", "null"] }
         tradeType: { type: string }
         customerName: { type: ["string", "null"] }
@@ -1688,6 +1690,7 @@ components:
       properties:
         title: { type: string, minLength: 1 }
         customerId: { type: integer }
+        assignedTeamMemberId: { type: ["integer", "null"] }
         tradeType: { type: string }
         siteAddress: { type: string }
         notes: { type: string }
@@ -1907,6 +1910,7 @@ components:
       required: [id, name, role, active, createdAt]
       properties:
         id: { type: integer }
+        linkedClerkUserId: { type: ["string", "null"] }
         name: { type: string }
         email: { type: ["string", "null"] }
         phone: { type: ["string", "null"] }
@@ -1919,6 +1923,7 @@ components:
       required: [name]
       properties:
         name: { type: string, minLength: 1 }
+        linkedClerkUserId: { type: string, pattern: "^user_[A-Za-z0-9]+$" }
         email: { type: string }
         phone: { type: string }
         role: { type: string }
@@ -1928,6 +1933,7 @@ components:
       type: object
       properties:
         name: { type: string, minLength: 1 }
+        linkedClerkUserId: { type: ["string", "null"], pattern: "^user_[A-Za-z0-9]+$" }
         email: { type: string }
         phone: { type: string }
         role: { type: string }

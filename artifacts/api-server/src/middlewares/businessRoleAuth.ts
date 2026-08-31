@@ -26,7 +26,7 @@ export async function getBusinessRole(userId: string): Promise<BusinessRole | nu
     .select({ role: teamMembersTable.role })
     .from(teamMembersTable)
     .where(and(
-      eq(teamMembersTable.clerkUserId, userId),
+      eq(teamMembersTable.linkedClerkUserId, userId),
       eq(teamMembersTable.active, true),
     ))
     .limit(1);

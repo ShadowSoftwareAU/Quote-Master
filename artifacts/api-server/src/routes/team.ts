@@ -6,6 +6,7 @@ import {
   teamMembersTable,
   jobAssignmentsTable,
   bookingsTable,
+  businessProfilesTable,
 } from "@workspace/db";
 import {
   CreateTeamMemberBody,
@@ -31,6 +32,7 @@ function memberToJson(row: typeof teamMembersTable.$inferSelect) {
     role: row.role,
     phone: row.phone,
     email: row.email,
+    linkedClerkUserId: row.linkedClerkUserId,
     pin: row.pin,
     active: row.active,
     createdAt: row.createdAt.toISOString(),
@@ -74,11 +76,17 @@ router.post("/team", async (req, res): Promise<void> => {
     return;
   }
   const d = parsed.data;
+  if (d.linkedClerkUserId) {
+    const [linkedProfile] = await db.select({ role: businessProfilesTable.role }).from(businessProfilesTable)
+      .where(and(eq(businessProfilesTable.clerkUserId, d.linkedClerkUserId), eq(businessProfilesTable.role, "Subcontractor")));
+    if (!linkedProfile) { res.status(400).json({ error: "Linked Clerk user must have a Subcontractor profile" }); return; }
+  }
   const [row] = await db
     .insert(teamMembersTable)
     .values({
       name: d.name,
       clerkUserId: userId,
+      linkedClerkUserId: d.linkedClerkUserId ?? null,
       ...(d.role ? { role: d.role } : {}),
       ...(d.phone ? { phone: d.phone } : {}),
       ...(d.email ? { email: d.email } : {}),
@@ -102,10 +110,16 @@ router.patch("/team/:id", async (req, res): Promise<void> => {
     return;
   }
   const d = body.data;
+  if (d.linkedClerkUserId) {
+    const [linkedProfile] = await db.select({ role: businessProfilesTable.role }).from(businessProfilesTable)
+      .where(and(eq(businessProfilesTable.clerkUserId, d.linkedClerkUserId), eq(businessProfilesTable.role, "Subcontractor")));
+    if (!linkedProfile) { res.status(400).json({ error: "Linked Clerk user must have a Subcontractor profile" }); return; }
+  }
   const [row] = await db
     .update(teamMembersTable)
     .set({
       ...(d.name !== undefined ? { name: d.name } : {}),
+      ...(d.linkedClerkUserId !== undefined ? { linkedClerkUserId: d.linkedClerkUserId } : {}),
       ...(d.role !== undefined ? { role: d.role } : {}),
       ...(d.phone !== undefined ? { phone: d.phone } : {}),
       ...(d.email !== undefined ? { email: d.email } : {}),

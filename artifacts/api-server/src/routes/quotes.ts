@@ -1,6 +1,6 @@
 import { Router, type IRouter } from "express";
 import { getAuth } from "@clerk/express";
-import { and, eq, desc } from "drizzle-orm";
+import { and, eq, desc, isNotNull } from "drizzle-orm";
 import { randomBytes } from "node:crypto";
 import {
   db,
@@ -9,6 +9,7 @@ import {
   materialsTable,
   customersTable,
   businessProfilesTable,
+  teamMembersTable,
 } from "@workspace/db";
 import {
   CreateQuoteBody,
@@ -30,8 +31,10 @@ import {
 import { estimateDeck, calcTotals, type DeckSpec } from "../lib/estimator";
 import { recalculateMasterProjectTotals } from "../services/masterProjects";
 import { complianceDisclaimerForTrade } from "../lib/quoteCompliance";
+import { getBusinessRole, requireBusinessRole } from "../middlewares/businessRoleAuth";
 
 const router: IRouter = Router();
+const requireQuoteManager = requireBusinessRole("Owner", "Employee");
 
 function generatePortalToken(): string {
   return randomBytes(32).toString("base64url");
@@ -151,6 +154,7 @@ function quoteSummaryRow(row: typeof quotesTable.$inferSelect & {
     title: row.title,
     status: row.status,
     customerId: row.customerId,
+    assignedTeamMemberId: row.assignedTeamMemberId,
     masterProjectId: row.masterProjectId,
     portalToken: row.portalToken,
     tradeType: row.tradeType,
@@ -163,7 +167,10 @@ function quoteSummaryRow(row: typeof quotesTable.$inferSelect & {
 }
 
 async function loadQuoteJson(id: number, userId?: string) {
-  const customerJoin = userId
+  const isSubcontractor = userId
+    ? (await getBusinessRole(userId)) === "Subcontractor"
+    : false;
+  const customerJoin = userId && !isSubcontractor
     ? and(
         eq(customersTable.id, quotesTable.customerId),
         eq(customersTable.clerkUserId, userId),
@@ -176,13 +183,21 @@ async function loadQuoteJson(id: number, userId?: string) {
     })
     .from(quotesTable)
     .leftJoin(customersTable, customerJoin)
+    .leftJoin(teamMembersTable, eq(teamMembersTable.id, quotesTable.assignedTeamMemberId))
     .where(
       userId
-        ? and(eq(quotesTable.id, id), eq(quotesTable.clerkUserId, userId))
+        ? isSubcontractor
+          ? and(
+              eq(quotesTable.id, id),
+              eq(teamMembersTable.linkedClerkUserId, userId),
+              eq(teamMembersTable.clerkUserId, quotesTable.clerkUserId),
+              eq(teamMembersTable.active, true),
+            )
+          : and(eq(quotesTable.id, id), eq(quotesTable.clerkUserId, userId))
         : eq(quotesTable.id, id),
     );
   if (!row) return null;
-  if (userId && row.customerName === null) return null;
+  if (userId && !isSubcontractor && row.customerName === null) return null;
   const [profile] = row.q.clerkUserId
     ? await db
         .select({
@@ -194,7 +209,7 @@ async function loadQuoteJson(id: number, userId?: string) {
         .limit(1)
     : [];
   const spec = specFromStoredQuote(row.q);
-  const storedLines = userId
+  const storedLines = userId && !isSubcontractor
     ? await db
         .select({ line: quoteLineItemsTable })
         .from(quoteLineItemsTable)
@@ -237,6 +252,7 @@ async function loadQuoteJson(id: number, userId?: string) {
     title: row.q.title,
     status: row.q.status,
     customerId: row.q.customerId,
+    assignedTeamMemberId: row.q.assignedTeamMemberId,
     masterProjectId: row.q.masterProjectId,
     portalToken: userId ? row.q.portalToken : null,
     tradeType: row.q.tradeType,
@@ -348,12 +364,14 @@ router.get("/quotes", async (req, res): Promise<void> => {
     res.status(401).json({ error: "Unauthorized" });
     return;
   }
+  const isSubcontractor = (await getBusinessRole(userId)) === "Subcontractor";
   const rows = await db
     .select({
       id: quotesTable.id,
       title: quotesTable.title,
       status: quotesTable.status,
       customerId: quotesTable.customerId,
+      assignedTeamMemberId: quotesTable.assignedTeamMemberId,
       masterProjectId: quotesTable.masterProjectId,
       tradeType: quotesTable.tradeType,
       customerName: customersTable.name,
@@ -363,18 +381,19 @@ router.get("/quotes", async (req, res): Promise<void> => {
       createdAt: quotesTable.createdAt,
     })
     .from(quotesTable)
-    .leftJoin(
-      customersTable,
-      and(
-        eq(customersTable.id, quotesTable.customerId),
-        eq(customersTable.clerkUserId, userId),
-      ),
-    )
+    .leftJoin(customersTable, eq(customersTable.id, quotesTable.customerId))
+    .leftJoin(teamMembersTable, eq(teamMembersTable.id, quotesTable.assignedTeamMemberId))
     .where(
-      and(
-        eq(quotesTable.clerkUserId, userId),
-        eq(customersTable.clerkUserId, userId),
-      ),
+      isSubcontractor
+        ? and(
+            eq(teamMembersTable.linkedClerkUserId, userId),
+            eq(teamMembersTable.clerkUserId, quotesTable.clerkUserId),
+            eq(teamMembersTable.active, true),
+          )
+        : and(
+            eq(quotesTable.clerkUserId, userId),
+            eq(customersTable.clerkUserId, userId),
+          ),
     )
     .orderBy(desc(quotesTable.createdAt));
   res.json(
@@ -383,6 +402,7 @@ router.get("/quotes", async (req, res): Promise<void> => {
       title: r.title,
       status: r.status,
       customerId: r.customerId,
+      assignedTeamMemberId: r.assignedTeamMemberId,
         masterProjectId: r.masterProjectId,
         tradeType: r.tradeType,
       customerName: r.customerName,
@@ -425,7 +445,7 @@ router.post("/quotes/estimate", async (req, res): Promise<void> => {
   });
 });
 
-router.post("/quotes", async (req, res): Promise<void> => {
+router.post("/quotes", requireQuoteManager, async (req, res): Promise<void> => {
   const userId = verifiedUserId(req);
   if (!userId) {
     res.status(401).json({ error: "Unauthorized" });
@@ -551,7 +571,7 @@ router.get("/quote/:token", async (req, res): Promise<void> => {
   res.json(publicQuoteResponse(quote));
 });
 
-router.patch("/quotes/:id", async (req, res): Promise<void> => {
+router.patch("/quotes/:id", requireQuoteManager, async (req, res): Promise<void> => {
   const userId = verifiedUserId(req);
   if (!userId) {
     res.status(401).json({ error: "Unauthorized" });
@@ -581,6 +601,22 @@ router.patch("/quotes/:id", async (req, res): Promise<void> => {
     return;
   }
   const d = body.data;
+  if (d.assignedTeamMemberId !== undefined) {
+    if ((await getBusinessRole(userId)) !== "Owner") {
+      res.status(403).json({ error: "Owner role is required to assign quotes" });
+      return;
+    }
+    if (d.assignedTeamMemberId !== null) {
+      const [member] = await db.select({ id: teamMembersTable.id }).from(teamMembersTable).where(and(
+        eq(teamMembersTable.id, d.assignedTeamMemberId),
+        eq(teamMembersTable.clerkUserId, userId),
+        eq(teamMembersTable.role, "subcontractor"),
+        isNotNull(teamMembersTable.linkedClerkUserId),
+        eq(teamMembersTable.active, true),
+      ));
+      if (!member) { res.status(400).json({ error: "Assigned Subcontractor not found" }); return; }
+    }
+  }
   if (
     userId &&
     d.customerId !== undefined &&
@@ -630,6 +666,7 @@ router.patch("/quotes/:id", async (req, res): Promise<void> => {
       .update(quotesTable)
       .set({
         title: d.title ?? existing.title,
+        assignedTeamMemberId: d.assignedTeamMemberId === undefined ? existing.assignedTeamMemberId : d.assignedTeamMemberId,
         customerId: d.customerId ?? existing.customerId,
         tradeType: d.tradeType ?? existing.tradeType,
         siteAddress: d.siteAddress ?? existing.siteAddress,
@@ -689,7 +726,7 @@ router.patch("/quotes/:id", async (req, res): Promise<void> => {
   res.json(json);
 });
 
-router.patch("/quotes/:id/status", async (req, res): Promise<void> => {
+router.patch("/quotes/:id/status", requireQuoteManager, async (req, res): Promise<void> => {
   const userId = verifiedUserId(req);
   if (!userId) {
     res.status(401).json({ error: "Unauthorized" });
@@ -814,7 +851,7 @@ router.patch("/quote/:token/status", async (req, res): Promise<void> => {
   res.json(publicQuoteResponse(json));
 });
 
-router.post("/quotes/:id/variation", async (req, res): Promise<void> => {
+router.post("/quotes/:id/variation", requireQuoteManager, async (req, res): Promise<void> => {
   const userId = verifiedUserId(req);
   if (!userId) {
     res.status(401).json({ error: "Unauthorized" });
@@ -914,7 +951,7 @@ router.post("/quotes/:id/variation", async (req, res): Promise<void> => {
   res.status(201).json(json);
 });
 
-router.delete("/quotes/:id", async (req, res): Promise<void> => {
+router.delete("/quotes/:id", requireQuoteManager, async (req, res): Promise<void> => {
   const userId = verifiedUserId(req);
   if (!userId) {
     res.status(401).json({ error: "Unauthorized" });
@@ -953,7 +990,7 @@ router.delete("/quotes/:id", async (req, res): Promise<void> => {
   res.json({ deleted: true, id: row.deleted.id });
 });
 
-router.post("/quotes/:id/portal-token", async (req, res): Promise<void> => {
+router.post("/quotes/:id/portal-token", requireQuoteManager, async (req, res): Promise<void> => {
   const userId = verifiedUserId(req);
   if (!userId) { res.status(401).json({ error: "Unauthorized" }); return; }
   const params = GetQuoteParams.safeParse(req.params);
@@ -967,7 +1004,7 @@ router.post("/quotes/:id/portal-token", async (req, res): Promise<void> => {
   res.json({ portalToken: row.portalToken });
 });
 
-router.delete("/quotes/:id/portal-token", async (req, res): Promise<void> => {
+router.delete("/quotes/:id/portal-token", requireQuoteManager, async (req, res): Promise<void> => {
   const userId = verifiedUserId(req);
   if (!userId) { res.status(401).json({ error: "Unauthorized" }); return; }
   const params = GetQuoteParams.safeParse(req.params);

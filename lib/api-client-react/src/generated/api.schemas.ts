@@ -460,6 +460,8 @@ export interface Quote {
   status: string;
   customerId: number;
   /** @nullable */
+  assignedTeamMemberId: number | null;
+  /** @nullable */
   masterProjectId: number | null;
   tradeType: string;
   /** @nullable */
@@ -498,6 +500,8 @@ export interface QuoteSummary {
   title: string;
   status: string;
   customerId: number;
+  /** @nullable */
+  assignedTeamMemberId: number | null;
   /** @nullable */
   masterProjectId: number | null;
   tradeType: string;
@@ -551,6 +555,8 @@ export interface QuoteUpdate {
   /** @minLength 1 */
   title?: string;
   customerId?: number;
+  /** @nullable */
+  assignedTeamMemberId?: number | null;
   tradeType?: string;
   siteAddress?: string;
   notes?: string;
@@ -755,6 +761,8 @@ export interface DashboardSummary {
 
 export interface TeamMember {
   id: number;
+  /** @nullable */
+  linkedClerkUserId?: string | null;
   name: string;
   /** @nullable */
   email?: string | null;
@@ -769,6 +777,8 @@ export interface TeamMember {
 export interface TeamMemberInput {
   /** @minLength 1 */
   name: string;
+  /** @pattern ^user_[A-Za-z0-9]+$ */
+  linkedClerkUserId?: string;
   email?: string;
   phone?: string;
   role?: string;
@@ -778,6 +788,11 @@ export interface TeamMemberInput {
 export interface TeamMemberUpdate {
   /** @minLength 1 */
   name?: string;
+  /**
+     * @nullable
+     * @pattern ^user_[A-Za-z0-9]+$
+     */
+  linkedClerkUserId?: string | null;
   email?: string;
   phone?: string;
   role?: string;

@@ -6,6 +6,8 @@ import {
   bookingsTable,
   customersTable,
   quotesTable,
+  teamMembersTable,
+  jobAssignmentsTable,
 } from "@workspace/db";
 import {
   CreateBookingBody,
@@ -18,7 +20,7 @@ import {
   RemoveBookingPhotoParams,
 } from "@workspace/api-zod";
 import { isPrivateObjectPathOwnedByUser } from "../lib/objectStorage";
-import { requireBusinessRole } from "../middlewares/businessRoleAuth";
+import { getBusinessRole, requireBusinessRole } from "../middlewares/businessRoleAuth";
 
 const router: IRouter = Router();
 const requireBookingManager = requireBusinessRole("Owner", "Employee");
@@ -56,14 +58,25 @@ async function loadBooking(id: number, userId: string) {
 router.get("/bookings", async (req, res): Promise<void> => {
   const userId = getAuth(req).userId;
   if (!userId) { res.status(401).json({ error: "Unauthorized" }); return; }
+  const isSubcontractor = (await getBusinessRole(userId)) === "Subcontractor";
   const rows = await db
-    .select({
+    .selectDistinct({
       b: bookingsTable,
       customerName: customersTable.name,
     })
     .from(bookingsTable)
-    .leftJoin(customersTable, and(eq(customersTable.id, bookingsTable.customerId), eq(customersTable.clerkUserId, userId)))
-    .where(eq(bookingsTable.clerkUserId, userId))
+    .leftJoin(customersTable, eq(customersTable.id, bookingsTable.customerId))
+    .leftJoin(jobAssignmentsTable, eq(jobAssignmentsTable.jobId, bookingsTable.id))
+    .leftJoin(teamMembersTable, eq(teamMembersTable.id, jobAssignmentsTable.teamMemberId))
+    .where(
+      isSubcontractor
+        ? and(
+            eq(teamMembersTable.linkedClerkUserId, userId),
+            eq(teamMembersTable.clerkUserId, bookingsTable.clerkUserId),
+            eq(teamMembersTable.active, true),
+          )
+        : and(eq(bookingsTable.clerkUserId, userId), eq(customersTable.clerkUserId, userId)),
+    )
     .orderBy(asc(bookingsTable.startAt));
   res.json(rows.map((r) => toJson({ ...r.b, customerName: r.customerName })));
 });

@@ -8,6 +8,8 @@
 
 export interface TeamMember {
   id: number;
+  /** @nullable */
+  linkedClerkUserId?: string | null;
   name: string;
   /** @nullable */
   email?: string | null;

@@ -133,6 +133,7 @@ export const GetDashboardSummaryResponse = zod.object({
   "title": zod.string(),
   "status": zod.string(),
   "customerId": zod.number(),
+  "assignedTeamMemberId": zod.number().nullable(),
   "masterProjectId": zod.number().nullable(),
   "tradeType": zod.string(),
   "customerName": zod.string().nullish(),
@@ -356,6 +357,7 @@ export const ListQuotesResponseItem = zod.object({
   "title": zod.string(),
   "status": zod.string(),
   "customerId": zod.number(),
+  "assignedTeamMemberId": zod.number().nullable(),
   "masterProjectId": zod.number().nullable(),
   "tradeType": zod.string(),
   "customerName": zod.string().nullish(),
@@ -446,6 +448,7 @@ export const GetQuoteResponse = zod.object({
   "title": zod.string(),
   "status": zod.string().describe('draft | sent | accepted | rejected'),
   "customerId": zod.number(),
+  "assignedTeamMemberId": zod.number().nullable(),
   "masterProjectId": zod.number().nullable(),
   "tradeType": zod.string(),
   "portalToken": zod.string().nullable(),
@@ -526,6 +529,7 @@ export const UpdateQuoteParams = zod.object({
 export const UpdateQuoteBody = zod.object({
   "title": zod.string().min(1).optional(),
   "customerId": zod.number().optional(),
+  "assignedTeamMemberId": zod.number().nullish(),
   "tradeType": zod.string().optional(),
   "siteAddress": zod.string().optional(),
   "notes": zod.string().optional(),
@@ -594,6 +598,7 @@ export const UpdateQuoteResponse = zod.object({
   "title": zod.string(),
   "status": zod.string().describe('draft | sent | accepted | rejected'),
   "customerId": zod.number(),
+  "assignedTeamMemberId": zod.number().nullable(),
   "masterProjectId": zod.number().nullable(),
   "tradeType": zod.string(),
   "portalToken": zod.string().nullable(),
@@ -716,6 +721,7 @@ export const SetQuoteStatusResponse = zod.object({
   "title": zod.string(),
   "status": zod.string().describe('draft | sent | accepted | rejected'),
   "customerId": zod.number(),
+  "assignedTeamMemberId": zod.number().nullable(),
   "masterProjectId": zod.number().nullable(),
   "tradeType": zod.string(),
   "portalToken": zod.string().nullable(),
@@ -1977,6 +1983,7 @@ export const CreateQuoteVariationBody = zod.object({
  */
 export const ListTeamMembersResponseItem = zod.object({
   "id": zod.number(),
+  "linkedClerkUserId": zod.string().nullish(),
   "name": zod.string(),
   "email": zod.string().nullish(),
   "phone": zod.string().nullish(),
@@ -1988,10 +1995,12 @@ export const ListTeamMembersResponse = zod.array(ListTeamMembersResponseItem)
 
 
 
+export const createTeamMemberBodyLinkedClerkUserIdRegExp = new RegExp('^user_[A-Za-z0-9]+$');
 
 
 export const CreateTeamMemberBody = zod.object({
   "name": zod.string().min(1),
+  "linkedClerkUserId": zod.string().regex(createTeamMemberBodyLinkedClerkUserIdRegExp).optional(),
   "email": zod.string().optional(),
   "phone": zod.string().optional(),
   "role": zod.string().optional(),
@@ -2004,10 +2013,12 @@ export const UpdateTeamMemberParams = zod.object({
 })
 
 
+export const updateTeamMemberBodyLinkedClerkUserIdRegExp = new RegExp('^user_[A-Za-z0-9]+$');
 
 
 export const UpdateTeamMemberBody = zod.object({
   "name": zod.string().min(1).optional(),
+  "linkedClerkUserId": zod.string().regex(updateTeamMemberBodyLinkedClerkUserIdRegExp).nullish(),
   "email": zod.string().optional(),
   "phone": zod.string().optional(),
   "role": zod.string().optional(),
@@ -2017,6 +2028,7 @@ export const UpdateTeamMemberBody = zod.object({
 
 export const UpdateTeamMemberResponse = zod.object({
   "id": zod.number(),
+  "linkedClerkUserId": zod.string().nullish(),
   "name": zod.string(),
   "email": zod.string().nullish(),
   "phone": zod.string().nullish(),

@@ -9,6 +9,8 @@
 export interface TeamMemberInput {
   /** @minLength 1 */
   name: string;
+  /** @pattern ^user_[A-Za-z0-9]+$ */
+  linkedClerkUserId?: string;
   email?: string;
   phone?: string;
   role?: string;

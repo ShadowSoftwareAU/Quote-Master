@@ -9,6 +9,11 @@
 export interface TeamMemberUpdate {
   /** @minLength 1 */
   name?: string;
+  /**
+     * @nullable
+     * @pattern ^user_[A-Za-z0-9]+$
+     */
+  linkedClerkUserId?: string | null;
   email?: string;
   phone?: string;
   role?: string;

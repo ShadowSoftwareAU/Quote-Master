@@ -28,7 +28,7 @@ export default function QuotesScreen() {
   const access = useProfileAccess();
   const insets = useSafeAreaInsets();
   const { data, isLoading, refetch, isRefetching } = useListQuotes({
-    query: { enabled: !access.isSubcontractor, queryKey: getListQuotesQueryKey() },
+    query: { queryKey: getListQuotesQueryKey() },
   });
   const visibleQuotes = visibleToProfile(data, {
     ...access,

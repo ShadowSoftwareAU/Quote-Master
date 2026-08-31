@@ -18,7 +18,7 @@ import { Plus, MoreVertical, Edit2, UserX, Phone, Mail, Users } from "lucide-rea
 import { useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 
-const EMPTY_FORM = { name: "", role: "", phone: "", email: "", pin: "" };
+const EMPTY_FORM = { name: "", role: "", phone: "", email: "", pin: "", linkedClerkUserId: "" };
 
 export default function TeamPage() {
   const { data: members, isLoading } = useListTeamMembers();
@@ -46,6 +46,7 @@ export default function TeamPage() {
       phone: m.phone ?? "",
       email: m.email ?? "",
       pin: "",
+      linkedClerkUserId: m.linkedClerkUserId ?? "",
     });
     setOpen(true);
   }
@@ -57,10 +58,11 @@ export default function TeamPage() {
       phone: form.phone || undefined,
       email: form.email || undefined,
       pin: form.pin || undefined,
+      linkedClerkUserId: form.linkedClerkUserId || undefined,
     };
     try {
       if (editingId) {
-        await updateMember.mutateAsync({ id: editingId, data: payload });
+        await updateMember.mutateAsync({ id: editingId, data: { ...payload, linkedClerkUserId: form.linkedClerkUserId || null } });
         toast({ title: "Team member updated" });
       } else {
         await createMember.mutateAsync({ data: payload });
@@ -196,6 +198,11 @@ export default function TeamPage() {
             <div className="space-y-1">
               <Label>Email</Label>
               <Input value={form.email} onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))} placeholder="email@example.com" type="email" />
+            </div>
+            <div className="space-y-1">
+              <Label>Linked Subcontractor Clerk user ID</Label>
+              <Input value={form.linkedClerkUserId} onChange={(e) => setForm((f) => ({ ...f, linkedClerkUserId: e.target.value.trim() }))} placeholder="user_..." />
+              <p className="text-xs text-muted-foreground">This explicit link controls which assigned quotes and jobs the Subcontractor can access.</p>
             </div>
           </div>
           <div className="flex gap-2 pt-2">

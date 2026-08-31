@@ -1,4 +1,4 @@
-import { useGetQuote, useSetQuoteStatus, useDeleteQuote, useCreateQuoteVariation, useRegenerateQuotePortalToken, getGetQuoteQueryKey, getListQuotesQueryKey, getListMasterProjectsQueryKey, getGetMasterProjectQueryKey } from "@workspace/api-client-react";
+import { useGetQuote, useSetQuoteStatus, useDeleteQuote, useCreateQuoteVariation, useRegenerateQuotePortalToken, useUpdateQuote, useListTeamMembers, getGetQuoteQueryKey, getListQuotesQueryKey, getListMasterProjectsQueryKey, getGetMasterProjectQueryKey, getListTeamMembersQueryKey, type Quote } from "@workspace/api-client-react";
 import { useParams, useLocation } from "wouter";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -13,6 +13,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { MoreVertical } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useState } from "react";
+import { useProfileAccess } from "@/lib/access";
 
 const COUNCIL_HEIGHT_M = 1.0;
 
@@ -27,12 +28,16 @@ export default function QuoteDetail() {
   const regeneratePortalToken = useRegenerateQuotePortalToken();
   const queryClient = useQueryClient();
   const { toast } = useToast();
+  const access = useProfileAccess();
+  const { data: teamMembers } = useListTeamMembers({ query: { enabled: access.isOwner, queryKey: getListTeamMembersQueryKey() } });
+  const updateQuote = useUpdateQuote();
 
   const [variationOpen, setVariationOpen] = useState(false);
   const [varTitle, setVarTitle] = useState("");
   const [varNotes, setVarNotes] = useState("");
 
   if (isLoading || !quote) return <div className="p-8"><Skeleton className="h-64" /></div>;
+  if (access.isSubcontractor) return <ReadOnlyAssignedQuote quote={quote} />;
 
   const councilWarning = quote.heightM >= COUNCIL_HEIGHT_M;
   const refreshMasterProjects = () => {
@@ -192,6 +197,26 @@ export default function QuoteDetail() {
         </div>
 
         <div className="space-y-6">
+          {access.isOwner && (
+            <Card className="border-2 shadow-sm">
+              <CardHeader><CardTitle className="text-sm font-bold uppercase">Assigned Subcontractor</CardTitle></CardHeader>
+              <CardContent>
+                <select
+                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
+                  value={quote.assignedTeamMemberId ?? ""}
+                  onChange={(event) => updateQuote.mutate(
+                    { id: quoteId, data: { assignedTeamMemberId: event.target.value ? Number(event.target.value) : null } },
+                    { onSuccess: () => queryClient.invalidateQueries({ queryKey: getGetQuoteQueryKey(quoteId) }) },
+                  )}
+                >
+                  <option value="">Unassigned</option>
+                  {teamMembers?.filter((member) => member.active && member.role.toLowerCase() === "subcontractor" && member.linkedClerkUserId).map((member) => (
+                    <option key={member.id} value={member.id}>{member.name}</option>
+                  ))}
+                </select>
+              </CardContent>
+            </Card>
+          )}
           <Card className="border-2 border-primary/30 bg-primary/5 shadow-sm">
             <CardHeader className="pb-2">
               <CardTitle className="text-sm font-bold uppercase text-muted-foreground">Total Value</CardTitle>
@@ -257,6 +282,17 @@ export default function QuoteDetail() {
           </div>
         </DialogContent>
       </Dialog>
+    </div>
+  );
+}
+
+function ReadOnlyAssignedQuote({ quote }: { quote: Quote }) {
+  return (
+    <div className="max-w-4xl mx-auto space-y-6">
+      <div><p className="text-xs font-bold uppercase text-primary">Assigned quote</p><h1 className="text-3xl font-black uppercase">{quote.title}</h1><p className="text-muted-foreground">{quote.customerName}</p></div>
+      <Card><CardHeader><CardTitle>Scope of work</CardTitle></CardHeader><CardContent className="divide-y">{quote.lineItems.map((line) => <div key={line.id} className="flex justify-between gap-4 py-3"><span>{line.description} · {line.quantity} {line.unit}</span><strong>{formatCurrency(line.lineTotal)}</strong></div>)}</CardContent></Card>
+      <Card><CardContent className="p-5 flex justify-between"><span className="font-bold uppercase">Total incl. GST</span><strong className="text-xl">{formatCurrency(quote.total)}</strong></CardContent></Card>
+      {quote.notes && <Card><CardContent className="p-5"><p className="text-xs font-bold uppercase text-muted-foreground mb-2">Notes</p><p>{quote.notes}</p></CardContent></Card>}
     </div>
   );
 }

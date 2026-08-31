@@ -12,6 +12,7 @@ import {
   UpdateMasterProjectParams,
 } from "@workspace/api-zod";
 import { requireMasterBuilder } from "../middlewares/masterBuilderAuth";
+import { getBusinessRole } from "../middlewares/businessRoleAuth";
 import {
   getMasterProject,
   getMasterProjectByPortalToken,
@@ -69,7 +70,14 @@ router.patch("/master-project/:token/status", async (req, res): Promise<void> =>
   res.json(publicMasterProject(project));
 });
 
-router.use("/master-projects", requireMasterBuilder);
+router.use("/master-projects", async (req, res, next) => {
+  const userId = getAuth(req).userId;
+  if (req.method === "GET" && userId && (await getBusinessRole(userId)) === "Subcontractor") {
+    next();
+    return;
+  }
+  await requireMasterBuilder(req, res, next);
+});
 
 router.get("/master-projects", async (req, res): Promise<void> => {
   const clerkUserId = getAuth(req).userId;

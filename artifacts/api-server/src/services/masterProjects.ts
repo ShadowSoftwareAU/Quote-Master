@@ -5,8 +5,10 @@ import {
   masterProjectsTable,
   quoteLineItemsTable,
   quotesTable,
+  teamMembersTable,
 } from "@workspace/db";
 import { STANDARD_NCC_DISCLAIMER } from "../lib/quoteCompliance";
+import { getBusinessRole } from "../middlewares/businessRoleAuth";
 
 const GST_RATE = 0.1;
 type MasterProjectDbClient = Pick<typeof db, "select" | "update">;
@@ -39,8 +41,8 @@ function tradeLabel(tradeType: string): string {
     .replace(/\b\w/g, (letter) => letter.toUpperCase());
 }
 
-async function loadMasterProject(projectId: number, clerkUserId?: string) {
-  const customerJoin = clerkUserId
+async function loadMasterProject(projectId: number, clerkUserId?: string, assignedClerkUserId?: string) {
+  const customerJoin = clerkUserId && !assignedClerkUserId
     ? and(
         eq(customersTable.id, masterProjectsTable.customerId),
         eq(customersTable.clerkUserId, clerkUserId),
@@ -50,10 +52,30 @@ async function loadMasterProject(projectId: number, clerkUserId?: string) {
     .select({ project: masterProjectsTable, customerName: customersTable.name })
     .from(masterProjectsTable)
     .innerJoin(customersTable, customerJoin)
-    .where(eq(masterProjectsTable.id, projectId));
+    .leftJoin(quotesTable, eq(quotesTable.masterProjectId, masterProjectsTable.id))
+    .leftJoin(teamMembersTable, eq(teamMembersTable.id, quotesTable.assignedTeamMemberId))
+    .where(assignedClerkUserId
+      ? and(
+          eq(masterProjectsTable.id, projectId),
+          eq(teamMembersTable.linkedClerkUserId, assignedClerkUserId),
+          eq(teamMembersTable.clerkUserId, quotesTable.clerkUserId),
+          eq(teamMembersTable.active, true),
+        )
+      : eq(masterProjectsTable.id, projectId));
   if (!project) return null;
 
-  const quotesWhere = clerkUserId
+  const quotesWhere = assignedClerkUserId
+    ? and(
+        eq(quotesTable.masterProjectId, projectId),
+        inArray(
+          quotesTable.assignedTeamMemberId,
+          db.select({ id: teamMembersTable.id }).from(teamMembersTable).where(and(
+            eq(teamMembersTable.linkedClerkUserId, assignedClerkUserId),
+            eq(teamMembersTable.active, true),
+          )),
+        ),
+      )
+    : clerkUserId
     ? and(
         eq(quotesTable.masterProjectId, projectId),
         eq(quotesTable.clerkUserId, clerkUserId),
@@ -185,7 +207,8 @@ async function loadMasterProject(projectId: number, clerkUserId?: string) {
 }
 
 export async function getMasterProject(projectId: number, clerkUserId: string) {
-  return loadMasterProject(projectId, clerkUserId);
+  const isSubcontractor = (await getBusinessRole(clerkUserId)) === "Subcontractor";
+  return loadMasterProject(projectId, isSubcontractor ? undefined : clerkUserId, isSubcontractor ? clerkUserId : undefined);
 }
 
 export async function getMasterProjectByPortalToken(token: string) {
@@ -235,6 +258,20 @@ export async function recalculateMasterProjectTotals(
 }
 
 export async function listMasterProjects(clerkUserId: string) {
+  const isSubcontractor = (await getBusinessRole(clerkUserId)) === "Subcontractor";
+  if (isSubcontractor) {
+    const assigned = await db.selectDistinct({ id: masterProjectsTable.id }).from(masterProjectsTable)
+      .innerJoin(quotesTable, eq(quotesTable.masterProjectId, masterProjectsTable.id))
+      .innerJoin(teamMembersTable, and(eq(teamMembersTable.id, quotesTable.assignedTeamMemberId), eq(teamMembersTable.linkedClerkUserId, clerkUserId), eq(teamMembersTable.active, true)));
+    const projects = await Promise.all(assigned.map(({ id }) => loadMasterProject(id, undefined, clerkUserId)));
+    return projects.filter((project): project is NonNullable<typeof project> => Boolean(project)).map((project) => ({
+      id: project.id, title: project.title, status: project.status, customerId: project.customerId,
+      customerName: project.customerName, builderMarginPct: project.builderMarginPct,
+      materialsSubtotal: project.materialsSubtotal, labourSubtotal: project.labourSubtotal,
+      marginAmount: project.marginAmount, gst: project.gst, total: project.total,
+      quoteCount: project.quotes.length, createdAt: project.createdAt, updatedAt: project.updatedAt,
+    }));
+  }
   const projects = await db
     .select({ project: masterProjectsTable, customerName: customersTable.name })
     .from(masterProjectsTable)
