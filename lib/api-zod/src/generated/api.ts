@@ -1377,6 +1377,83 @@ export const GetMasterProjectResponse = zod.object({
   "lineTotal": zod.number(),
   "quoteCount": zod.number()
 })),
+  "acceptanceHistory": zod.array(zod.object({
+  "id": zod.number(),
+  "acceptedAt": zod.coerce.date(),
+  "snapshot": zod.object({
+  "id": zod.number(),
+  "title": zod.string(),
+  "status": zod.string(),
+  "notes": zod.string().nullable(),
+  "builderMarginPct": zod.number(),
+  "materialsSubtotal": zod.number(),
+  "labourSubtotal": zod.number(),
+  "marginAmount": zod.number(),
+  "gst": zod.number(),
+  "total": zod.number(),
+  "complianceDisclaimer": zod.string(),
+  "quotes": zod.array(zod.object({
+  "id": zod.number(),
+  "title": zod.string(),
+  "status": zod.string(),
+  "tradeType": zod.string(),
+  "materialsSubtotal": zod.number(),
+  "labourCost": zod.number(),
+  "gst": zod.number(),
+  "total": zod.number(),
+  "lineItems": zod.array(zod.object({
+  "id": zod.number(),
+  "quoteId": zod.number(),
+  "materialId": zod.number().nullish(),
+  "description": zod.string(),
+  "category": zod.string(),
+  "quantity": zod.number(),
+  "unit": zod.string(),
+  "unitPrice": zod.number(),
+  "lineTotal": zod.number()
+})),
+  "createdAt": zod.coerce.date()
+})),
+  "tradeGroups": zod.array(zod.object({
+  "tradeType": zod.string(),
+  "label": zod.string(),
+  "quotes": zod.array(zod.object({
+  "id": zod.number(),
+  "title": zod.string(),
+  "status": zod.string(),
+  "tradeType": zod.string(),
+  "materialsSubtotal": zod.number(),
+  "labourCost": zod.number(),
+  "gst": zod.number(),
+  "total": zod.number(),
+  "lineItems": zod.array(zod.object({
+  "id": zod.number(),
+  "quoteId": zod.number(),
+  "materialId": zod.number().nullish(),
+  "description": zod.string(),
+  "category": zod.string(),
+  "quantity": zod.number(),
+  "unit": zod.string(),
+  "unitPrice": zod.number(),
+  "lineTotal": zod.number()
+})),
+  "createdAt": zod.coerce.date()
+}))
+})),
+  "billOfMaterials": zod.array(zod.object({
+  "materialId": zod.number().nullish(),
+  "description": zod.string(),
+  "category": zod.string(),
+  "quantity": zod.number(),
+  "unit": zod.string(),
+  "unitPrice": zod.number(),
+  "lineTotal": zod.number(),
+  "quoteCount": zod.number()
+})),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+})
+})),
   "createdAt": zod.coerce.date(),
   "updatedAt": zod.coerce.date()
 })
@@ -1472,6 +1549,83 @@ export const UpdateMasterProjectResponse = zod.object({
   "unitPrice": zod.number(),
   "lineTotal": zod.number(),
   "quoteCount": zod.number()
+})),
+  "acceptanceHistory": zod.array(zod.object({
+  "id": zod.number(),
+  "acceptedAt": zod.coerce.date(),
+  "snapshot": zod.object({
+  "id": zod.number(),
+  "title": zod.string(),
+  "status": zod.string(),
+  "notes": zod.string().nullable(),
+  "builderMarginPct": zod.number(),
+  "materialsSubtotal": zod.number(),
+  "labourSubtotal": zod.number(),
+  "marginAmount": zod.number(),
+  "gst": zod.number(),
+  "total": zod.number(),
+  "complianceDisclaimer": zod.string(),
+  "quotes": zod.array(zod.object({
+  "id": zod.number(),
+  "title": zod.string(),
+  "status": zod.string(),
+  "tradeType": zod.string(),
+  "materialsSubtotal": zod.number(),
+  "labourCost": zod.number(),
+  "gst": zod.number(),
+  "total": zod.number(),
+  "lineItems": zod.array(zod.object({
+  "id": zod.number(),
+  "quoteId": zod.number(),
+  "materialId": zod.number().nullish(),
+  "description": zod.string(),
+  "category": zod.string(),
+  "quantity": zod.number(),
+  "unit": zod.string(),
+  "unitPrice": zod.number(),
+  "lineTotal": zod.number()
+})),
+  "createdAt": zod.coerce.date()
+})),
+  "tradeGroups": zod.array(zod.object({
+  "tradeType": zod.string(),
+  "label": zod.string(),
+  "quotes": zod.array(zod.object({
+  "id": zod.number(),
+  "title": zod.string(),
+  "status": zod.string(),
+  "tradeType": zod.string(),
+  "materialsSubtotal": zod.number(),
+  "labourCost": zod.number(),
+  "gst": zod.number(),
+  "total": zod.number(),
+  "lineItems": zod.array(zod.object({
+  "id": zod.number(),
+  "quoteId": zod.number(),
+  "materialId": zod.number().nullish(),
+  "description": zod.string(),
+  "category": zod.string(),
+  "quantity": zod.number(),
+  "unit": zod.string(),
+  "unitPrice": zod.number(),
+  "lineTotal": zod.number()
+})),
+  "createdAt": zod.coerce.date()
+}))
+})),
+  "billOfMaterials": zod.array(zod.object({
+  "materialId": zod.number().nullish(),
+  "description": zod.string(),
+  "category": zod.string(),
+  "quantity": zod.number(),
+  "unit": zod.string(),
+  "unitPrice": zod.number(),
+  "lineTotal": zod.number(),
+  "quoteCount": zod.number()
+})),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+})
 })),
   "createdAt": zod.coerce.date(),
   "updatedAt": zod.coerce.date()
@@ -1571,6 +1725,83 @@ export const SetMasterProjectQuotesResponse = zod.object({
   "lineTotal": zod.number(),
   "quoteCount": zod.number()
 })),
+  "acceptanceHistory": zod.array(zod.object({
+  "id": zod.number(),
+  "acceptedAt": zod.coerce.date(),
+  "snapshot": zod.object({
+  "id": zod.number(),
+  "title": zod.string(),
+  "status": zod.string(),
+  "notes": zod.string().nullable(),
+  "builderMarginPct": zod.number(),
+  "materialsSubtotal": zod.number(),
+  "labourSubtotal": zod.number(),
+  "marginAmount": zod.number(),
+  "gst": zod.number(),
+  "total": zod.number(),
+  "complianceDisclaimer": zod.string(),
+  "quotes": zod.array(zod.object({
+  "id": zod.number(),
+  "title": zod.string(),
+  "status": zod.string(),
+  "tradeType": zod.string(),
+  "materialsSubtotal": zod.number(),
+  "labourCost": zod.number(),
+  "gst": zod.number(),
+  "total": zod.number(),
+  "lineItems": zod.array(zod.object({
+  "id": zod.number(),
+  "quoteId": zod.number(),
+  "materialId": zod.number().nullish(),
+  "description": zod.string(),
+  "category": zod.string(),
+  "quantity": zod.number(),
+  "unit": zod.string(),
+  "unitPrice": zod.number(),
+  "lineTotal": zod.number()
+})),
+  "createdAt": zod.coerce.date()
+})),
+  "tradeGroups": zod.array(zod.object({
+  "tradeType": zod.string(),
+  "label": zod.string(),
+  "quotes": zod.array(zod.object({
+  "id": zod.number(),
+  "title": zod.string(),
+  "status": zod.string(),
+  "tradeType": zod.string(),
+  "materialsSubtotal": zod.number(),
+  "labourCost": zod.number(),
+  "gst": zod.number(),
+  "total": zod.number(),
+  "lineItems": zod.array(zod.object({
+  "id": zod.number(),
+  "quoteId": zod.number(),
+  "materialId": zod.number().nullish(),
+  "description": zod.string(),
+  "category": zod.string(),
+  "quantity": zod.number(),
+  "unit": zod.string(),
+  "unitPrice": zod.number(),
+  "lineTotal": zod.number()
+})),
+  "createdAt": zod.coerce.date()
+}))
+})),
+  "billOfMaterials": zod.array(zod.object({
+  "materialId": zod.number().nullish(),
+  "description": zod.string(),
+  "category": zod.string(),
+  "quantity": zod.number(),
+  "unit": zod.string(),
+  "unitPrice": zod.number(),
+  "lineTotal": zod.number(),
+  "quoteCount": zod.number()
+})),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+})
+})),
   "createdAt": zod.coerce.date(),
   "updatedAt": zod.coerce.date()
 })
@@ -1625,7 +1856,6 @@ export const GetMasterProjectPortalResponse = zod.object({
   "id": zod.number(),
   "title": zod.string(),
   "status": zod.string(),
-  "customerName": zod.string().nullable(),
   "notes": zod.string().nullable(),
   "builderMarginPct": zod.number(),
   "materialsSubtotal": zod.number(),
@@ -1638,7 +1868,6 @@ export const GetMasterProjectPortalResponse = zod.object({
   "id": zod.number(),
   "title": zod.string(),
   "status": zod.string(),
-  "customerId": zod.number(),
   "tradeType": zod.string(),
   "materialsSubtotal": zod.number(),
   "labourCost": zod.number(),
@@ -1664,7 +1893,6 @@ export const GetMasterProjectPortalResponse = zod.object({
   "id": zod.number(),
   "title": zod.string(),
   "status": zod.string(),
-  "customerId": zod.number(),
   "tradeType": zod.string(),
   "materialsSubtotal": zod.number(),
   "labourCost": zod.number(),
@@ -1717,7 +1945,6 @@ export const SetMasterProjectPortalStatusResponse = zod.object({
   "id": zod.number(),
   "title": zod.string(),
   "status": zod.string(),
-  "customerName": zod.string().nullable(),
   "notes": zod.string().nullable(),
   "builderMarginPct": zod.number(),
   "materialsSubtotal": zod.number(),
@@ -1730,7 +1957,6 @@ export const SetMasterProjectPortalStatusResponse = zod.object({
   "id": zod.number(),
   "title": zod.string(),
   "status": zod.string(),
-  "customerId": zod.number(),
   "tradeType": zod.string(),
   "materialsSubtotal": zod.number(),
   "labourCost": zod.number(),
@@ -1756,7 +1982,6 @@ export const SetMasterProjectPortalStatusResponse = zod.object({
   "id": zod.number(),
   "title": zod.string(),
   "status": zod.string(),
-  "customerId": zod.number(),
   "tradeType": zod.string(),
   "materialsSubtotal": zod.number(),
   "labourCost": zod.number(),

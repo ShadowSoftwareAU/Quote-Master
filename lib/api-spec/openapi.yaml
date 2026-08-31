@@ -1520,6 +1520,23 @@ components:
           items: { $ref: "#/components/schemas/QuoteLineItem" }
         createdAt: { type: string, format: date-time }
 
+    MasterProjectPortalQuote:
+      type: object
+      required: [id, title, status, tradeType, materialsSubtotal, labourCost, gst, total, lineItems, createdAt]
+      properties:
+        id: { type: integer }
+        title: { type: string }
+        status: { type: string }
+        tradeType: { type: string }
+        materialsSubtotal: { type: number }
+        labourCost: { type: number }
+        gst: { type: number }
+        total: { type: number }
+        lineItems:
+          type: array
+          items: { $ref: "#/components/schemas/QuoteLineItem" }
+        createdAt: { type: string, format: date-time }
+
     MasterTradeGroup:
       type: object
       required: [tradeType, label, quotes]
@@ -1529,6 +1546,16 @@ components:
         quotes:
           type: array
           items: { $ref: "#/components/schemas/MasterProjectQuote" }
+
+    MasterProjectPortalTradeGroup:
+      type: object
+      required: [tradeType, label, quotes]
+      properties:
+        tradeType: { type: string }
+        label: { type: string }
+        quotes:
+          type: array
+          items: { $ref: "#/components/schemas/MasterProjectPortalQuote" }
 
     MasterBillOfMaterialsLine:
       type: object
@@ -1545,7 +1572,7 @@ components:
 
     MasterProject:
       type: object
-      required: [id, title, status, customerId, builderMarginPct, materialsSubtotal, labourSubtotal, marginAmount, gst, total, hasActivePortalLink, complianceDisclaimer, quotes, tradeGroups, billOfMaterials, createdAt, updatedAt]
+      required: [id, title, status, customerId, builderMarginPct, materialsSubtotal, labourSubtotal, marginAmount, gst, total, hasActivePortalLink, complianceDisclaimer, quotes, tradeGroups, billOfMaterials, acceptanceHistory, createdAt, updatedAt]
       properties:
         id: { type: integer }
         title: { type: string }
@@ -1570,8 +1597,19 @@ components:
         billOfMaterials:
           type: array
           items: { $ref: "#/components/schemas/MasterBillOfMaterialsLine" }
+        acceptanceHistory:
+          type: array
+          items: { $ref: "#/components/schemas/MasterProjectAcceptance" }
         createdAt: { type: string, format: date-time }
         updatedAt: { type: string, format: date-time }
+
+    MasterProjectAcceptance:
+      type: object
+      required: [id, acceptedAt, snapshot]
+      properties:
+        id: { type: integer }
+        acceptedAt: { type: string, format: date-time }
+        snapshot: { $ref: "#/components/schemas/MasterProjectPortal" }
 
     MasterProjectPortalToken:
       type: object
@@ -1589,12 +1627,11 @@ components:
 
     MasterProjectPortal:
       type: object
-      required: [id, title, status, customerName, notes, builderMarginPct, materialsSubtotal, labourSubtotal, marginAmount, gst, total, complianceDisclaimer, quotes, tradeGroups, billOfMaterials, createdAt, updatedAt]
+      required: [id, title, status, notes, builderMarginPct, materialsSubtotal, labourSubtotal, marginAmount, gst, total, complianceDisclaimer, quotes, tradeGroups, billOfMaterials, createdAt, updatedAt]
       properties:
         id: { type: integer }
         title: { type: string }
         status: { type: string }
-        customerName: { type: ["string", "null"] }
         notes: { type: ["string", "null"] }
         builderMarginPct: { type: number }
         materialsSubtotal: { type: number }
@@ -1605,10 +1642,10 @@ components:
         complianceDisclaimer: { type: string }
         quotes:
           type: array
-          items: { $ref: "#/components/schemas/MasterProjectQuote" }
+          items: { $ref: "#/components/schemas/MasterProjectPortalQuote" }
         tradeGroups:
           type: array
-          items: { $ref: "#/components/schemas/MasterTradeGroup" }
+          items: { $ref: "#/components/schemas/MasterProjectPortalTradeGroup" }
         billOfMaterials:
           type: array
           items: { $ref: "#/components/schemas/MasterBillOfMaterialsLine" }

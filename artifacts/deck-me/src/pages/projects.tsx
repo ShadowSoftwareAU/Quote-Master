@@ -18,6 +18,7 @@ import {
 import { useQueryClient } from "@tanstack/react-query";
 import {
   ArrowLeft,
+  CheckCircle2,
   Download,
   FileLock2,
   FolderKanban,
@@ -347,6 +348,42 @@ function ProjectDetail({ id }: { id: number }) {
           <p className="font-mono text-3xl font-black">{formatCurrency(project.total)}</p>
         </div>
       </div>
+
+      {project.acceptanceHistory.length > 0 && (
+        <Card className="border-green-600/30 bg-green-500/5">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-green-800">
+              <CheckCircle2 className="w-5 h-5" /> Client Acceptance History
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            {project.acceptanceHistory.map((acceptance) => (
+              <div
+                key={acceptance.id}
+                className="flex flex-col gap-1 rounded-lg border border-green-600/20 bg-background/80 p-4 sm:flex-row sm:items-center sm:justify-between"
+              >
+                <div>
+                  <p className="font-bold">
+                    Accepted {new Date(acceptance.acceptedAt).toLocaleString()}
+                  </p>
+                  <p className="text-sm text-muted-foreground">
+                    {acceptance.snapshot.title} · {acceptance.snapshot.quotes.length} trade
+                    quote{acceptance.snapshot.quotes.length === 1 ? "" : "s"}
+                  </p>
+                </div>
+                <div className="sm:text-right">
+                  <p className="text-xs font-bold uppercase text-muted-foreground">
+                    Agreed total, incl. GST
+                  </p>
+                  <p className="font-mono text-lg font-black">
+                    {formatCurrency(acceptance.snapshot.total)}
+                  </p>
+                </div>
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+      )}
 
       <div className="grid gap-4 md:grid-cols-4">
         {[

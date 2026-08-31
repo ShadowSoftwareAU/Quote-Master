@@ -6,6 +6,7 @@
  * OpenAPI spec version: 0.1.0
  */
 import type { MasterBillOfMaterialsLine } from './masterBillOfMaterialsLine';
+import type { MasterProjectAcceptance } from './masterProjectAcceptance';
 import type { MasterProjectQuote } from './masterProjectQuote';
 import type { MasterTradeGroup } from './masterTradeGroup';
 
@@ -29,6 +30,7 @@ export interface MasterProject {
   quotes: MasterProjectQuote[];
   tradeGroups: MasterTradeGroup[];
   billOfMaterials: MasterBillOfMaterialsLine[];
+  acceptanceHistory: MasterProjectAcceptance[];
   createdAt: Date;
   updatedAt: Date;
 }

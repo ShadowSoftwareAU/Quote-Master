@@ -2,6 +2,7 @@ import { and, desc, eq, inArray } from "drizzle-orm";
 import {
   customersTable,
   db,
+  masterProjectAcceptancesTable,
   masterProjectsTable,
   quoteLineItemsTable,
   quotesTable,
@@ -41,14 +42,19 @@ function tradeLabel(tradeType: string): string {
     .replace(/\b\w/g, (letter) => letter.toUpperCase());
 }
 
-async function loadMasterProject(projectId: number, clerkUserId?: string, assignedClerkUserId?: string) {
+async function loadMasterProject(
+  projectId: number,
+  clerkUserId?: string,
+  assignedClerkUserId?: string,
+  client: MasterProjectDbClient = db,
+) {
   const customerJoin = clerkUserId && !assignedClerkUserId
     ? and(
         eq(customersTable.id, masterProjectsTable.customerId),
         eq(customersTable.clerkUserId, clerkUserId),
       )
     : eq(customersTable.id, masterProjectsTable.customerId);
-  const [project] = await db
+  const [project] = await client
     .select({ project: masterProjectsTable, customerName: customersTable.name })
     .from(masterProjectsTable)
     .innerJoin(customersTable, customerJoin)
@@ -69,7 +75,7 @@ async function loadMasterProject(projectId: number, clerkUserId?: string, assign
         eq(quotesTable.masterProjectId, projectId),
         inArray(
           quotesTable.assignedTeamMemberId,
-          db.select({ id: teamMembersTable.id }).from(teamMembersTable).where(and(
+          client.select({ id: teamMembersTable.id }).from(teamMembersTable).where(and(
             eq(teamMembersTable.linkedClerkUserId, assignedClerkUserId),
             eq(teamMembersTable.active, true),
           )),
@@ -81,7 +87,7 @@ async function loadMasterProject(projectId: number, clerkUserId?: string, assign
         eq(quotesTable.clerkUserId, clerkUserId),
       )
     : eq(quotesTable.masterProjectId, projectId);
-  const quotes = await db
+  const quotes = await client
     .select()
     .from(quotesTable)
     .where(quotesWhere)
@@ -90,7 +96,7 @@ async function loadMasterProject(projectId: number, clerkUserId?: string, assign
   const lineItems =
     quoteIds.length === 0
       ? []
-      : await db
+      : await client
           .select({ line: quoteLineItemsTable })
           .from(quoteLineItemsTable)
           .innerJoin(
@@ -172,7 +178,7 @@ async function loadMasterProject(projectId: number, clerkUserId?: string, assign
     consolidated.set(key, current);
   }
 
-  return {
+  const projectPayload = {
     id: project.project.id,
     title: project.project.title,
     status: project.project.status,
@@ -204,6 +210,22 @@ async function loadMasterProject(projectId: number, clerkUserId?: string, assign
     createdAt: project.project.createdAt.toISOString(),
     updatedAt: project.project.updatedAt.toISOString(),
   };
+  const acceptanceRows = assignedClerkUserId
+    ? []
+    : await client
+        .select()
+        .from(masterProjectAcceptancesTable)
+        .where(eq(masterProjectAcceptancesTable.masterProjectId, projectId))
+        .orderBy(desc(masterProjectAcceptancesTable.acceptedAt));
+
+  return {
+    ...projectPayload,
+    acceptanceHistory: acceptanceRows.map((acceptance) => ({
+      id: acceptance.id,
+      acceptedAt: acceptance.acceptedAt.toISOString(),
+      snapshot: acceptance.proposalSnapshot,
+    })),
+  };
 }
 
 export async function getMasterProject(projectId: number, clerkUserId: string) {
@@ -220,6 +242,53 @@ export async function getMasterProjectByPortalToken(token: string) {
   return project ? loadMasterProject(project.id) : null;
 }
 
+export async function acceptMasterProjectByPortalToken(token: string) {
+  const acceptedProjectId = await db.transaction(async (tx) => {
+    const [project] = await tx
+      .select({
+        id: masterProjectsTable.id,
+        status: masterProjectsTable.status,
+      })
+      .from(masterProjectsTable)
+      .where(eq(masterProjectsTable.portalToken, token))
+      .for("update");
+    if (!project) return null;
+
+    // Acceptance is idempotent while the project remains accepted. If a
+    // builder reopens it, the next customer acceptance creates a new record.
+    if (project.status === "accepted") return project.id;
+
+    const current = await loadMasterProject(project.id, undefined, undefined, tx);
+    if (!current) return null;
+    const {
+      customerId: _customerId,
+      customerName: _customerName,
+      hasActivePortalLink: _hasActivePortalLink,
+      acceptanceHistory: _acceptanceHistory,
+      ...snapshotWithoutCustomer
+    } = current;
+    const snapshot = {
+      ...snapshotWithoutCustomer,
+      quotes: current.quotes.map(({ customerId: _quoteCustomerId, ...quote }) => quote),
+      tradeGroups: current.tradeGroups.map((group) => ({
+        ...group,
+        quotes: group.quotes.map(({ customerId: _quoteCustomerId, ...quote }) => quote),
+      })),
+    };
+
+    await tx.insert(masterProjectAcceptancesTable).values({
+      masterProjectId: project.id,
+      proposalSnapshot: snapshot,
+    });
+    await tx
+      .update(masterProjectsTable)
+      .set({ status: "accepted" })
+      .where(eq(masterProjectsTable.id, project.id));
+    return project.id;
+  });
+
+  return acceptedProjectId ? loadMasterProject(acceptedProjectId) : null;
+}
 export async function recalculateMasterProjectTotals(
   projectId: number,
   clerkUserId: string,

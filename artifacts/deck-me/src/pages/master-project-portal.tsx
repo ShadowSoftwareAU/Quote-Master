@@ -71,8 +71,7 @@ export default function MasterProjectPortalPage() {
               {project.title}
             </h1>
             <p className="text-lg text-muted-foreground mt-3">
-              Prepared for {project.customerName ?? "our client"}. Review the combined scope
-              below, grouped by trade.
+              Review the combined scope and pricing below, grouped by trade.
             </p>
             {project.notes && (
               <p className="mt-5 whitespace-pre-wrap text-foreground">{project.notes}</p>

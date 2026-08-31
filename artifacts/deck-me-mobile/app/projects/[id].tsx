@@ -66,6 +66,14 @@ export default function MasterProjectDetailScreen() {
           Materials {formatAUD(project.materialsSubtotal)} · Labour {formatAUD(project.labourSubtotal)} · GST {formatAUD(project.gst)}
         </Text>
       </Card>
+      {project.acceptanceHistory.length > 0 && <Card>
+        <Text style={[styles.title, { color: colors.foreground }]}>CLIENT ACCEPTANCE HISTORY</Text>
+        {project.acceptanceHistory.map((acceptance) => <View key={acceptance.id} style={[styles.acceptanceRow, { borderColor: colors.border }]}>
+          <Text style={[styles.quoteTitle, { color: colors.foreground }]}>Accepted {new Date(acceptance.acceptedAt).toLocaleString()}</Text>
+          <Text style={{ color: colors.mutedForeground }}>{acceptance.snapshot.title} · {acceptance.snapshot.quotes.length} trade quote{acceptance.snapshot.quotes.length === 1 ? "" : "s"}</Text>
+          <Text style={[styles.acceptanceTotal, { color: colors.foreground }]}>Agreed total {formatAUD(acceptance.snapshot.total)} incl. GST</Text>
+        </View>)}
+      </Card>}
       <Card>
         <Text style={[styles.title, { color: colors.foreground }]}>SELECT TRADE QUOTES</Text>
         {available.map((quote) => {
@@ -115,6 +123,8 @@ const styles = StyleSheet.create({
   buttonText: { color: "#fff", fontFamily: "Inter_700Bold" },
   outlineButton: { borderWidth: 1, borderRadius: 8, padding: 15, alignItems: "center", marginTop: 10 },
   dangerButton: { borderWidth: 1, borderRadius: 8, padding: 15, alignItems: "center" },
+  acceptanceRow: { borderTopWidth: StyleSheet.hairlineWidth, paddingVertical: 12, gap: 4 },
+  acceptanceTotal: { fontFamily: "Inter_700Bold", marginTop: 2 },
   groupQuote: { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: "#999", paddingVertical: 12, gap: 6 },
   row: { flexDirection: "row", gap: 12, justifyContent: "space-between" },
 });

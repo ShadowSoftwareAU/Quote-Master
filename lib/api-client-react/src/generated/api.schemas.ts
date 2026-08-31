@@ -350,12 +350,29 @@ export interface MasterProjectQuote {
   createdAt: string;
 }
 
+export interface MasterProjectPortalQuote {
+  id: number;
+  title: string;
+  status: string;
+  tradeType: string;
+  materialsSubtotal: number;
+  labourCost: number;
+  gst: number;
+  total: number;
+  lineItems: QuoteLineItem[];
+  createdAt: string;
+}
 export interface MasterTradeGroup {
   tradeType: string;
   label: string;
   quotes: MasterProjectQuote[];
 }
 
+export interface MasterProjectPortalTradeGroup {
+  tradeType: string;
+  label: string;
+  quotes: MasterProjectPortalQuote[];
+}
 export interface MasterBillOfMaterialsLine {
   /** @nullable */
   materialId?: number | null;
@@ -367,7 +384,6 @@ export interface MasterBillOfMaterialsLine {
   lineTotal: number;
   quoteCount: number;
 }
-
 export interface MasterProject {
   id: number;
   title: string;
@@ -388,6 +404,7 @@ export interface MasterProject {
   quotes: MasterProjectQuote[];
   tradeGroups: MasterTradeGroup[];
   billOfMaterials: MasterBillOfMaterialsLine[];
+  acceptanceHistory: MasterProjectAcceptance[];
   createdAt: string;
   updatedAt: string;
 }
@@ -401,13 +418,10 @@ export const MasterProjectPortalRevocationValue = {
   revoked: true,
 } as const;
 export type MasterProjectPortalRevocation = typeof MasterProjectPortalRevocationValue;
-
 export interface MasterProjectPortal {
   id: number;
   title: string;
   status: string;
-  /** @nullable */
-  customerName: string | null;
   /** @nullable */
   notes: string | null;
   builderMarginPct: number;
@@ -417,13 +431,18 @@ export interface MasterProjectPortal {
   gst: number;
   total: number;
   complianceDisclaimer: string;
-  quotes: MasterProjectQuote[];
-  tradeGroups: MasterTradeGroup[];
+  quotes: MasterProjectPortalQuote[];
+  tradeGroups: MasterProjectPortalTradeGroup[];
   billOfMaterials: MasterBillOfMaterialsLine[];
   createdAt: string;
   updatedAt: string;
 }
 
+export interface MasterProjectAcceptance {
+  id: number;
+  acceptedAt: string;
+  snapshot: MasterProjectPortal;
+}
 export interface MasterProjectInput {
   /** @minLength 1 */
   title: string;

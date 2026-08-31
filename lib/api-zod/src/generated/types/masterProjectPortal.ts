@@ -6,15 +6,13 @@
  * OpenAPI spec version: 0.1.0
  */
 import type { MasterBillOfMaterialsLine } from './masterBillOfMaterialsLine';
-import type { MasterProjectQuote } from './masterProjectQuote';
-import type { MasterTradeGroup } from './masterTradeGroup';
+import type { MasterProjectPortalQuote } from './masterProjectPortalQuote';
+import type { MasterProjectPortalTradeGroup } from './masterProjectPortalTradeGroup';
 
 export interface MasterProjectPortal {
   id: number;
   title: string;
   status: string;
-  /** @nullable */
-  customerName: string | null;
   /** @nullable */
   notes: string | null;
   builderMarginPct: number;
@@ -24,8 +22,8 @@ export interface MasterProjectPortal {
   gst: number;
   total: number;
   complianceDisclaimer: string;
-  quotes: MasterProjectQuote[];
-  tradeGroups: MasterTradeGroup[];
+  quotes: MasterProjectPortalQuote[];
+  tradeGroups: MasterProjectPortalTradeGroup[];
   billOfMaterials: MasterBillOfMaterialsLine[];
   createdAt: Date;
   updatedAt: Date;
