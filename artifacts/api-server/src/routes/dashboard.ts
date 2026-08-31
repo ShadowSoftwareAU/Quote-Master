@@ -9,7 +9,7 @@ import {
   customersTable,
   materialsTable,
 } from "@workspace/db";
-import { requireOwner } from "../middlewares/businessRoleAuth";
+import { getBusinessRole, requireOwner } from "../middlewares/businessRoleAuth";
 import { getAnalyticsOverview } from "../services/analytics";
 
 const router: IRouter = Router();
@@ -23,6 +23,7 @@ router.get("/analytics/overview", requireOwner, async (req, res): Promise<void> 
 router.get("/dashboard/summary", async (req, res): Promise<void> => {
   const clerkUserId = getAuth(req).userId;
   if (!clerkUserId) { res.status(401).json({ error: "Unauthorized" }); return; }
+  const isOwner = (await getBusinessRole(clerkUserId)) === "Owner";
   const now = new Date();
 
   const [counts] = await db
@@ -85,65 +86,64 @@ router.get("/dashboard/summary", async (req, res): Promise<void> => {
     .orderBy(asc(bookingsTable.startAt))
     .limit(5);
 
-  const acceptedQuoteIds = await db
-    .select({ id: quotesTable.id })
-    .from(quotesTable)
-    .where(and(
-      eq(quotesTable.clerkUserId, clerkUserId),
-      eq(quotesTable.status, "accepted"),
-    ));
-
   let grossProfit = 0;
   let totalTradeCost = 0;
 
-  if (acceptedQuoteIds.length > 0) {
-    const ids = acceptedQuoteIds.map((q) => q.id);
-    const lineItems = await db
-      .select({
-        lineTotal: quoteLineItemsTable.lineTotal,
-        materialId: quoteLineItemsTable.materialId,
-        quantity: quoteLineItemsTable.quantity,
-      })
-      .from(quoteLineItemsTable)
-      .where(inArray(quoteLineItemsTable.quoteId, ids));
+  if (isOwner) {
+    const acceptedQuoteIds = await db
+      .select({ id: quotesTable.id })
+      .from(quotesTable)
+      .where(and(
+        eq(quotesTable.clerkUserId, clerkUserId),
+        eq(quotesTable.status, "accepted"),
+      ));
 
-    const materialIds = lineItems
-      .map((l) => l.materialId)
-      .filter((id): id is number => id !== null);
+    if (acceptedQuoteIds.length > 0) {
+      const ids = acceptedQuoteIds.map((q) => q.id);
+      const lineItems = await db
+        .select({
+          lineTotal: quoteLineItemsTable.lineTotal,
+          materialId: quoteLineItemsTable.materialId,
+          quantity: quoteLineItemsTable.quantity,
+        })
+        .from(quoteLineItemsTable)
+        .where(inArray(quoteLineItemsTable.quoteId, ids));
 
-    const materialsWithCost = materialIds.length > 0
-      ? await db
-          .select({ id: materialsTable.id, tradeCost: materialsTable.tradeCost })
-          .from(materialsTable)
-          .where(and(
-            inArray(materialsTable.id, materialIds),
-            eq(materialsTable.clerkUserId, clerkUserId),
-          ))
-      : [];
+      const materialIds = lineItems
+        .map((l) => l.materialId)
+        .filter((id): id is number => id !== null);
 
-    const tradeCostMap = new Map(
-      materialsWithCost.map((m) => [m.id, m.tradeCost ? Number(m.tradeCost) : null]),
-    );
+      const materialsWithCost = materialIds.length > 0
+        ? await db
+            .select({ id: materialsTable.id, tradeCost: materialsTable.tradeCost })
+            .from(materialsTable)
+            .where(and(
+              inArray(materialsTable.id, materialIds),
+              eq(materialsTable.clerkUserId, clerkUserId),
+            ))
+        : [];
 
-    const totalRetail = lineItems.reduce((sum, l) => sum + Number(l.lineTotal), 0);
-    const tradeCostSum = lineItems.reduce((sum, l) => {
-      const tc = l.materialId !== null ? tradeCostMap.get(l.materialId) : null;
-      if (tc !== null && tc !== undefined) {
-        return sum + tc * Number(l.quantity);
-      }
-      return sum + Number(l.lineTotal) * 0.7;
-    }, 0);
+      const tradeCostMap = new Map(
+        materialsWithCost.map((m) => [m.id, m.tradeCost ? Number(m.tradeCost) : null]),
+      );
 
-    totalTradeCost = Math.round(tradeCostSum * 100) / 100;
-    grossProfit = Math.round((totalRetail - tradeCostSum) * 100) / 100;
+      const totalRetail = lineItems.reduce((sum, l) => sum + Number(l.lineTotal), 0);
+      const tradeCostSum = lineItems.reduce((sum, l) => {
+        const tc = l.materialId !== null ? tradeCostMap.get(l.materialId) : null;
+        if (tc !== null && tc !== undefined) {
+          return sum + tc * Number(l.quantity);
+        }
+        return sum + Number(l.lineTotal) * 0.7;
+      }, 0);
+
+      totalTradeCost = Math.round(tradeCostSum * 100) / 100;
+      grossProfit = Math.round((totalRetail - tradeCostSum) * 100) / 100;
+    }
   }
 
-  res.json({
+  const summary = {
     activeQuoteCount: counts.active,
     acceptedQuoteCount: counts.accepted,
-    totalQuoteValue: Number(counts.value),
-    grossProfit,
-    totalTradeCost,
     upcomingBookingCount: bookingCount.upcoming,
     customerCount: customerCount.c,
     recentQuotes: recentQuotesRows.map((r) => ({
@@ -171,7 +171,19 @@ router.get("/dashboard/summary", async (req, res): Promise<void> => {
       photos: (r.b.photos as string[]) ?? [],
       createdAt: r.b.createdAt.toISOString(),
     })),
-  });
+  };
+
+  if (isOwner) {
+    res.json({
+      ...summary,
+      totalQuoteValue: Number(counts.value),
+      grossProfit,
+      totalTradeCost,
+    });
+    return;
+  }
+
+  res.json(summary);
 });
 
 router.get("/dashboard/pnl", requireOwner, async (req, res): Promise<void> => {

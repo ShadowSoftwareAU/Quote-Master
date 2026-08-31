@@ -170,6 +170,8 @@ after(async () => {
 });
 
 test("database-backed onboarding and profile settings stay user scoped", { skip: !hasDatabase }, async () => {
+  assert.equal((await api(null, "GET", "/analytics/overview")).response.status, 401);
+
   const onboarding = await api(userA, "POST", "/onboarding", {
     businessName: `${fixture} Carpentry Pty Ltd`,
     phoneNumber: "+61 412 345 678",
@@ -188,6 +190,16 @@ test("database-backed onboarding and profile settings stay user scoped", { skip:
   assert.equal(profileRead.json.clerkUserId, undefined);
   assert.equal((await api(userA, "GET", "/dashboard/pnl")).response.status, 200);
   assert.equal((await api(userA, "GET", "/team")).response.status, 200);
+  const ownerOverview = await api(userA, "GET", "/analytics/overview");
+  assert.equal(ownerOverview.response.status, 200);
+  assert.equal(typeof ownerOverview.json.totalPipelineValue, "number");
+  assert.equal(typeof ownerOverview.json.ytdRevenue, "number");
+  assert.equal(typeof ownerOverview.json.quoteWinRate, "number");
+  const ownerSummary = await api(userA, "GET", "/dashboard/summary");
+  assert.equal(ownerSummary.response.status, 200);
+  assert.equal(typeof ownerSummary.json.totalQuoteValue, "number");
+  assert.equal(typeof ownerSummary.json.grossProfit, "number");
+  assert.equal(typeof ownerSummary.json.totalTradeCost, "number");
   const enabledMasterBuilder = await api(userA, "PATCH", "/settings/profile/master-builder", {
     isMasterBuilder: true,
   });
@@ -218,6 +230,12 @@ test("database-backed onboarding and profile settings stay user scoped", { skip:
   await pool.query("UPDATE business_profiles SET role = 'Employee' WHERE clerk_user_id = $1", [userA]);
   assert.equal((await api(userA, "GET", "/dashboard/pnl")).response.status, 403);
   assert.equal((await api(userA, "GET", "/team")).response.status, 403);
+  assert.equal((await api(userA, "GET", "/analytics/overview")).response.status, 403);
+  const employeeSummary = await api(userA, "GET", "/dashboard/summary");
+  assert.equal(employeeSummary.response.status, 200);
+  assert.equal(employeeSummary.json.totalQuoteValue, undefined);
+  assert.equal(employeeSummary.json.grossProfit, undefined);
+  assert.equal(employeeSummary.json.totalTradeCost, undefined);
   assert.equal(
     (await api(userA, "PUT", "/settings/profile", {
       tradeType: "Builder",
@@ -234,6 +252,12 @@ test("database-backed onboarding and profile settings stay user scoped", { skip:
   await pool.query("UPDATE business_profiles SET role = 'Subcontractor' WHERE clerk_user_id = $1", [userA]);
   assert.equal((await api(userA, "GET", "/dashboard/pnl")).response.status, 403);
   assert.equal((await api(userA, "GET", "/team")).response.status, 403);
+  assert.equal((await api(userA, "GET", "/analytics/overview")).response.status, 403);
+  const subcontractorSummary = await api(userA, "GET", "/dashboard/summary");
+  assert.equal(subcontractorSummary.response.status, 200);
+  assert.equal(subcontractorSummary.json.totalQuoteValue, undefined);
+  assert.equal(subcontractorSummary.json.grossProfit, undefined);
+  assert.equal(subcontractorSummary.json.totalTradeCost, undefined);
 
   const stored = await pool.query(
     "SELECT clerk_user_id, trade_type, role, metadata_sync_status FROM business_profiles WHERE clerk_user_id = $1",

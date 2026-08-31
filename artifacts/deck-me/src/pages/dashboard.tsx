@@ -121,17 +121,7 @@ export default function Dashboard() {
         </section>
       )}
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        {canViewFinancials && <Card className="border-2 border-primary/20 shadow-sm bg-card">
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-bold uppercase text-muted-foreground">Total Pipeline</CardTitle>
-            <FileText className="w-5 h-5 text-primary" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-black text-foreground">{formatCurrency(data.totalQuoteValue)}</div>
-          </CardContent>
-        </Card>}
-        
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         <Card className="shadow-sm">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-sm font-bold uppercase text-muted-foreground">Active Quotes</CardTitle>

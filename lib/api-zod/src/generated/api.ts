@@ -132,9 +132,9 @@ export const SetMasterBuilderFlagResponse = zod.object({
 export const GetDashboardSummaryResponse = zod.object({
   "activeQuoteCount": zod.number(),
   "acceptedQuoteCount": zod.number(),
-  "totalQuoteValue": zod.number(),
-  "grossProfit": zod.number().optional().describe('Total retail quote value minus total trade cost across all accepted quotes'),
-  "totalTradeCost": zod.number().optional().describe('Sum of trade costs for all accepted quote materials'),
+  "totalQuoteValue": zod.number().optional().describe('Owner-only total value across all quotes'),
+  "grossProfit": zod.number().optional().describe('Owner-only total retail quote value minus total trade cost across all accepted quotes'),
+  "totalTradeCost": zod.number().optional().describe('Owner-only sum of trade costs for all accepted quote materials'),
   "upcomingBookingCount": zod.number(),
   "customerCount": zod.number(),
   "recentQuotes": zod.array(zod.object({
@@ -165,7 +165,7 @@ export const GetDashboardSummaryResponse = zod.object({
   "photos": zod.array(zod.string()).optional().describe('Object paths for site photos'),
   "createdAt": zod.coerce.date()
 }))
-})
+}).describe('Financial fields are returned only for authenticated Owners. Employees and Subcontractors receive the operational fields without financial values.')
 
 
 /**
@@ -239,6 +239,8 @@ export const CreateCustomerBody = zod.object({
   "address": zod.string().optional(),
   "notes": zod.string().optional()
 })
+
+
 export const GetCustomerParams = zod.object({
   "id": zod.coerce.number()
 })
@@ -325,6 +327,8 @@ export const CreateMaterialBody = zod.object({
   "supplier": zod.string(),
   "notes": zod.string().optional()
 })
+
+
 export const UpdateMaterialParams = zod.object({
   "id": zod.coerce.number()
 })
@@ -1408,6 +1412,8 @@ export const CreateMasterProjectBody = zod.object({
   "builderMarginPct": zod.number().min(createMasterProjectBodyBuilderMarginPctMin).max(createMasterProjectBodyBuilderMarginPctMax).default(createMasterProjectBodyBuilderMarginPctDefault),
   "notes": zod.string().optional()
 })
+
+
 export const GetMasterProjectParams = zod.object({
   "id": zod.coerce.number()
 })
@@ -2725,4 +2731,4 @@ export const CreateSignUpLeadBody = zod.object({
   "notes": zod.string().optional()
 })
 
-// End of generated schemas.
+

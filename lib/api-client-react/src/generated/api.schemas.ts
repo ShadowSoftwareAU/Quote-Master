@@ -889,13 +889,17 @@ export interface PnLReport {
   totals: PnLReportTotals;
 }
 
+/**
+ * Financial fields are returned only for authenticated Owners. Employees and Subcontractors receive the operational fields without financial values.
+ */
 export interface DashboardSummary {
   activeQuoteCount: number;
   acceptedQuoteCount: number;
-  totalQuoteValue: number;
-  /** Total retail quote value minus total trade cost across all accepted quotes */
+  /** Owner-only total value across all quotes */
+  totalQuoteValue?: number;
+  /** Owner-only total retail quote value minus total trade cost across all accepted quotes */
   grossProfit?: number;
-  /** Sum of trade costs for all accepted quote materials */
+  /** Owner-only sum of trade costs for all accepted quote materials */
   totalTradeCost?: number;
   upcomingBookingCount: number;
   customerCount: number;
@@ -1146,3 +1150,4 @@ export interface AddPortfolioPhotoInput {
 export type ListMaterialsParams = {
 category?: string;
 };
+

@@ -157,6 +157,8 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/AnalyticsOverview" }
+        "401":
+          description: Authentication required
         "403":
           description: Owner role is required
 
@@ -2155,13 +2157,14 @@ components:
 
     DashboardSummary:
       type: object
-      required: [activeQuoteCount, acceptedQuoteCount, totalQuoteValue, upcomingBookingCount, customerCount, recentQuotes, upcomingBookings]
+      description: Financial fields are returned only for authenticated Owners. Employees and Subcontractors receive the operational fields without financial values.
+      required: [activeQuoteCount, acceptedQuoteCount, upcomingBookingCount, customerCount, recentQuotes, upcomingBookings]
       properties:
         activeQuoteCount: { type: integer }
         acceptedQuoteCount: { type: integer }
-        totalQuoteValue: { type: number }
-        grossProfit: { type: number, description: "Total retail quote value minus total trade cost across all accepted quotes" }
-        totalTradeCost: { type: number, description: "Sum of trade costs for all accepted quote materials" }
+        totalQuoteValue: { type: number, description: "Owner-only total value across all quotes" }
+        grossProfit: { type: number, description: "Owner-only total retail quote value minus total trade cost across all accepted quotes" }
+        totalTradeCost: { type: number, description: "Owner-only sum of trade costs for all accepted quote materials" }
         upcomingBookingCount: { type: integer }
         customerCount: { type: integer }
         recentQuotes:
