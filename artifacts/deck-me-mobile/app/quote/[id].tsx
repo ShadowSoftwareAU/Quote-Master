@@ -4,6 +4,8 @@ import {
   getGetQuoteQueryKey,
   getListQuotesQueryKey,
   getGetDashboardSummaryQueryKey,
+  getListMasterProjectsQueryKey,
+  getGetMasterProjectQueryKey,
   useDeleteQuote,
   useGetQuote,
   useSetQuoteStatus,
@@ -46,6 +48,7 @@ function QuoteDetail() {
   });
   const statusMut = useSetQuoteStatus();
   const deleteMut = useDeleteQuote();
+  const linkedMasterProjectId = data?.masterProjectId;
 
   function setStatus(status: string) {
     statusMut.mutate(
@@ -55,6 +58,12 @@ function QuoteDetail() {
           qc.invalidateQueries({ queryKey: getGetQuoteQueryKey(id) });
           qc.invalidateQueries({ queryKey: getListQuotesQueryKey() });
           qc.invalidateQueries({ queryKey: getGetDashboardSummaryQueryKey() });
+          qc.invalidateQueries({ queryKey: getListMasterProjectsQueryKey() });
+          if (linkedMasterProjectId) {
+            qc.invalidateQueries({
+              queryKey: getGetMasterProjectQueryKey(linkedMasterProjectId),
+            });
+          }
         },
       },
     );
@@ -75,6 +84,12 @@ function QuoteDetail() {
                 qc.invalidateQueries({
                   queryKey: getGetDashboardSummaryQueryKey(),
                 });
+                qc.invalidateQueries({ queryKey: getListMasterProjectsQueryKey() });
+                if (linkedMasterProjectId) {
+                  qc.invalidateQueries({
+                    queryKey: getGetMasterProjectQueryKey(linkedMasterProjectId),
+                  });
+                }
                 router.back();
               },
             },

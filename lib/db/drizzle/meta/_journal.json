@@ -43,6 +43,13 @@
       "when": 1788148079387,
       "tag": "0005_broken_fantastic_four",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1788220800000,
+      "tag": "0006_master_project_portals",
+      "breakpoints": true
     }
   ]
 }

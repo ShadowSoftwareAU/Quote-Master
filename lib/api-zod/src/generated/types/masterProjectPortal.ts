@@ -9,22 +9,20 @@ import type { MasterBillOfMaterialsLine } from './masterBillOfMaterialsLine';
 import type { MasterProjectQuote } from './masterProjectQuote';
 import type { MasterTradeGroup } from './masterTradeGroup';
 
-export interface MasterProject {
+export interface MasterProjectPortal {
   id: number;
   title: string;
   status: string;
-  customerId: number;
   /** @nullable */
-  customerName?: string | null;
+  customerName: string | null;
   /** @nullable */
-  notes?: string | null;
+  notes: string | null;
   builderMarginPct: number;
   materialsSubtotal: number;
   labourSubtotal: number;
   marginAmount: number;
   gst: number;
   total: number;
-  hasActivePortalLink: boolean;
   complianceDisclaimer: string;
   quotes: MasterProjectQuote[];
   tradeGroups: MasterTradeGroup[];

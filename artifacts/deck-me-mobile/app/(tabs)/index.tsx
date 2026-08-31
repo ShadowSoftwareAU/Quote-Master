@@ -57,6 +57,14 @@ const TILES: Tile[] = [
     subtitle: "Customer records",
     route: "/customers",
   },
+  {
+    id: "projects",
+    icon: "layers",
+    title: "MASTER PROPOSALS",
+    subtitle: "Combine trade quotes",
+    route: "/projects",
+    sensitive: true,
+  },
 ];
 
 // ─── Tile component ───────────────────────────────────────────────────────
@@ -181,7 +189,7 @@ function PrivacyTile({
 
 export default function HomeScreen() {
   const colors = useColors();
-  const { isSubcontractor } = useProfileAccess();
+  const { isSubcontractor, isMasterBuilder } = useProfileAccess();
   const insets = useSafeAreaInsets();
   const topPad = Platform.OS === "web" ? Math.max(insets.top, 67) : insets.top;
 
@@ -335,6 +343,17 @@ export default function HomeScreen() {
           <View style={{ flex: 1, flexDirection: "row", gap: 12 }}>
             <PrivacyTile tile={TILES[2]} colors={colors} onPress={() => handleTile(TILES[2].route)} delay={120} />
             <PrivacyTile tile={TILES[3]} colors={colors} onPress={() => handleTile(TILES[3].route)} delay={180} />
+          </View>
+          <View style={{ flex: 1, flexDirection: "row", gap: 12 }}>
+            <PrivacyTile
+              tile={{
+                ...TILES[4],
+                subtitle: isMasterBuilder ? "Combine trade quotes" : "Upgrade Required · Locked",
+              }}
+              colors={colors}
+              onPress={() => handleTile(TILES[4].route)}
+              delay={240}
+            />
           </View>
         </View>
 

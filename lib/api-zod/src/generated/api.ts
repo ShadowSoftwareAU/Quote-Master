@@ -1324,6 +1324,8 @@ export const GetMasterProjectResponse = zod.object({
   "marginAmount": zod.number(),
   "gst": zod.number(),
   "total": zod.number(),
+  "hasActivePortalLink": zod.boolean(),
+  "complianceDisclaimer": zod.string(),
   "quotes": zod.array(zod.object({
   "id": zod.number(),
   "title": zod.string(),
@@ -1334,7 +1336,45 @@ export const GetMasterProjectResponse = zod.object({
   "labourCost": zod.number(),
   "gst": zod.number(),
   "total": zod.number(),
+  "lineItems": zod.array(zod.object({
+  "id": zod.number(),
+  "quoteId": zod.number(),
+  "materialId": zod.number().nullish(),
+  "description": zod.string(),
+  "category": zod.string(),
+  "quantity": zod.number(),
+  "unit": zod.string(),
+  "unitPrice": zod.number(),
+  "lineTotal": zod.number()
+})),
   "createdAt": zod.coerce.date()
+})),
+  "tradeGroups": zod.array(zod.object({
+  "tradeType": zod.string(),
+  "label": zod.string(),
+  "quotes": zod.array(zod.object({
+  "id": zod.number(),
+  "title": zod.string(),
+  "status": zod.string(),
+  "customerId": zod.number(),
+  "tradeType": zod.string(),
+  "materialsSubtotal": zod.number(),
+  "labourCost": zod.number(),
+  "gst": zod.number(),
+  "total": zod.number(),
+  "lineItems": zod.array(zod.object({
+  "id": zod.number(),
+  "quoteId": zod.number(),
+  "materialId": zod.number().nullish(),
+  "description": zod.string(),
+  "category": zod.string(),
+  "quantity": zod.number(),
+  "unit": zod.string(),
+  "unitPrice": zod.number(),
+  "lineTotal": zod.number()
+})),
+  "createdAt": zod.coerce.date()
+}))
 })),
   "billOfMaterials": zod.array(zod.object({
   "materialId": zod.number().nullish(),
@@ -1381,6 +1421,8 @@ export const UpdateMasterProjectResponse = zod.object({
   "marginAmount": zod.number(),
   "gst": zod.number(),
   "total": zod.number(),
+  "hasActivePortalLink": zod.boolean(),
+  "complianceDisclaimer": zod.string(),
   "quotes": zod.array(zod.object({
   "id": zod.number(),
   "title": zod.string(),
@@ -1391,7 +1433,45 @@ export const UpdateMasterProjectResponse = zod.object({
   "labourCost": zod.number(),
   "gst": zod.number(),
   "total": zod.number(),
+  "lineItems": zod.array(zod.object({
+  "id": zod.number(),
+  "quoteId": zod.number(),
+  "materialId": zod.number().nullish(),
+  "description": zod.string(),
+  "category": zod.string(),
+  "quantity": zod.number(),
+  "unit": zod.string(),
+  "unitPrice": zod.number(),
+  "lineTotal": zod.number()
+})),
   "createdAt": zod.coerce.date()
+})),
+  "tradeGroups": zod.array(zod.object({
+  "tradeType": zod.string(),
+  "label": zod.string(),
+  "quotes": zod.array(zod.object({
+  "id": zod.number(),
+  "title": zod.string(),
+  "status": zod.string(),
+  "customerId": zod.number(),
+  "tradeType": zod.string(),
+  "materialsSubtotal": zod.number(),
+  "labourCost": zod.number(),
+  "gst": zod.number(),
+  "total": zod.number(),
+  "lineItems": zod.array(zod.object({
+  "id": zod.number(),
+  "quoteId": zod.number(),
+  "materialId": zod.number().nullish(),
+  "description": zod.string(),
+  "category": zod.string(),
+  "quantity": zod.number(),
+  "unit": zod.string(),
+  "unitPrice": zod.number(),
+  "lineTotal": zod.number()
+})),
+  "createdAt": zod.coerce.date()
+}))
 })),
   "billOfMaterials": zod.array(zod.object({
   "materialId": zod.number().nullish(),
@@ -1439,6 +1519,8 @@ export const SetMasterProjectQuotesResponse = zod.object({
   "marginAmount": zod.number(),
   "gst": zod.number(),
   "total": zod.number(),
+  "hasActivePortalLink": zod.boolean(),
+  "complianceDisclaimer": zod.string(),
   "quotes": zod.array(zod.object({
   "id": zod.number(),
   "title": zod.string(),
@@ -1449,7 +1531,260 @@ export const SetMasterProjectQuotesResponse = zod.object({
   "labourCost": zod.number(),
   "gst": zod.number(),
   "total": zod.number(),
+  "lineItems": zod.array(zod.object({
+  "id": zod.number(),
+  "quoteId": zod.number(),
+  "materialId": zod.number().nullish(),
+  "description": zod.string(),
+  "category": zod.string(),
+  "quantity": zod.number(),
+  "unit": zod.string(),
+  "unitPrice": zod.number(),
+  "lineTotal": zod.number()
+})),
   "createdAt": zod.coerce.date()
+})),
+  "tradeGroups": zod.array(zod.object({
+  "tradeType": zod.string(),
+  "label": zod.string(),
+  "quotes": zod.array(zod.object({
+  "id": zod.number(),
+  "title": zod.string(),
+  "status": zod.string(),
+  "customerId": zod.number(),
+  "tradeType": zod.string(),
+  "materialsSubtotal": zod.number(),
+  "labourCost": zod.number(),
+  "gst": zod.number(),
+  "total": zod.number(),
+  "lineItems": zod.array(zod.object({
+  "id": zod.number(),
+  "quoteId": zod.number(),
+  "materialId": zod.number().nullish(),
+  "description": zod.string(),
+  "category": zod.string(),
+  "quantity": zod.number(),
+  "unit": zod.string(),
+  "unitPrice": zod.number(),
+  "lineTotal": zod.number()
+})),
+  "createdAt": zod.coerce.date()
+}))
+})),
+  "billOfMaterials": zod.array(zod.object({
+  "materialId": zod.number().nullish(),
+  "description": zod.string(),
+  "category": zod.string(),
+  "quantity": zod.number(),
+  "unit": zod.string(),
+  "unitPrice": zod.number(),
+  "lineTotal": zod.number(),
+  "quoteCount": zod.number()
+})),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+})
+
+
+/**
+ * @summary Download an authenticated Master Project proposal PDF
+ */
+export const GetMasterProjectPdfParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+
+/**
+ * @summary Replace a Master Project's public portal token
+ */
+export const RegenerateMasterProjectPortalTokenParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+export const regenerateMasterProjectPortalTokenResponsePortalTokenRegExp = new RegExp('^[A-Za-z0-9_-]{43}$');
+
+
+export const RegenerateMasterProjectPortalTokenResponse = zod.object({
+  "portalToken": zod.string().regex(regenerateMasterProjectPortalTokenResponsePortalTokenRegExp)
+})
+
+
+/**
+ * @summary Revoke a Master Project's public portal token
+ */
+export const RevokeMasterProjectPortalTokenParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+export const RevokeMasterProjectPortalTokenResponse = zod.object({
+  "revoked": zod.boolean()
+})
+
+
+/**
+ * @summary Get a customer-safe Master Project proposal using a secure token
+ */
+export const getMasterProjectPortalPathTokenRegExp = new RegExp('^[A-Za-z0-9_-]{43}$');
+
+
+export const GetMasterProjectPortalParams = zod.object({
+  "token": zod.coerce.string().regex(getMasterProjectPortalPathTokenRegExp)
+})
+
+export const GetMasterProjectPortalResponse = zod.object({
+  "id": zod.number(),
+  "title": zod.string(),
+  "status": zod.string(),
+  "customerName": zod.string().nullable(),
+  "notes": zod.string().nullable(),
+  "builderMarginPct": zod.number(),
+  "materialsSubtotal": zod.number(),
+  "labourSubtotal": zod.number(),
+  "marginAmount": zod.number(),
+  "gst": zod.number(),
+  "total": zod.number(),
+  "complianceDisclaimer": zod.string(),
+  "quotes": zod.array(zod.object({
+  "id": zod.number(),
+  "title": zod.string(),
+  "status": zod.string(),
+  "customerId": zod.number(),
+  "tradeType": zod.string(),
+  "materialsSubtotal": zod.number(),
+  "labourCost": zod.number(),
+  "gst": zod.number(),
+  "total": zod.number(),
+  "lineItems": zod.array(zod.object({
+  "id": zod.number(),
+  "quoteId": zod.number(),
+  "materialId": zod.number().nullish(),
+  "description": zod.string(),
+  "category": zod.string(),
+  "quantity": zod.number(),
+  "unit": zod.string(),
+  "unitPrice": zod.number(),
+  "lineTotal": zod.number()
+})),
+  "createdAt": zod.coerce.date()
+})),
+  "tradeGroups": zod.array(zod.object({
+  "tradeType": zod.string(),
+  "label": zod.string(),
+  "quotes": zod.array(zod.object({
+  "id": zod.number(),
+  "title": zod.string(),
+  "status": zod.string(),
+  "customerId": zod.number(),
+  "tradeType": zod.string(),
+  "materialsSubtotal": zod.number(),
+  "labourCost": zod.number(),
+  "gst": zod.number(),
+  "total": zod.number(),
+  "lineItems": zod.array(zod.object({
+  "id": zod.number(),
+  "quoteId": zod.number(),
+  "materialId": zod.number().nullish(),
+  "description": zod.string(),
+  "category": zod.string(),
+  "quantity": zod.number(),
+  "unit": zod.string(),
+  "unitPrice": zod.number(),
+  "lineTotal": zod.number()
+})),
+  "createdAt": zod.coerce.date()
+}))
+})),
+  "billOfMaterials": zod.array(zod.object({
+  "materialId": zod.number().nullish(),
+  "description": zod.string(),
+  "category": zod.string(),
+  "quantity": zod.number(),
+  "unit": zod.string(),
+  "unitPrice": zod.number(),
+  "lineTotal": zod.number(),
+  "quoteCount": zod.number()
+})),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+})
+
+
+/**
+ * @summary Accept a Master Project proposal using a secure token
+ */
+export const setMasterProjectPortalStatusPathTokenRegExp = new RegExp('^[A-Za-z0-9_-]{43}$');
+
+
+export const SetMasterProjectPortalStatusParams = zod.object({
+  "token": zod.coerce.string().regex(setMasterProjectPortalStatusPathTokenRegExp)
+})
+
+export const SetMasterProjectPortalStatusBody = zod.object({
+  "status": zod.string()
+})
+
+export const SetMasterProjectPortalStatusResponse = zod.object({
+  "id": zod.number(),
+  "title": zod.string(),
+  "status": zod.string(),
+  "customerName": zod.string().nullable(),
+  "notes": zod.string().nullable(),
+  "builderMarginPct": zod.number(),
+  "materialsSubtotal": zod.number(),
+  "labourSubtotal": zod.number(),
+  "marginAmount": zod.number(),
+  "gst": zod.number(),
+  "total": zod.number(),
+  "complianceDisclaimer": zod.string(),
+  "quotes": zod.array(zod.object({
+  "id": zod.number(),
+  "title": zod.string(),
+  "status": zod.string(),
+  "customerId": zod.number(),
+  "tradeType": zod.string(),
+  "materialsSubtotal": zod.number(),
+  "labourCost": zod.number(),
+  "gst": zod.number(),
+  "total": zod.number(),
+  "lineItems": zod.array(zod.object({
+  "id": zod.number(),
+  "quoteId": zod.number(),
+  "materialId": zod.number().nullish(),
+  "description": zod.string(),
+  "category": zod.string(),
+  "quantity": zod.number(),
+  "unit": zod.string(),
+  "unitPrice": zod.number(),
+  "lineTotal": zod.number()
+})),
+  "createdAt": zod.coerce.date()
+})),
+  "tradeGroups": zod.array(zod.object({
+  "tradeType": zod.string(),
+  "label": zod.string(),
+  "quotes": zod.array(zod.object({
+  "id": zod.number(),
+  "title": zod.string(),
+  "status": zod.string(),
+  "customerId": zod.number(),
+  "tradeType": zod.string(),
+  "materialsSubtotal": zod.number(),
+  "labourCost": zod.number(),
+  "gst": zod.number(),
+  "total": zod.number(),
+  "lineItems": zod.array(zod.object({
+  "id": zod.number(),
+  "quoteId": zod.number(),
+  "materialId": zod.number().nullish(),
+  "description": zod.string(),
+  "category": zod.string(),
+  "quantity": zod.number(),
+  "unit": zod.string(),
+  "unitPrice": zod.number(),
+  "lineTotal": zod.number()
+})),
+  "createdAt": zod.coerce.date()
+}))
 })),
   "billOfMaterials": zod.array(zod.object({
   "materialId": zod.number().nullish(),

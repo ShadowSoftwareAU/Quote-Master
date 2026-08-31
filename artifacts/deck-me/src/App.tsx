@@ -14,6 +14,7 @@ import Calculator from "@/pages/calculator";
 import Quotes from "@/pages/quotes";
 import QuoteDetail from "@/pages/quote-detail";
 import QuotePortal from "@/pages/quote-portal";
+import MasterProjectPortal from "@/pages/master-project-portal";
 import Customers from "@/pages/customers";
 import Materials from "@/pages/materials";
 import Bookings from "@/pages/bookings";
@@ -191,6 +192,7 @@ function Router() {
       <Route path="/sign-in/*?" component={SignInPage} />
       <Route path="/sign-up/*?" component={SignUpPage} />
       <Route path="/quote/:token" component={QuotePortal} />
+      <Route path="/master-project/:token" component={MasterProjectPortal} />
       <Route component={ProtectedWorkspace} />
     </Switch>
   );

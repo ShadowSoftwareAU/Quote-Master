@@ -6,6 +6,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { 
   useGetProfileSettings, 
   getGetProfileSettingsQueryKey, 
+  getListMasterProjectsQueryKey,
   useUpdateProfileSettings 
 } from "@workspace/api-client-react";
 import { useEffect, useRef } from "react";
@@ -84,6 +85,7 @@ export default function ProfileSettings() {
       {
         onSuccess: (updatedProfile) => {
           queryClient.setQueryData(profileQueryKey, updatedProfile);
+          queryClient.invalidateQueries({ queryKey: getListMasterProjectsQueryKey() });
           form.reset({
             role: updatedProfile.role,
             tradeType: updatedProfile.tradeType,

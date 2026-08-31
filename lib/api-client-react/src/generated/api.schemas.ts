@@ -346,7 +346,14 @@ export interface MasterProjectQuote {
   labourCost: number;
   gst: number;
   total: number;
+  lineItems: QuoteLineItem[];
   createdAt: string;
+}
+
+export interface MasterTradeGroup {
+  tradeType: string;
+  label: string;
+  quotes: MasterProjectQuote[];
 }
 
 export interface MasterBillOfMaterialsLine {
@@ -376,7 +383,42 @@ export interface MasterProject {
   marginAmount: number;
   gst: number;
   total: number;
+  hasActivePortalLink: boolean;
+  complianceDisclaimer: string;
   quotes: MasterProjectQuote[];
+  tradeGroups: MasterTradeGroup[];
+  billOfMaterials: MasterBillOfMaterialsLine[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface MasterProjectPortalToken {
+  /** @pattern ^[A-Za-z0-9_-]{43}$ */
+  portalToken: string;
+}
+
+export const MasterProjectPortalRevocationValue = {
+  revoked: true,
+} as const;
+export type MasterProjectPortalRevocation = typeof MasterProjectPortalRevocationValue;
+
+export interface MasterProjectPortal {
+  id: number;
+  title: string;
+  status: string;
+  /** @nullable */
+  customerName: string | null;
+  /** @nullable */
+  notes: string | null;
+  builderMarginPct: number;
+  materialsSubtotal: number;
+  labourSubtotal: number;
+  marginAmount: number;
+  gst: number;
+  total: number;
+  complianceDisclaimer: string;
+  quotes: MasterProjectQuote[];
+  tradeGroups: MasterTradeGroup[];
   billOfMaterials: MasterBillOfMaterialsLine[];
   createdAt: string;
   updatedAt: string;

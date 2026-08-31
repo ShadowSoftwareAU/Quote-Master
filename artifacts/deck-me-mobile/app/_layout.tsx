@@ -133,6 +133,24 @@ function RootStack() {
           headerTitleStyle: { fontFamily: "Chivo_700Bold" },
         }}
       />
+      <Stack.Screen
+        name="projects/index"
+        options={{
+          title: "Master Proposals",
+          headerStyle: { backgroundColor: "#1a1e26" },
+          headerTintColor: "#ffffff",
+          headerTitleStyle: { fontFamily: "Chivo_700Bold" },
+        }}
+      />
+      <Stack.Screen
+        name="projects/[id]"
+        options={{
+          title: "Master Proposal",
+          headerStyle: { backgroundColor: "#1a1e26" },
+          headerTintColor: "#ffffff",
+          headerTitleStyle: { fontFamily: "Chivo_700Bold" },
+        }}
+      />
     </Stack>
   );
 }

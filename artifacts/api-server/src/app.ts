@@ -8,11 +8,13 @@ import { requireApiAuth } from "./middlewares/apiAuth";
 
 const app: Express = express();
 const QUOTE_PORTAL_TOKEN_IN_PATH = /\/api\/quote\/[A-Za-z0-9_-]{43}/g;
+const MASTER_PROJECT_PORTAL_TOKEN_IN_PATH = /\/api\/master-project\/[A-Za-z0-9_-]{43}/g;
 
 function requestPathForLogs(url: string | undefined): string | undefined {
   return url
     ?.split("?")[0]
-    .replace(QUOTE_PORTAL_TOKEN_IN_PATH, "/api/quote/[REDACTED]");
+    .replace(QUOTE_PORTAL_TOKEN_IN_PATH, "/api/quote/[REDACTED]")
+    .replace(MASTER_PROJECT_PORTAL_TOKEN_IN_PATH, "/api/master-project/[REDACTED]");
 }
 
 app.use(

@@ -1,16 +1,74 @@
 import { Router, type IRouter } from "express";
 import { getAuth } from "@clerk/express";
 import { and, eq, inArray } from "drizzle-orm";
+import { randomBytes } from "node:crypto";
 import { customersTable, db, masterProjectsTable, quotesTable } from "@workspace/db";
 import {
   CreateMasterProjectBody, DeleteMasterProjectParams, GetMasterProjectParams,
+  GetMasterProjectPortalParams, RegenerateMasterProjectPortalTokenParams,
+  RevokeMasterProjectPortalTokenParams, SetMasterProjectPortalStatusBody,
+  SetMasterProjectPortalStatusParams,
   SetMasterProjectQuotesBody, SetMasterProjectQuotesParams, UpdateMasterProjectBody,
   UpdateMasterProjectParams,
 } from "@workspace/api-zod";
 import { requireMasterBuilder } from "../middlewares/masterBuilderAuth";
-import { getMasterProject, listMasterProjects, recalculateMasterProjectTotals } from "../services/masterProjects";
+import {
+  getMasterProject,
+  getMasterProjectByPortalToken,
+  listMasterProjects,
+  recalculateMasterProjectTotals,
+} from "../services/masterProjects";
 
 const router: IRouter = Router();
+
+function generatePortalToken(): string {
+  return randomBytes(32).toString("base64url");
+}
+
+function publicMasterProject(project: NonNullable<Awaited<ReturnType<typeof getMasterProjectByPortalToken>>>) {
+  const { customerId: _customerId, ...publicProject } = project;
+  return publicProject;
+}
+
+function isStrictAcceptance(body: unknown): boolean {
+  if (!body || typeof body !== "object" || Array.isArray(body)) return false;
+  const keys = Object.keys(body);
+  return keys.length === 1 && keys[0] === "status";
+}
+
+router.get("/master-project/:token", async (req, res): Promise<void> => {
+  res.setHeader("Cache-Control", "private, no-store, max-age=0");
+  const params = GetMasterProjectPortalParams.safeParse(req.params);
+  if (!params.success) { res.status(400).json({ error: params.error.message }); return; }
+  const project = await getMasterProjectByPortalToken(params.data.token);
+  if (!project) { res.status(404).json({ error: "Master Project not found" }); return; }
+  res.json(publicMasterProject(project));
+});
+
+router.patch("/master-project/:token/status", async (req, res): Promise<void> => {
+  res.setHeader("Cache-Control", "private, no-store, max-age=0");
+  const params = SetMasterProjectPortalStatusParams.safeParse(req.params);
+  const body = SetMasterProjectPortalStatusBody.safeParse(req.body);
+  if (
+    !params.success ||
+    !body.success ||
+    body.data.status !== "accepted" ||
+    !isStrictAcceptance(req.body)
+  ) {
+    res.status(401).json({ error: "Unauthorized" });
+    return;
+  }
+  const [updated] = await db
+    .update(masterProjectsTable)
+    .set({ status: "accepted" })
+    .where(eq(masterProjectsTable.portalToken, params.data.token))
+    .returning({ id: masterProjectsTable.id });
+  if (!updated) { res.status(404).json({ error: "Master Project not found" }); return; }
+  const project = await getMasterProjectByPortalToken(params.data.token);
+  if (!project) { res.status(404).json({ error: "Master Project not found" }); return; }
+  res.json(publicMasterProject(project));
+});
+
 router.use("/master-projects", requireMasterBuilder);
 
 router.get("/master-projects", async (req, res): Promise<void> => {
@@ -121,6 +179,48 @@ router.put("/master-projects/:id/quotes", async (req, res): Promise<void> => {
   const json = await getMasterProject(result.projectId, clerkUserId);
   if (!json) { res.status(404).json({ error: "Master Project not found" }); return; }
   res.json(json);
+});
+router.post("/master-projects/:id/portal-token", async (req, res): Promise<void> => {
+  const clerkUserId = getAuth(req).userId;
+  if (!clerkUserId) { res.status(401).json({ error: "Unauthorized" }); return; }
+  const params = RegenerateMasterProjectPortalTokenParams.safeParse(req.params);
+  if (!params.success) { res.status(400).json({ error: params.error.message }); return; }
+  const [project] = await db
+    .update(masterProjectsTable)
+    .set({ portalToken: generatePortalToken() })
+    .where(and(
+      eq(masterProjectsTable.id, params.data.id),
+      inArray(
+        masterProjectsTable.customerId,
+        db.select({ id: customersTable.id }).from(customersTable)
+          .where(eq(customersTable.clerkUserId, clerkUserId)),
+      ),
+    ))
+    .returning({ portalToken: masterProjectsTable.portalToken });
+  if (!project?.portalToken) { res.status(404).json({ error: "Master Project not found" }); return; }
+  req.log?.info({ userId: clerkUserId, masterProjectId: params.data.id }, "Master Project portal token regenerated");
+  res.json({ portalToken: project.portalToken });
+});
+router.delete("/master-projects/:id/portal-token", async (req, res): Promise<void> => {
+  const clerkUserId = getAuth(req).userId;
+  if (!clerkUserId) { res.status(401).json({ error: "Unauthorized" }); return; }
+  const params = RevokeMasterProjectPortalTokenParams.safeParse(req.params);
+  if (!params.success) { res.status(400).json({ error: params.error.message }); return; }
+  const [project] = await db
+    .update(masterProjectsTable)
+    .set({ portalToken: null })
+    .where(and(
+      eq(masterProjectsTable.id, params.data.id),
+      inArray(
+        masterProjectsTable.customerId,
+        db.select({ id: customersTable.id }).from(customersTable)
+          .where(eq(customersTable.clerkUserId, clerkUserId)),
+      ),
+    ))
+    .returning({ id: masterProjectsTable.id });
+  if (!project) { res.status(404).json({ error: "Master Project not found" }); return; }
+  req.log?.info({ userId: clerkUserId, masterProjectId: params.data.id }, "Master Project portal token revoked");
+  res.json({ revoked: true });
 });
 router.delete("/master-projects/:id", async (req, res): Promise<void> => {
   const clerkUserId = getAuth(req).userId;

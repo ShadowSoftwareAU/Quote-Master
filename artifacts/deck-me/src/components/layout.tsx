@@ -1,10 +1,9 @@
 import { Link, useLocation } from "wouter";
-import { Hammer, Calculator, FileText, Users, Box, Calendar, Menu, UserCheck, CalendarDays, Images, TrendingUp, PieChart, FolderKanban, UserCog } from "lucide-react";
-import { getListMasterProjectsQueryKey, useListMasterProjects } from "@workspace/api-client-react";
+import { Hammer, Calculator, FileText, Users, Box, Calendar, Menu, UserCheck, CalendarDays, Images, TrendingUp, PieChart, FolderKanban, UserCog, LockKeyhole } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { ReactNode } from "react";
-import { Show, UserButton, useAuth } from "@clerk/react";
+import { Show, UserButton } from "@clerk/react";
 import { useProfileAccess } from "@/lib/access";
 
 const navItems = [
@@ -24,22 +23,14 @@ const navItems = [
 
 export function Layout({ children }: { children: ReactNode }) {
   const [location] = useLocation();
-  const { isSignedIn } = useAuth();
-  const { canManageTeam, canViewFinancials, canViewGeneralWorkspace } = useProfileAccess();
-  const { isSuccess: canAccessProjects } = useListMasterProjects({
-    query: {
-      queryKey: getListMasterProjectsQueryKey(),
-      retry: false,
-      enabled: isSignedIn === true,
-    },
-  });
+  const { canManageTeam, canViewFinancials, canViewGeneralWorkspace, isMasterBuilder } = useProfileAccess();
   const roleFilteredItems = navItems.filter((item) => {
     if (item.href === "/finance") return canViewFinancials;
     if (item.href === "/team" || item.href === "/planner") return canManageTeam;
     if (["/customers", "/materials", "/portfolio", "/referrals"].includes(item.href)) return canViewGeneralWorkspace;
     return true;
   });
-  const visibleNavItems = canAccessProjects && canManageTeam
+  const visibleNavItems = canManageTeam
     ? [...roleFilteredItems, { href: "/projects", label: "Projects", icon: FolderKanban }]
     : roleFilteredItems;
 
@@ -75,6 +66,9 @@ export function Layout({ children }: { children: ReactNode }) {
               >
                 <item.icon className="w-4 h-4" />
                 {item.label}
+                {item.href === "/projects" && !isMasterBuilder && (
+                  <LockKeyhole className="ml-auto w-3.5 h-3.5" aria-label="Upgrade required" />
+                )}
               </Link>
             );
           })}
@@ -122,6 +116,9 @@ export function Layout({ children }: { children: ReactNode }) {
                   >
                     <item.icon className="w-4 h-4" />
                     {item.label}
+                    {item.href === "/projects" && !isMasterBuilder && (
+                      <LockKeyhole className="ml-auto w-3.5 h-3.5" aria-label="Upgrade required" />
+                    )}
                   </Link>
                 );
               })}

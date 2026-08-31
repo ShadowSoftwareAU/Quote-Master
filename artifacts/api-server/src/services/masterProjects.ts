@@ -6,6 +6,7 @@ import {
   quoteLineItemsTable,
   quotesTable,
 } from "@workspace/db";
+import { STANDARD_NCC_DISCLAIMER } from "../lib/quoteCompliance";
 
 const GST_RATE = 0.1;
 type MasterProjectDbClient = Pick<typeof db, "select" | "update">;
@@ -29,24 +30,39 @@ function buildProjectPricing(
   return { materialsSubtotal, labourSubtotal, marginAmount, gst, total: roundMoney(subtotalBeforeGst + gst) };
 }
 
-export async function getMasterProject(projectId: number, clerkUserId: string) {
+function tradeLabel(tradeType: string): string {
+  const value = tradeType.trim();
+  if (!value || value.toLowerCase() === "other") return "Other trade";
+  return value
+    .replace(/[_-]+/g, " ")
+    .replace(/\s+/g, " ")
+    .replace(/\b\w/g, (letter) => letter.toUpperCase());
+}
+
+async function loadMasterProject(projectId: number, clerkUserId?: string) {
+  const customerJoin = clerkUserId
+    ? and(
+        eq(customersTable.id, masterProjectsTable.customerId),
+        eq(customersTable.clerkUserId, clerkUserId),
+      )
+    : eq(customersTable.id, masterProjectsTable.customerId);
   const [project] = await db
     .select({ project: masterProjectsTable, customerName: customersTable.name })
     .from(masterProjectsTable)
-    .innerJoin(customersTable, and(
-      eq(customersTable.id, masterProjectsTable.customerId),
-      eq(customersTable.clerkUserId, clerkUserId),
-    ))
+    .innerJoin(customersTable, customerJoin)
     .where(eq(masterProjectsTable.id, projectId));
   if (!project) return null;
 
+  const quotesWhere = clerkUserId
+    ? and(
+        eq(quotesTable.masterProjectId, projectId),
+        eq(quotesTable.clerkUserId, clerkUserId),
+      )
+    : eq(quotesTable.masterProjectId, projectId);
   const quotes = await db
     .select()
     .from(quotesTable)
-    .where(and(
-      eq(quotesTable.masterProjectId, projectId),
-      eq(quotesTable.clerkUserId, clerkUserId),
-    ))
+    .where(quotesWhere)
     .orderBy(desc(quotesTable.createdAt));
   const quoteIds = quotes.map((quote) => quote.id);
   const lineItems =
@@ -55,12 +71,61 @@ export async function getMasterProject(projectId: number, clerkUserId: string) {
       : await db
           .select({ line: quoteLineItemsTable })
           .from(quoteLineItemsTable)
-          .innerJoin(quotesTable, and(
-            eq(quotesTable.id, quoteLineItemsTable.quoteId),
-            eq(quotesTable.clerkUserId, clerkUserId),
-          ))
+          .innerJoin(
+            quotesTable,
+            clerkUserId
+              ? and(
+                  eq(quotesTable.id, quoteLineItemsTable.quoteId),
+                  eq(quotesTable.clerkUserId, clerkUserId),
+                )
+              : eq(quotesTable.id, quoteLineItemsTable.quoteId),
+          )
           .where(inArray(quoteLineItemsTable.quoteId, quoteIds))
           .then((rows) => rows.map((row) => row.line));
+
+  const linesByQuoteId = new Map<number, typeof lineItems>();
+  for (const item of lineItems) {
+    const current = linesByQuoteId.get(item.quoteId) ?? [];
+    current.push(item);
+    linesByQuoteId.set(item.quoteId, current);
+  }
+
+  const quotePayload = quotes.map((quote) => ({
+    id: quote.id,
+    title: quote.title,
+    status: quote.status,
+    customerId: quote.customerId,
+    tradeType: quote.tradeType?.trim() || "other",
+    materialsSubtotal: Number(quote.materialsSubtotal),
+    labourCost: Number(quote.labourCost),
+    gst: Number(quote.gst),
+    total: Number(quote.total),
+    lineItems: (linesByQuoteId.get(quote.id) ?? []).map((line) => ({
+      id: line.id,
+      quoteId: line.quoteId,
+      description: line.description,
+      category: line.category,
+      quantity: Number(line.quantity),
+      unit: line.unit,
+      unitPrice: Number(line.unitPrice),
+      lineTotal: Number(line.lineTotal),
+    })),
+    createdAt: quote.createdAt.toISOString(),
+  }));
+
+  const tradeGroups = Array.from(
+    quotePayload.reduce((groups, quote) => {
+      const tradeType = quote.tradeType || "other";
+      const group = groups.get(tradeType) ?? {
+        tradeType,
+        label: tradeLabel(tradeType),
+        quotes: [],
+      };
+      group.quotes.push(quote);
+      groups.set(tradeType, group);
+      return groups;
+    }, new Map<string, { tradeType: string; label: string; quotes: typeof quotePayload }>()),
+  ).map(([, group]) => group);
 
   const consolidated = new Map<string, {
     materialId: number | null; description: string; category: string; unit: string;
@@ -98,12 +163,10 @@ export async function getMasterProject(projectId: number, clerkUserId: string) {
     marginAmount: Number(project.project.marginAmount),
     gst: Number(project.project.gst),
     total: Number(project.project.total),
-    quotes: quotes.map((quote) => ({
-      id: quote.id, title: quote.title, status: quote.status, customerId: quote.customerId,
-      tradeType: quote.tradeType, materialsSubtotal: Number(quote.materialsSubtotal),
-      labourCost: Number(quote.labourCost), gst: Number(quote.gst), total: Number(quote.total),
-      createdAt: quote.createdAt.toISOString(),
-    })),
+    hasActivePortalLink: Boolean(project.project.portalToken),
+    complianceDisclaimer: STANDARD_NCC_DISCLAIMER,
+    quotes: quotePayload,
+    tradeGroups,
     billOfMaterials: Array.from(consolidated.values())
       .map((item) => ({
         materialId: item.materialId,
@@ -119,6 +182,19 @@ export async function getMasterProject(projectId: number, clerkUserId: string) {
     createdAt: project.project.createdAt.toISOString(),
     updatedAt: project.project.updatedAt.toISOString(),
   };
+}
+
+export async function getMasterProject(projectId: number, clerkUserId: string) {
+  return loadMasterProject(projectId, clerkUserId);
+}
+
+export async function getMasterProjectByPortalToken(token: string) {
+  const [project] = await db
+    .select({ id: masterProjectsTable.id })
+    .from(masterProjectsTable)
+    .where(eq(masterProjectsTable.portalToken, token))
+    .limit(1);
+  return project ? loadMasterProject(project.id) : null;
 }
 
 export async function recalculateMasterProjectTotals(

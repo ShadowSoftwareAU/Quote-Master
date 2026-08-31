@@ -135,6 +135,8 @@ test("only the exact public quote routes bypass authentication", () => {
     request({ method: "PATCH", path: `/quote/${token}`, body: { deckBoardType: "treated_pine" } }),
     request({ method: "PATCH", path: `/quote/${token}`, body: { balustradeType: "timber" } }),
     request({ method: "PATCH", path: `/quote/${token}/status`, body: { status: "accepted" } }),
+    request({ method: "GET", path: `/master-project/${token}` }),
+    request({ method: "PATCH", path: `/master-project/${token}/status`, body: { status: "accepted" } }),
   ];
   for (const req of allowed) assert.equal(invoke(req).nextCalled, true, `${req.method} ${req.path}`);
 
@@ -143,6 +145,9 @@ test("only the exact public quote routes bypass authentication", () => {
     request({ method: "POST", path: "/quotes/estimate", body: { lengthM: 2, widthM: 2 } }),
     request({ method: "GET", path: "/quotes/42/portal" }),
     request({ method: "POST", path: "/onboarding", body: {} }),
+    request({ method: "PATCH", path: `/master-project/${token}`, body: { title: "Spoof" } }),
+    request({ method: "PATCH", path: `/master-project/${token}/status`, body: { status: "sent" } }),
+    request({ method: "GET", path: "/master-project/42" }),
     request({ method: "PUT", path: "/settings/profile", body: {} }),
     request({ method: "GET", path: `/quote/${token}/extra` }),
     request({ method: "GET", path: "/quote/too-short" }),

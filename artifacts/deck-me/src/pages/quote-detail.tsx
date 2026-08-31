@@ -1,4 +1,4 @@
-import { useGetQuote, useSetQuoteStatus, useDeleteQuote, useCreateQuoteVariation, useRegenerateQuotePortalToken, getGetQuoteQueryKey, getListQuotesQueryKey } from "@workspace/api-client-react";
+import { useGetQuote, useSetQuoteStatus, useDeleteQuote, useCreateQuoteVariation, useRegenerateQuotePortalToken, getGetQuoteQueryKey, getListQuotesQueryKey, getListMasterProjectsQueryKey, getGetMasterProjectQueryKey } from "@workspace/api-client-react";
 import { useParams, useLocation } from "wouter";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -35,12 +35,21 @@ export default function QuoteDetail() {
   if (isLoading || !quote) return <div className="p-8"><Skeleton className="h-64" /></div>;
 
   const councilWarning = quote.heightM >= COUNCIL_HEIGHT_M;
+  const refreshMasterProjects = () => {
+    queryClient.invalidateQueries({ queryKey: getListMasterProjectsQueryKey() });
+    if (quote.masterProjectId) {
+      queryClient.invalidateQueries({
+        queryKey: getGetMasterProjectQueryKey(quote.masterProjectId),
+      });
+    }
+  };
 
   const updateStatus = (status: string) => {
     setStatus.mutate(
       { id: quoteId, data: { status } },
       { onSuccess: () => {
         queryClient.invalidateQueries({ queryKey: getGetQuoteQueryKey(quoteId) });
+        refreshMasterProjects();
         toast({ title: `Quote marked as ${status}` });
       }}
     );
@@ -51,6 +60,8 @@ export default function QuoteDetail() {
       deleteQuote.mutate({ id: quoteId }, {
         onSuccess: () => {
           toast({ title: "Quote deleted" });
+          queryClient.invalidateQueries({ queryKey: getListQuotesQueryKey() });
+          refreshMasterProjects();
           setLocation("/quotes");
         }
       });
@@ -61,6 +72,7 @@ export default function QuoteDetail() {
     const token = quote.portalToken ?? (
       await regeneratePortalToken.mutateAsync({ id: quoteId })
     ).portalToken;
+    refreshMasterProjects();
     const basePath = import.meta.env.BASE_URL.replace(/\/$/, "");
     const portalLink = new URL(`${basePath}/quote/${token}`, window.location.origin).toString();
     try {

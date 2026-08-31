@@ -9,7 +9,10 @@ import {
   customersTable,
   businessProfilesTable,
 } from "@workspace/db";
+import { GetMasterProjectPdfParams } from "@workspace/api-zod";
 import { complianceDisclaimerForTrade } from "../lib/quoteCompliance";
+import { requireMasterBuilder } from "../middlewares/masterBuilderAuth";
+import { getMasterProject } from "../services/masterProjects";
 
 const router: IRouter = Router();
 
@@ -267,6 +270,112 @@ router.get("/quotes/:id/pdf", async (req, res): Promise<void> => {
       .text("⚠  This deck may require council approval — verify with your local council before commencing work.", margin, footerY + 22, { align: "center", width: contentW });
   }
 
+  doc.end();
+});
+
+router.get("/master-projects/:id/pdf", requireMasterBuilder, async (req, res): Promise<void> => {
+  const clerkUserId = getAuth(req).userId;
+  if (!clerkUserId) { res.status(401).json({ error: "Unauthorized" }); return; }
+  const params = GetMasterProjectPdfParams.safeParse(req.params);
+  if (!params.success) { res.status(400).json({ error: params.error.message }); return; }
+  const project = await getMasterProject(params.data.id, clerkUserId);
+  if (!project) { res.status(404).json({ error: "Master Project not found" }); return; }
+
+  const doc = new PDFDocument({
+    size: "A4",
+    margins: { top: 50, bottom: 55, left: 50, right: 50 },
+    info: { Title: project.title, Author: "Quote Master" },
+  });
+  const pageW = 595.28;
+  const margin = 50;
+  const contentW = pageW - margin * 2;
+  let y = 116;
+
+  res.setHeader("Content-Type", "application/pdf");
+  res.setHeader("Content-Disposition", `attachment; filename="master-proposal-${project.id}.pdf"`);
+  doc.pipe(res);
+
+  const drawHeader = () => {
+    doc.rect(0, 0, pageW, 90).fill(DARK);
+    doc.rect(0, 90, pageW, 6).fill(ORANGE);
+    doc.fontSize(26).font("Helvetica-Bold").fillColor(ORANGE).text("QUOTE MASTER", margin, 22);
+    doc.fontSize(9).font("Helvetica").fillColor("#c7c7c7").text("MASTER PROJECT PROPOSAL", margin, 55);
+    doc.fontSize(11).font("Helvetica-Bold").fillColor("white").text(project.title.toUpperCase(), margin, 22, { align: "right" });
+    doc.fontSize(9).font("Helvetica").fillColor("#c7c7c7").text(`Proposal #${project.id}  ·  ${formatDate(new Date(project.createdAt))}`, margin, 42, { align: "right" });
+  };
+  const ensureSpace = (height: number) => {
+    if (y + height <= 760) return;
+    doc.addPage();
+    y = 50;
+  };
+
+  drawHeader();
+  doc.fontSize(8).font("Helvetica-Bold").fillColor(MUTED).text("PREPARED FOR", margin, y);
+  doc.fontSize(15).font("Helvetica-Bold").fillColor(TEXT).text(project.customerName ?? "Customer", margin, y + 14);
+  doc.fontSize(8).font("Helvetica-Bold").fillColor(MUTED).text("PROJECT SUMMARY", margin + contentW / 2, y);
+  doc.fontSize(10).font("Helvetica").fillColor(TEXT)
+    .text(`${project.quotes.length} trade quote${project.quotes.length === 1 ? "" : "s"} combined`, margin + contentW / 2, y + 14)
+    .text(`Status: ${project.status.toUpperCase()}`, margin + contentW / 2, y + 30);
+  y += 66;
+  if (project.notes) {
+    doc.fontSize(9).font("Helvetica").fillColor(MID).text(project.notes, margin, y, { width: contentW });
+    y += doc.heightOfString(project.notes, { width: contentW }) + 18;
+  }
+
+  for (const group of project.tradeGroups) {
+    ensureSpace(70);
+    doc.rect(margin, y, contentW, 28).fill(DARK);
+    doc.fontSize(11).font("Helvetica-Bold").fillColor("white").text(group.label.toUpperCase(), margin + 10, y + 8);
+    y += 36;
+    for (const quote of group.quotes) {
+      ensureSpace(68);
+      doc.fontSize(11).font("Helvetica-Bold").fillColor(TEXT).text(quote.title, margin, y);
+      doc.fontSize(8).font("Helvetica-Bold").fillColor(MUTED)
+        .text(quote.status.toUpperCase(), margin, y, { align: "right" });
+      y += 18;
+      for (const line of quote.lineItems) {
+        ensureSpace(22);
+        doc.fontSize(8.5).font("Helvetica").fillColor(MID)
+          .text(`${line.description}  ·  ${line.quantity} ${line.unit}`, margin + 8, y, { width: contentW * 0.7 });
+        doc.font("Helvetica-Bold").fillColor(TEXT)
+          .text(formatAUD(line.lineTotal), margin, y, { width: contentW, align: "right" });
+        y += 17;
+      }
+      doc.moveTo(margin, y).lineTo(margin + contentW, y).strokeColor("#e5e5e5").stroke();
+      y += 9;
+      doc.fontSize(9).font("Helvetica-Bold").fillColor(TEXT)
+        .text(`Trade quote total (inc GST): ${formatAUD(quote.total)}`, margin, y, { align: "right" });
+      y += 25;
+    }
+  }
+
+  ensureSpace(150);
+  const totalsX = margin + contentW * 0.5;
+  const totalsW = contentW * 0.5;
+  const totalRow = (label: string, value: number, emphasis = false) => {
+    if (emphasis) doc.rect(totalsX - 6, y - 3, totalsW + 6, 30).fill(DARK);
+    doc.fontSize(emphasis ? 11 : 9).font(emphasis ? "Helvetica-Bold" : "Helvetica")
+      .fillColor(emphasis ? "white" : TEXT).text(label, totalsX, y + (emphasis ? 7 : 3));
+    doc.font("Helvetica-Bold").fillColor(emphasis ? ORANGE : TEXT)
+      .text(formatAUD(value), totalsX, y + (emphasis ? 7 : 3), { width: totalsW, align: "right" });
+    y += emphasis ? 30 : 22;
+  };
+  totalRow("Materials subtotal", project.materialsSubtotal);
+  totalRow("Labour subtotal", project.labourSubtotal);
+  if (project.marginAmount > 0) {
+    totalRow(`Builder margin (${project.builderMarginPct}%)`, project.marginAmount);
+  }
+  totalRow("GST (10%)", project.gst);
+  totalRow("TOTAL (inc GST)", project.total, true);
+
+  ensureSpace(90);
+  y += 24;
+  doc.fontSize(8).font("Helvetica-Bold").fillColor(MUTED).text("AUSTRALIAN BUILDING COMPLIANCE", margin, y);
+  doc.fontSize(9).font("Helvetica").fillColor(TEXT)
+    .text(project.complianceDisclaimer, margin, y + 13, { width: contentW });
+
+  doc.fontSize(8).font("Helvetica").fillColor(MUTED)
+    .text("Generated by Quote Master  ·  Prices are estimates only  ·  GST inclusive", margin, 800, { align: "center", width: contentW });
   doc.end();
 });
 

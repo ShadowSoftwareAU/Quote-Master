@@ -17,6 +17,7 @@ import {
   useGetProfileSettings,
   useUpdateProfileSettings,
   getGetProfileSettingsQueryKey,
+  getListMasterProjectsQueryKey,
   type BusinessRole,
 } from "@workspace/api-client-react";
 
@@ -82,6 +83,7 @@ export default function ProfileSettingsScreen() {
     }, {
       onSuccess: (updatedProfile) => {
         queryClient.setQueryData(profileQueryKey, updatedProfile);
+        queryClient.invalidateQueries({ queryKey: getListMasterProjectsQueryKey() });
         setRole(updatedProfile.role);
         setTradeType(updatedProfile.tradeType);
         setLicenseNumber(updatedProfile.licenseNumber || "");

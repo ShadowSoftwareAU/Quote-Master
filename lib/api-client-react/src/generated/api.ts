@@ -43,6 +43,9 @@ import type {
   MasterBuilderFlagInput,
   MasterProject,
   MasterProjectInput,
+  MasterProjectPortal,
+  MasterProjectPortalRevocation,
+  MasterProjectPortalToken,
   MasterProjectQuoteSelection,
   MasterProjectSummary,
   MasterProjectUpdate,
@@ -2459,6 +2462,372 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
         TContext
       > => {
       return useMutation(getSetMasterProjectQuotesMutationOptions(options));
+    }
+
+export const getGetMasterProjectPdfUrl = (id: number,) => {
+
+
+
+
+  return `/api/master-projects/${id}/pdf`
+}
+
+/**
+ * @summary Download an authenticated Master Project proposal PDF
+ */
+export const getMasterProjectPdf = async (id: number, options?: RequestInit): Promise<Blob> => {
+
+  return customFetch<Blob>(getGetMasterProjectPdfUrl(id),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetMasterProjectPdfQueryKey = (id: number,) => {
+    return [
+    `/api/master-projects/${id}/pdf`
+    ] as const;
+    }
+
+
+export const getGetMasterProjectPdfQueryOptions = <TData = Awaited<ReturnType<typeof getMasterProjectPdf>>, TError = ErrorType<unknown>>(id: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getMasterProjectPdf>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetMasterProjectPdfQueryKey(id);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getMasterProjectPdf>>> = ({ signal }) => getMasterProjectPdf(id, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: !!(id), ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getMasterProjectPdf>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetMasterProjectPdfQueryResult = NonNullable<Awaited<ReturnType<typeof getMasterProjectPdf>>>
+export type GetMasterProjectPdfQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary Download an authenticated Master Project proposal PDF
+ */
+
+export function useGetMasterProjectPdf<TData = Awaited<ReturnType<typeof getMasterProjectPdf>>, TError = ErrorType<unknown>>(
+ id: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getMasterProjectPdf>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetMasterProjectPdfQueryOptions(id,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
+
+export const getRegenerateMasterProjectPortalTokenUrl = (id: number,) => {
+
+
+
+
+  return `/api/master-projects/${id}/portal-token`
+}
+
+/**
+ * @summary Replace a Master Project's public portal token
+ */
+export const regenerateMasterProjectPortalToken = async (id: number, options?: RequestInit): Promise<MasterProjectPortalToken> => {
+
+  return customFetch<MasterProjectPortalToken>(getRegenerateMasterProjectPortalTokenUrl(id),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+export const getRegenerateMasterProjectPortalTokenMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof regenerateMasterProjectPortalToken>>, TError,{id: number}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof regenerateMasterProjectPortalToken>>, TError,{id: number}, TContext> => {
+
+const mutationKey = ['regenerateMasterProjectPortalToken'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof regenerateMasterProjectPortalToken>>, {id: number}> = (props) => {
+          const {id} = props ?? {};
+
+          return  regenerateMasterProjectPortalToken(id,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type RegenerateMasterProjectPortalTokenMutationResult = NonNullable<Awaited<ReturnType<typeof regenerateMasterProjectPortalToken>>>
+
+    export type RegenerateMasterProjectPortalTokenMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Replace a Master Project's public portal token
+ */
+export const useRegenerateMasterProjectPortalToken = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof regenerateMasterProjectPortalToken>>, TError,{id: number}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof regenerateMasterProjectPortalToken>>,
+        TError,
+        {id: number},
+        TContext
+      > => {
+      return useMutation(getRegenerateMasterProjectPortalTokenMutationOptions(options));
+    }
+
+export const getRevokeMasterProjectPortalTokenUrl = (id: number,) => {
+
+
+
+
+  return `/api/master-projects/${id}/portal-token`
+}
+
+/**
+ * @summary Revoke a Master Project's public portal token
+ */
+export const revokeMasterProjectPortalToken = async (id: number, options?: RequestInit): Promise<MasterProjectPortalRevocation> => {
+
+  return customFetch<MasterProjectPortalRevocation>(getRevokeMasterProjectPortalTokenUrl(id),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+);}
+
+
+
+
+export const getRevokeMasterProjectPortalTokenMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof revokeMasterProjectPortalToken>>, TError,{id: number}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof revokeMasterProjectPortalToken>>, TError,{id: number}, TContext> => {
+
+const mutationKey = ['revokeMasterProjectPortalToken'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof revokeMasterProjectPortalToken>>, {id: number}> = (props) => {
+          const {id} = props ?? {};
+
+          return  revokeMasterProjectPortalToken(id,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type RevokeMasterProjectPortalTokenMutationResult = NonNullable<Awaited<ReturnType<typeof revokeMasterProjectPortalToken>>>
+
+    export type RevokeMasterProjectPortalTokenMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Revoke a Master Project's public portal token
+ */
+export const useRevokeMasterProjectPortalToken = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof revokeMasterProjectPortalToken>>, TError,{id: number}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof revokeMasterProjectPortalToken>>,
+        TError,
+        {id: number},
+        TContext
+      > => {
+      return useMutation(getRevokeMasterProjectPortalTokenMutationOptions(options));
+    }
+
+export const getGetMasterProjectPortalUrl = (token: string,) => {
+
+
+
+
+  return `/api/master-project/${token}`
+}
+
+/**
+ * @summary Get a customer-safe Master Project proposal using a secure token
+ */
+export const getMasterProjectPortal = async (token: string, options?: RequestInit): Promise<MasterProjectPortal> => {
+
+  return customFetch<MasterProjectPortal>(getGetMasterProjectPortalUrl(token),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetMasterProjectPortalQueryKey = (token: string,) => {
+    return [
+    `/api/master-project/${token}`
+    ] as const;
+    }
+
+
+export const getGetMasterProjectPortalQueryOptions = <TData = Awaited<ReturnType<typeof getMasterProjectPortal>>, TError = ErrorType<unknown>>(token: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getMasterProjectPortal>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetMasterProjectPortalQueryKey(token);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getMasterProjectPortal>>> = ({ signal }) => getMasterProjectPortal(token, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: !!(token), ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getMasterProjectPortal>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetMasterProjectPortalQueryResult = NonNullable<Awaited<ReturnType<typeof getMasterProjectPortal>>>
+export type GetMasterProjectPortalQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary Get a customer-safe Master Project proposal using a secure token
+ */
+
+export function useGetMasterProjectPortal<TData = Awaited<ReturnType<typeof getMasterProjectPortal>>, TError = ErrorType<unknown>>(
+ token: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getMasterProjectPortal>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetMasterProjectPortalQueryOptions(token,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
+
+export const getSetMasterProjectPortalStatusUrl = (token: string,) => {
+
+
+
+
+  return `/api/master-project/${token}/status`
+}
+
+/**
+ * @summary Accept a Master Project proposal using a secure token
+ */
+export const setMasterProjectPortalStatus = async (token: string,
+    quoteStatusInput: QuoteStatusInput, options?: RequestInit): Promise<MasterProjectPortal> => {
+
+  return customFetch<MasterProjectPortal>(getSetMasterProjectPortalStatusUrl(token),
+  {
+    ...options,
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      quoteStatusInput,)
+  }
+);}
+
+
+
+
+export const getSetMasterProjectPortalStatusMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof setMasterProjectPortalStatus>>, TError,{token: string;data: BodyType<QuoteStatusInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof setMasterProjectPortalStatus>>, TError,{token: string;data: BodyType<QuoteStatusInput>}, TContext> => {
+
+const mutationKey = ['setMasterProjectPortalStatus'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof setMasterProjectPortalStatus>>, {token: string;data: BodyType<QuoteStatusInput>}> = (props) => {
+          const {token,data} = props ?? {};
+
+          return  setMasterProjectPortalStatus(token,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type SetMasterProjectPortalStatusMutationResult = NonNullable<Awaited<ReturnType<typeof setMasterProjectPortalStatus>>>
+    export type SetMasterProjectPortalStatusMutationBody = BodyType<QuoteStatusInput>
+    export type SetMasterProjectPortalStatusMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Accept a Master Project proposal using a secure token
+ */
+export const useSetMasterProjectPortalStatus = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof setMasterProjectPortalStatus>>, TError,{token: string;data: BodyType<QuoteStatusInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof setMasterProjectPortalStatus>>,
+        TError,
+        {token: string;data: BodyType<QuoteStatusInput>},
+        TContext
+      > => {
+      return useMutation(getSetMasterProjectPortalStatusMutationOptions(options));
     }
 
 export const getListBookingsUrl = () => {

@@ -5,6 +5,7 @@ import {
   serial,
   text,
   timestamp,
+  uniqueIndex,
 } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
@@ -17,6 +18,7 @@ export const masterProjectsTable = pgTable("master_projects", {
   customerId: integer("customer_id")
     .notNull()
     .references(() => customersTable.id),
+  portalToken: text("portal_token"),
   builderMarginPct: numeric("builder_margin_pct", {
     precision: 5,
     scale: 2,
@@ -47,8 +49,10 @@ export const masterProjectsTable = pgTable("master_projects", {
   updatedAt: timestamp("updated_at", { withTimezone: true })
     .notNull()
     .defaultNow()
-    .$onUpdate(() => new Date()),
-});
+  .$onUpdate(() => new Date()),
+}, (table) => [
+  uniqueIndex("master_projects_portal_token_uidx").on(table.portalToken),
+]);
 
 export const insertMasterProjectSchema = createInsertSchema(masterProjectsTable)
   .omit({

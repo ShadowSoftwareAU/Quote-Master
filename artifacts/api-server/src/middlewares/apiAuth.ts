@@ -1,6 +1,10 @@
 import type { NextFunction, Request, Response } from "express";
 import { getAuth } from "@clerk/express";
-import { SetQuoteStatusBody, UpdateQuoteBody } from "@workspace/api-zod";
+import {
+  SetMasterProjectPortalStatusBody,
+  SetQuoteStatusBody,
+  UpdateQuoteBody,
+} from "@workspace/api-zod";
 
 /**
  * The identity established at the API boundary. Route handlers should use
@@ -23,6 +27,8 @@ const PORTAL_TOKEN_PATTERN = "[A-Za-z0-9_-]{43}";
 const PUBLIC_QUOTE_PORTAL_PATH = new RegExp(`^/quote/${PORTAL_TOKEN_PATTERN}$`);
 const PUBLIC_QUOTE_UPDATE_PATH = new RegExp(`^/quote/${PORTAL_TOKEN_PATTERN}$`);
 const PUBLIC_QUOTE_STATUS_PATH = new RegExp(`^/quote/${PORTAL_TOKEN_PATTERN}/status$`);
+const PUBLIC_MASTER_PROJECT_PORTAL_PATH = new RegExp(`^/master-project/${PORTAL_TOKEN_PATTERN}$`);
+const PUBLIC_MASTER_PROJECT_STATUS_PATH = new RegExp(`^/master-project/${PORTAL_TOKEN_PATTERN}/status$`);
 const PUBLIC_UPGRADE_FIELDS = new Set(["deckBoardType", "balustradeType"]);
 
 function objectKeys(value: unknown): string[] | null {
@@ -85,6 +91,19 @@ function isPublicAcceptanceRequest(req: Request): boolean {
   return parsed.success && parsed.data.status === "accepted";
 }
 
+function isPublicMasterProjectRequest(req: Request): boolean {
+  if (req.method === "GET") {
+    return PUBLIC_MASTER_PROJECT_PORTAL_PATH.test(req.path);
+  }
+  if (req.method !== "PATCH" || !PUBLIC_MASTER_PROJECT_STATUS_PATH.test(req.path)) {
+    return false;
+  }
+  const keys = objectKeys(req.body);
+  if (!keys || keys.length !== 1 || keys[0] !== "status") return false;
+  const parsed = SetMasterProjectPortalStatusBody.safeParse(req.body);
+  return parsed.success && parsed.data.status === "accepted";
+}
+
 /**
  * Customer quote pages are intentionally public. The web portal uses the
  * token-bound quote portal endpoints to display and accept a quote without
@@ -136,7 +155,7 @@ export function requireApiAuth(
     }
   }
 
-  if (isPublicQuoteRequest(req)) {
+  if (isPublicQuoteRequest(req) || isPublicMasterProjectRequest(req)) {
     next();
     return;
   }
