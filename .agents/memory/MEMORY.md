@@ -1,1 +1,2 @@
 - [Clerk web client compatibility](clerk-web-client-compatibility.md) — keep Master Project authorisation server-side while the workspace uses React 19.1.0.
+- [Legacy data ownership](legacy-data-ownership.md) — keep ownership nullable and indexed until legacy rows have a confirmed Clerk user mapping.

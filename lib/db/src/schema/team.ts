@@ -6,19 +6,25 @@ import {
   boolean,
   timestamp,
   json,
+  index,
 } from "drizzle-orm/pg-core";
 
-export const teamMembersTable = pgTable("team_members", {
-  id: serial("id").primaryKey(),
-  name: text("name").notNull(),
-  email: text("email"),
-  phone: text("phone"),
-  role: text("role").notNull().default("employee"), // owner | employee | subcontractor
-  pin: text("pin"),
-  permissionsJson: json("permissions_json").$type<Record<string, boolean>>().default({}),
-  active: boolean("active").notNull().default(true),
-  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
-});
+export const teamMembersTable = pgTable(
+  "team_members",
+  {
+    id: serial("id").primaryKey(),
+    clerkUserId: text("clerk_user_id"),
+    name: text("name").notNull(),
+    email: text("email"),
+    phone: text("phone"),
+    role: text("role").notNull().default("employee"), // owner | employee | subcontractor
+    pin: text("pin"),
+    permissionsJson: json("permissions_json").$type<Record<string, boolean>>().default({}),
+    active: boolean("active").notNull().default(true),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [index("team_members_clerk_user_id_idx").on(table.clerkUserId)],
+);
 
 export const timeEntriesTable = pgTable("time_entries", {
   id: serial("id").primaryKey(),
