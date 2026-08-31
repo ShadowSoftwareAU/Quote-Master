@@ -1,4 +1,5 @@
 import { Feather } from "@expo/vector-icons";
+import { useAuth } from "@clerk/expo";
 import { useQueryClient } from "@tanstack/react-query";
 import {
   useListBookings,
@@ -29,6 +30,7 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { Button, Card, EmptyState, StatusBadge, StripedBar } from "@/components/ui";
+import { API_BASE_URL } from "@/constants/api";
 import { useColors } from "@/hooks/useColors";
 
 async function requestUploadUrl(file: { name: string; size: number; type: string }): Promise<{ uploadURL: string; objectPath: string }> {
@@ -168,8 +170,23 @@ export default function BookingsScreen() {
     }
   }
 
-  const domain = process.env.EXPO_PUBLIC_DOMAIN ?? "";
-  const apiBase = domain ? `https://${domain}` : "";
+  const { getToken, userId } = useAuth();
+  const [imageAuthToken, setImageAuthToken] = useState<string | null>(null);
+
+  React.useEffect(() => {
+    let active = true;
+    getToken()
+      .then((token) => {
+        if (active) setImageAuthToken(token);
+      })
+      .catch(() => {
+        if (active) setImageAuthToken(null);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [getToken, userId]);
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.background }}>
@@ -486,7 +503,16 @@ export default function BookingsScreen() {
                     })}
                   >
                     <Image
-                      source={{ uri: `${apiBase}/api/storage/objects${path}` }}
+                      source={
+                        imageAuthToken
+                          ? {
+                              uri: `${API_BASE_URL}/api/storage/objects${path}`,
+                              headers: {
+                                Authorization: `Bearer ${imageAuthToken}`,
+                              },
+                            }
+                          : undefined
+                      }
                       style={{ width: "100%", height: "100%" }}
                       resizeMode="cover"
                     />

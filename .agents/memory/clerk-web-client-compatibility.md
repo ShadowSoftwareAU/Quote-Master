@@ -1,10 +1,10 @@
 ---
 name: Clerk web client compatibility
-description: Why Master Project access relies on server-side Clerk sessions rather than a browser Clerk package.
+description: Clerk transport and React alignment rules for the shared web and Expo workspace.
 ---
 
-Use the server-side Clerk Express integration as the role authority. Do not add the current Clerk React or browser SDK packages to the web workspace while it remains on React 19.1.0.
+Keep role authority in the server-side Clerk Express integration. Web uses Clerk cookies, while Expo registers a Bearer-token getter with the shared API client. Keep every workspace package on React 19.1.0 while Expo requires it.
 
-**Why:** Current mature Clerk packages inherit a peer range that excludes React 19.1.0, while the shared mobile workspace requires that version. Overriding the peer constraint risks destabilising Expo for no benefit because role enforcement belongs on the API.
+**Why:** Metro resolves some peerless packages through pnpm's hidden virtual-store hoist. A second web React version can therefore enter the Expo bundle and cause invalid-hook failures even when normal Node resolution reports React 19.1.0. Clerk's peer warning is less harmful than splitting the renderer runtime.
 
-**How to apply:** The web navigation may discover access by calling the protected Master Projects endpoint, but all create, update, assignment, and delete checks must remain server-side. Revisit a browser SDK only when its peer range supports the workspace React version or the shared React version changes safely.
+**How to apply:** Never register the Expo token getter in web code. Keep all React and React DOM declarations catalogue-aligned. After changing React versions, run a full pnpm install, not only a filtered install, and confirm the Expo bundle contains one React runtime.

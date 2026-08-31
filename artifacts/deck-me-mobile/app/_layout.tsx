@@ -30,6 +30,7 @@ import { KeyboardProvider } from "react-native-keyboard-controller";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 
 import { ErrorBoundary } from "@/components/ErrorBoundary";
+import { API_BASE_URL } from "@/constants/api";
 
 SplashScreen.preventAutoHideAsync();
 
@@ -41,21 +42,13 @@ function requireEnvironmentValue(value: string | undefined, name: string): strin
   return value;
 }
 
-const DEFAULT_API_URL = "https://tradie-quote-master.replit.app";
-const domain = process.env.EXPO_PUBLIC_DOMAIN;
-const configuredApiUrl =
-  process.env.EXPO_PUBLIC_API_URL?.trim() ||
-  (domain ? `https://${domain}` : DEFAULT_API_URL);
-const apiUrl = /^https?:\/\//i.test(configuredApiUrl)
-  ? configuredApiUrl
-  : `https://${configuredApiUrl}`;
 const publishableKey = requireEnvironmentValue(
   process.env.EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY,
   "EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY",
 );
 const proxyUrl = process.env.EXPO_PUBLIC_CLERK_PROXY_URL || undefined;
 
-setBaseUrl(apiUrl);
+setBaseUrl(API_BASE_URL);
 
 const queryClient = new QueryClient();
 
