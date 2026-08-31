@@ -160,6 +160,16 @@ export const GetDashboardSummaryResponse = zod.object({
 
 
 /**
+ * @summary Owner-only business overview metrics
+ */
+export const GetAnalyticsOverviewResponse = zod.object({
+  "totalPipelineValue": zod.number().describe('Sum of Sent quote totals'),
+  "ytdRevenue": zod.number().describe('Sum of Accepted quote totals created in the current calendar year'),
+  "quoteWinRate": zod.number().describe('Accepted quotes as a percentage of Sent and Accepted quotes')
+})
+
+
+/**
  * @summary P&L breakdown per accepted quote and monthly rollup
  */
 export const GetPnlReportResponse = zod.object({

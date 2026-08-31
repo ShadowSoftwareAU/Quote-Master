@@ -1,7 +1,7 @@
-import { useGetDashboardSummary } from "@workspace/api-client-react";
+import { getGetAnalyticsOverviewQueryKey, useGetAnalyticsOverview, useGetDashboardSummary } from "@workspace/api-client-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { formatCurrency } from "@/lib/format";
-import { Hammer, FileText, CheckCircle, Calendar, TrendingUp, UserCog } from "lucide-react";
+import { Hammer, FileText, CheckCircle, Calendar, TrendingUp, UserCog, DollarSign, Target, BriefcaseBusiness } from "lucide-react";
 import { Link } from "wouter";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useProfileAccess } from "@/lib/access";
@@ -9,6 +9,13 @@ import { useProfileAccess } from "@/lib/access";
 export default function Dashboard() {
   const { data, isLoading } = useGetDashboardSummary();
   const { canViewFinancials } = useProfileAccess();
+  const { data: overview, isLoading: isOverviewLoading, isError: isOverviewError } = useGetAnalyticsOverview({
+    query: {
+      enabled: canViewFinancials,
+      retry: 1,
+      queryKey: getGetAnalyticsOverviewQueryKey(),
+    },
+  });
 
   if (isLoading || !data) {
     return (
@@ -45,6 +52,74 @@ export default function Dashboard() {
           </Link>
         </div>
       </div>
+
+      {canViewFinancials && (
+        <section aria-labelledby="business-overview-heading" className="space-y-4">
+          <div className="flex items-end justify-between gap-4">
+            <div>
+              <p className="text-xs font-black uppercase tracking-[0.2em] text-primary">Owner view</p>
+              <h2 id="business-overview-heading" className="mt-1 text-2xl font-black uppercase tracking-tight text-foreground">
+                Business Overview
+              </h2>
+            </div>
+            <span className="hidden text-xs font-bold uppercase tracking-wide text-muted-foreground sm:block">
+              Live from your quotes
+            </span>
+          </div>
+          {isOverviewError ? (
+            <Card className="border-amber-500/40 bg-amber-500/5">
+              <CardContent className="p-5 text-sm text-amber-900 dark:text-amber-100">
+                Business overview is temporarily unavailable. Your quotes and bookings are still available below.
+              </CardContent>
+            </Card>
+          ) : (
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+              <Card className="relative overflow-hidden border-2 border-primary/20 bg-gradient-to-br from-primary/10 via-card to-card shadow-sm">
+                <div className="absolute -right-7 -top-7 h-24 w-24 rounded-full bg-primary/10" />
+                <CardHeader className="relative flex flex-row items-center justify-between pb-2">
+                  <CardTitle className="text-xs font-black uppercase tracking-wide text-muted-foreground">Total Pipeline Value</CardTitle>
+                  <div className="rounded-lg bg-primary/15 p-2 text-primary"><BriefcaseBusiness className="h-5 w-5" /></div>
+                </CardHeader>
+                <CardContent className="relative">
+                  {isOverviewLoading || !overview ? <Skeleton className="h-9 w-36" /> : (
+                    <div className="text-3xl font-black tracking-tight text-foreground">{formatCurrency(overview.totalPipelineValue)}</div>
+                  )}
+                  <p className="mt-2 text-xs font-medium text-muted-foreground">Sent quotes waiting in the pipeline</p>
+                </CardContent>
+              </Card>
+              <Card className="relative overflow-hidden border-2 border-emerald-500/20 bg-gradient-to-br from-emerald-500/10 via-card to-card shadow-sm">
+                <CardHeader className="flex flex-row items-center justify-between pb-2">
+                  <CardTitle className="text-xs font-black uppercase tracking-wide text-muted-foreground">YTD Revenue</CardTitle>
+                  <div className="rounded-lg bg-emerald-500/15 p-2 text-emerald-600"><DollarSign className="h-5 w-5" /></div>
+                </CardHeader>
+                <CardContent>
+                  {isOverviewLoading || !overview ? <Skeleton className="h-9 w-36" /> : (
+                    <div className="text-3xl font-black tracking-tight text-foreground">{formatCurrency(overview.ytdRevenue)}</div>
+                  )}
+                  <p className="mt-2 text-xs font-medium text-muted-foreground">Accepted quotes this calendar year</p>
+                </CardContent>
+              </Card>
+              <Card className="relative overflow-hidden border-2 border-sky-500/20 bg-gradient-to-br from-sky-500/10 via-card to-card shadow-sm">
+                <CardHeader className="flex flex-row items-center justify-between pb-2">
+                  <CardTitle className="text-xs font-black uppercase tracking-wide text-muted-foreground">Quote Win Rate</CardTitle>
+                  <div className="rounded-lg bg-sky-500/15 p-2 text-sky-600"><Target className="h-5 w-5" /></div>
+                </CardHeader>
+                <CardContent>
+                  {isOverviewLoading || !overview ? <Skeleton className="h-9 w-24" /> : (
+                    <>
+                      <div className="text-3xl font-black tracking-tight text-foreground">{overview.quoteWinRate.toFixed(1)}%</div>
+                      <div className="mt-3 h-2 overflow-hidden rounded-full bg-sky-500/15">
+                        <div className="h-full rounded-full bg-sky-500 transition-all duration-500" style={{ width: `${Math.min(100, Math.max(0, overview.quoteWinRate))}%` }} />
+                      </div>
+                    </>
+                  )}
+                  <p className="mt-2 text-xs font-medium text-muted-foreground">Accepted versus sent quotes</p>
+                </CardContent>
+              </Card>
+            </div>
+          )}
+        </section>
+      )}
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         {canViewFinancials && <Card className="border-2 border-primary/20 shadow-sm bg-card">

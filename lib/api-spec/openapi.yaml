@@ -118,6 +118,20 @@ paths:
             application/json:
               schema: { $ref: "#/components/schemas/DashboardSummary" }
 
+  /analytics/overview:
+    get:
+      operationId: getAnalyticsOverview
+      tags: [dashboard]
+      summary: Owner-only business overview metrics
+      responses:
+        "200":
+          description: Pipeline, year-to-date revenue, and quote win rate
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AnalyticsOverview" }
+        "403":
+          description: Owner role is required
+
   /dashboard/pnl:
     get:
       operationId: getPnlReport
@@ -2100,6 +2114,20 @@ components:
         upcomingBookings:
           type: array
           items: { $ref: "#/components/schemas/Booking" }
+
+    AnalyticsOverview:
+      type: object
+      required: [totalPipelineValue, ytdRevenue, quoteWinRate]
+      properties:
+        totalPipelineValue:
+          type: number
+          description: Sum of Sent quote totals
+        ytdRevenue:
+          type: number
+          description: Sum of Accepted quote totals created in the current calendar year
+        quoteWinRate:
+          type: number
+          description: Accepted quotes as a percentage of Sent and Accepted quotes
 
     TeamMember:
       type: object

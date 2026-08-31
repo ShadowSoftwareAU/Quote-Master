@@ -885,6 +885,15 @@ export interface DashboardSummary {
   upcomingBookings: Booking[];
 }
 
+export interface AnalyticsOverview {
+  /** Sum of Sent quote totals */
+  totalPipelineValue: number;
+  /** Sum of Accepted quote totals created in the current calendar year */
+  ytdRevenue: number;
+  /** Accepted quotes as a percentage of Sent and Accepted quotes */
+  quoteWinRate: number;
+}
+
 export interface TeamMember {
   id: number;
   /** @nullable */

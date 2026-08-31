@@ -2,6 +2,8 @@ import { Feather } from "@expo/vector-icons";
 import { router } from "expo-router";
 import {
   getGetDashboardSummaryQueryKey,
+  getGetAnalyticsOverviewQueryKey,
+  useGetAnalyticsOverview,
   useGetDashboardSummary,
 } from "@workspace/api-client-react";
 import React, { useCallback, useEffect, useRef, useState } from "react";
@@ -16,7 +18,7 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-import { LoadingSkeleton, StripedBar } from "@/components/ui";
+import { Card, LoadingSkeleton, StripedBar } from "@/components/ui";
 import { useColors } from "@/hooks/useColors";
 import { useProfileAccess } from "@/lib/access";
 
@@ -195,12 +197,19 @@ function PrivacyTile({
 
 export default function HomeScreen() {
   const colors = useColors();
-  const { isSubcontractor, isMasterBuilder } = useProfileAccess();
+  const { isSubcontractor, isMasterBuilder, canViewFinancials } = useProfileAccess();
   const insets = useSafeAreaInsets();
   const { isLoading: isDashboardLoading } = useGetDashboardSummary({
     query: {
       enabled: !isSubcontractor,
       queryKey: getGetDashboardSummaryQueryKey(),
+    },
+  });
+  const { data: overview, isLoading: isOverviewLoading, isError: isOverviewError } = useGetAnalyticsOverview({
+    query: {
+      enabled: canViewFinancials,
+      retry: 1,
+      queryKey: getGetAnalyticsOverviewQueryKey(),
     },
   });
   const topPad = Platform.OS === "web" ? Math.max(insets.top, 67) : insets.top;
@@ -336,6 +345,85 @@ export default function HomeScreen() {
             Financial data is hidden until you tap through
           </Text>
         </View>
+
+        {canViewFinancials ? (
+          <View style={{ gap: 12 }}>
+            <View style={{ flexDirection: "row", alignItems: "flex-end", justifyContent: "space-between" }}>
+              <View>
+                <Text style={{ fontFamily: "Inter_700Bold", color: colors.primary, fontSize: 10, letterSpacing: 1.5 }}>
+                  OWNER VIEW
+                </Text>
+                <Text style={{ fontFamily: "Chivo_900Black", color: colors.foreground, fontSize: 24, marginTop: 3 }}>
+                  Business Overview
+                </Text>
+              </View>
+              <Feather name="activity" size={22} color={colors.primary} />
+            </View>
+            {isOverviewError ? (
+              <Card>
+                <Text style={{ fontFamily: "Inter_500Medium", color: colors.mutedForeground, lineHeight: 20 }}>
+                  Business overview is temporarily unavailable. Your quote data is still safe.
+                </Text>
+              </Card>
+            ) : (
+              <View style={{ gap: 10 }}>
+                <View style={{ flexDirection: "row", gap: 10 }}>
+                  <Card style={{ flex: 1, minHeight: 118, borderColor: colors.primary + "55", backgroundColor: colors.primary + "10" }}>
+                    <Feather name="briefcase" size={18} color={colors.primary} />
+                    <Text style={{ fontFamily: "Inter_700Bold", color: colors.mutedForeground, fontSize: 10, letterSpacing: 1, marginTop: 14 }}>
+                      PIPELINE
+                    </Text>
+                    {isOverviewLoading || !overview ? (
+                      <View style={{ height: 25, width: 94, backgroundColor: colors.muted, borderRadius: 5, marginTop: 5 }} />
+                    ) : (
+                      <Text adjustsFontSizeToFit numberOfLines={1} style={{ fontFamily: "Chivo_900Black", color: colors.foreground, fontSize: 22, marginTop: 5 }}>
+                        {new Intl.NumberFormat("en-AU", { style: "currency", currency: "AUD", maximumFractionDigits: 0 }).format(overview.totalPipelineValue)}
+                      </Text>
+                    )}
+                    <Text style={{ fontFamily: "Inter_500Medium", color: colors.mutedForeground, fontSize: 11, marginTop: 4 }}>Sent quotes</Text>
+                  </Card>
+                  <Card style={{ flex: 1, minHeight: 118, borderColor: colors.primary + "55", backgroundColor: colors.primary + "10" }}>
+                    <Feather name="trending-up" size={18} color={colors.primary} />
+                    <Text style={{ fontFamily: "Inter_700Bold", color: colors.mutedForeground, fontSize: 10, letterSpacing: 1, marginTop: 14 }}>
+                      YTD REVENUE
+                    </Text>
+                    {isOverviewLoading || !overview ? (
+                      <View style={{ height: 25, width: 94, backgroundColor: colors.muted, borderRadius: 5, marginTop: 5 }} />
+                    ) : (
+                      <Text adjustsFontSizeToFit numberOfLines={1} style={{ fontFamily: "Chivo_900Black", color: colors.foreground, fontSize: 22, marginTop: 5 }}>
+                        {new Intl.NumberFormat("en-AU", { style: "currency", currency: "AUD", maximumFractionDigits: 0 }).format(overview.ytdRevenue)}
+                      </Text>
+                    )}
+                    <Text style={{ fontFamily: "Inter_500Medium", color: colors.mutedForeground, fontSize: 11, marginTop: 4 }}>Accepted quotes</Text>
+                  </Card>
+                </View>
+                <Card style={{ borderColor: colors.primary + "55", backgroundColor: colors.card }}>
+                  <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
+                    <View>
+                      <Text style={{ fontFamily: "Inter_700Bold", color: colors.mutedForeground, fontSize: 10, letterSpacing: 1 }}>
+                        QUOTE WIN RATE
+                      </Text>
+                      {isOverviewLoading || !overview ? (
+                        <View style={{ height: 28, width: 72, backgroundColor: colors.muted, borderRadius: 5, marginTop: 5 }} />
+                      ) : (
+                        <Text style={{ fontFamily: "Chivo_900Black", color: colors.foreground, fontSize: 28, marginTop: 3 }}>
+                          {overview.quoteWinRate.toFixed(1)}%
+                        </Text>
+                      )}
+                    </View>
+                    <Feather name="target" size={24} color={colors.primary} />
+                  </View>
+                  <View style={{ height: 8, borderRadius: 4, backgroundColor: colors.muted, overflow: "hidden", marginTop: 14 }}>
+                    <View style={{ height: "100%", width: `${Math.min(100, Math.max(0, overview?.quoteWinRate ?? 0))}%`, backgroundColor: colors.primary, borderRadius: 4 }} />
+                  </View>
+                  <Text style={{ fontFamily: "Inter_500Medium", color: colors.mutedForeground, fontSize: 11, marginTop: 6 }}>
+                    Accepted versus sent quotes
+                  </Text>
+                </Card>
+              </View>
+            )}
+          </View>
+        ) : null}
 
         {/* 2×2 tile grid */}
         <View style={{ flex: 1, gap: 12 }}>

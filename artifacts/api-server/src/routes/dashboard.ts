@@ -10,8 +10,15 @@ import {
   materialsTable,
 } from "@workspace/db";
 import { requireOwner } from "../middlewares/businessRoleAuth";
+import { getAnalyticsOverview } from "../services/analytics";
 
 const router: IRouter = Router();
+
+router.get("/analytics/overview", requireOwner, async (req, res): Promise<void> => {
+  const clerkUserId = getAuth(req).userId;
+  if (!clerkUserId) { res.status(401).json({ error: "Unauthorized" }); return; }
+  res.json(await getAnalyticsOverview(clerkUserId));
+});
 
 router.get("/dashboard/summary", async (req, res): Promise<void> => {
   const clerkUserId = getAuth(req).userId;

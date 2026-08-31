@@ -8,6 +8,7 @@
 
 export * from './addBookingPhotoInput';
 export * from './addPortfolioPhotoInput';
+export * from './analyticsOverview';
 export * from './assignJobInput';
 export * from './assignmentAccess';
 export * from './booking';

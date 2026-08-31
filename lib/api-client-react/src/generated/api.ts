@@ -22,6 +22,7 @@ import type {
 import type {
   AddBookingPhotoInput,
   AddPortfolioPhotoInput,
+  AnalyticsOverview,
   AssignJobInput,
   AssignmentAccess,
   Booking,
@@ -530,6 +531,83 @@ export function useGetDashboardSummary<TData = Awaited<ReturnType<typeof getDash
  ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
 
   const queryOptions = getGetDashboardSummaryQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
+
+export const getGetAnalyticsOverviewUrl = () => {
+
+
+
+
+  return `/api/analytics/overview`
+}
+
+/**
+ * @summary Owner-only business overview metrics
+ */
+export const getAnalyticsOverview = async ( options?: RequestInit): Promise<AnalyticsOverview> => {
+
+  return customFetch<AnalyticsOverview>(getGetAnalyticsOverviewUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetAnalyticsOverviewQueryKey = () => {
+    return [
+    `/api/analytics/overview`
+    ] as const;
+    }
+
+
+export const getGetAnalyticsOverviewQueryOptions = <TData = Awaited<ReturnType<typeof getAnalyticsOverview>>, TError = ErrorType<void>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getAnalyticsOverview>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetAnalyticsOverviewQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getAnalyticsOverview>>> = ({ signal }) => getAnalyticsOverview({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getAnalyticsOverview>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetAnalyticsOverviewQueryResult = NonNullable<Awaited<ReturnType<typeof getAnalyticsOverview>>>
+export type GetAnalyticsOverviewQueryError = ErrorType<void>
+
+
+/**
+ * @summary Owner-only business overview metrics
+ */
+
+export function useGetAnalyticsOverview<TData = Awaited<ReturnType<typeof getAnalyticsOverview>>, TError = ErrorType<void>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getAnalyticsOverview>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetAnalyticsOverviewQueryOptions(options)
 
   const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
 
