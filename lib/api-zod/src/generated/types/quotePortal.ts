@@ -27,6 +27,7 @@ export interface QuotePortal {
   businessPhone: string | null;
   /** @nullable */
   businessTradeType: string | null;
+  businessLogoUrl: string;
   spec: DeckSpecInput;
   lineItems: PublicQuoteLineItem[];
   materialsSubtotal: number;

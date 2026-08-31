@@ -11,6 +11,7 @@ export interface PublicQuoteLineItem {
   category: string;
   quantity: number;
   unit: string;
+  unitType: string;
   unitPrice: number;
   lineTotal: number;
 }

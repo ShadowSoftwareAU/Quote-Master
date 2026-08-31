@@ -15,7 +15,7 @@ import { useAuth } from "@clerk/expo";
 import * as FileSystem from "expo-file-system/legacy";
 import * as Sharing from "expo-sharing";
 import { Redirect, router, useLocalSearchParams } from "expo-router";
-import React from "react";
+import React, { useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -26,12 +26,7 @@ import {
   View,
 } from "react-native";
 
-import {
-  Button,
-  Card,
-  StatusBadge,
-  formatAUD,
-} from "@/components/ui";
+import { Button, Card, StatusBadge, formatAUD } from "@/components/ui";
 import { API_BASE_URL, WEB_BASE_URL } from "@/constants/api";
 import { useColors } from "@/hooks/useColors";
 import { useProfileAccess } from "@/lib/access";
@@ -56,37 +51,62 @@ function QuoteDetail() {
   const deleteMut = useDeleteQuote();
   const portalTokenMut = useRegenerateQuotePortalToken();
   const linkedMasterProjectId = data?.masterProjectId;
+  const [isSharingPortalLink, setIsSharingPortalLink] = useState(false);
+  const [isDownloadingPdf, setIsDownloadingPdf] = useState(false);
 
   async function sharePortalLink() {
-    const portalToken =
-      data?.portalToken ??
-      (await portalTokenMut.mutateAsync({ id })).portalToken;
-    await Share.share({
-      message: `${WEB_BASE_URL}/quote/${portalToken}`,
-      title: data?.title ?? "Client quote portal",
-    });
+    setIsSharingPortalLink(true);
+    try {
+      const portalToken =
+        data?.portalToken ??
+        (await portalTokenMut.mutateAsync({ id })).portalToken;
+      await Share.share({
+        message: `${WEB_BASE_URL}/quote/${portalToken}`,
+        title: data?.title ?? "Client quote portal",
+      });
+    } finally {
+      setIsSharingPortalLink(false);
+    }
   }
 
   async function downloadPdf() {
-    const authToken = await getToken();
-    if (!authToken) {
-      throw new Error("You must be signed in to download a quote PDF.");
+    setIsDownloadingPdf(true);
+    let temporaryUri: string | null = null;
+    try {
+      const authToken = await getToken();
+      if (!authToken) {
+        throw new Error("You must be signed in to download a quote PDF.");
+      }
+      const directory =
+        FileSystem.cacheDirectory ?? FileSystem.documentDirectory;
+      if (!directory) throw new Error("Temporary file storage is unavailable.");
+      const result = await FileSystem.downloadAsync(
+        `${API_BASE_URL}/api/quotes/${id}/pdf`,
+        `${directory}quote-${id}.pdf`,
+        { headers: { Authorization: `Bearer ${authToken}` } },
+      );
+      if (result.status < 200 || result.status >= 300) {
+        throw new Error(`PDF request failed with status ${result.status}.`);
+      }
+      temporaryUri = result.uri;
+      if (!(await Sharing.isAvailableAsync())) {
+        Alert.alert("PDF downloaded", "The PDF was saved to this device.");
+        temporaryUri = null;
+        return;
+      }
+      await Sharing.shareAsync(result.uri, {
+        mimeType: "application/pdf",
+        dialogTitle: "Share quote PDF",
+        UTI: "com.adobe.pdf",
+      });
+    } finally {
+      if (temporaryUri) {
+        await FileSystem.deleteAsync(temporaryUri, { idempotent: true }).catch(
+          () => undefined,
+        );
+      }
+      setIsDownloadingPdf(false);
     }
-    const target = `${FileSystem.documentDirectory}quote-${id}.pdf`;
-    const result = await FileSystem.downloadAsync(
-      `${API_BASE_URL}/api/quotes/${id}/pdf`,
-      target,
-      { headers: { Authorization: `Bearer ${authToken}` } },
-    );
-    if (!(await Sharing.isAvailableAsync())) {
-      Alert.alert("PDF downloaded", "The PDF was saved to this device.");
-      return;
-    }
-    await Sharing.shareAsync(result.uri, {
-      mimeType: "application/pdf",
-      dialogTitle: "Share quote PDF",
-      UTI: "com.adobe.pdf",
-    });
   }
 
   function setStatus(status: string) {
@@ -123,10 +143,14 @@ function QuoteDetail() {
                 qc.invalidateQueries({
                   queryKey: getGetDashboardSummaryQueryKey(),
                 });
-                qc.invalidateQueries({ queryKey: getListMasterProjectsQueryKey() });
+                qc.invalidateQueries({
+                  queryKey: getListMasterProjectsQueryKey(),
+                });
                 if (linkedMasterProjectId) {
                   qc.invalidateQueries({
-                    queryKey: getGetMasterProjectQueryKey(linkedMasterProjectId),
+                    queryKey: getGetMasterProjectQueryKey(
+                      linkedMasterProjectId,
+                    ),
                   });
                 }
                 router.back();
@@ -158,35 +182,37 @@ function QuoteDetail() {
       style={{ flex: 1, backgroundColor: colors.background }}
       contentContainerStyle={{ padding: 20, gap: 14, paddingBottom: 60 }}
     >
-      {!isAssignedWorker && <View>
-        <StatusBadge status={data.status} />
-        <Text
-          style={{
-            fontFamily: "Chivo_900Black",
-            fontSize: 26,
-            color: colors.foreground,
-            marginTop: 8,
-            letterSpacing: -0.5,
-          }}
-        >
-          {data.title}
-        </Text>
-        <Text
-          style={{
-            fontFamily: "Inter_500Medium",
-            color: colors.mutedForeground,
-            fontSize: 13,
-            marginTop: 2,
-          }}
-        >
-          {data.customerName ?? "—"} · {data.lengthM}×{data.widthM}m
-        </Text>
-      </View>}
+      {!isAssignedWorker && (
+        <View>
+          <StatusBadge status={data.status} />
+          <Text
+            style={{
+              fontFamily: "Chivo_900Black",
+              fontSize: 26,
+              color: colors.foreground,
+              marginTop: 8,
+              letterSpacing: -0.5,
+            }}
+          >
+            {data.title}
+          </Text>
+          <Text
+            style={{
+              fontFamily: "Inter_500Medium",
+              color: colors.mutedForeground,
+              fontSize: 13,
+              marginTop: 2,
+            }}
+          >
+            {data.customerName ?? "—"} · {data.lengthM}×{data.widthM}m
+          </Text>
+        </View>
+      )}
 
       {!isAssignedWorker && (
         <View style={{ gap: 8 }}>
           <Pressable
-            disabled={portalTokenMut.isPending}
+            disabled={isSharingPortalLink}
             onPress={() =>
               sharePortalLink().catch(() =>
                 Alert.alert("Could not share portal link", "Please try again."),
@@ -196,18 +222,17 @@ function QuoteDetail() {
               styles.actionButton,
               {
                 backgroundColor: colors.primary,
-                opacity: portalTokenMut.isPending ? 0.6 : 1,
+                opacity: isSharingPortalLink ? 0.6 : 1,
               },
             ]}
           >
             <Feather name="link" size={16} color="#fff" />
             <Text style={styles.actionButtonText}>
-              {portalTokenMut.isPending
-                ? "PREPARING LINK..."
-                : "SHARE PORTAL LINK"}
+              {isSharingPortalLink ? "PREPARING LINK..." : "SHARE PORTAL LINK"}
             </Text>
           </Pressable>
           <Pressable
+            disabled={isDownloadingPdf}
             onPress={() =>
               downloadPdf().catch(() =>
                 Alert.alert("Could not download PDF", "Please try again."),
@@ -215,17 +240,18 @@ function QuoteDetail() {
             }
             style={[
               styles.actionButton,
-              { borderColor: colors.border, borderWidth: 1 },
+              {
+                borderColor: colors.border,
+                borderWidth: 1,
+                opacity: isDownloadingPdf ? 0.6 : 1,
+              },
             ]}
           >
             <Feather name="download" size={16} color={colors.foreground} />
             <Text
-              style={[
-                styles.actionButtonText,
-                { color: colors.foreground },
-              ]}
+              style={[styles.actionButtonText, { color: colors.foreground }]}
             >
-              DOWNLOAD / SHARE PDF
+              {isDownloadingPdf ? "PREPARING PDF..." : "DOWNLOAD / SHARE PDF"}
             </Text>
           </Pressable>
         </View>
@@ -372,9 +398,7 @@ function QuoteDetail() {
 
       {data.siteAddress ? (
         <Card>
-          <View
-            style={{ flexDirection: "row", gap: 8, alignItems: "center" }}
-          >
+          <View style={{ flexDirection: "row", gap: 8, alignItems: "center" }}>
             <Feather name="map-pin" size={14} color={colors.mutedForeground} />
             <Text
               style={{
@@ -389,13 +413,15 @@ function QuoteDetail() {
         </Card>
       ) : null}
 
-      {!isAssignedWorker && <Button
-        label="Delete quote"
-        icon="trash-2"
-        variant="destructive"
-        onPress={confirmDelete}
-        loading={deleteMut.isPending}
-      />}
+      {!isAssignedWorker && (
+        <Button
+          label="Delete quote"
+          icon="trash-2"
+          variant="destructive"
+          onPress={confirmDelete}
+          loading={deleteMut.isPending}
+        />
+      )}
     </ScrollView>
   );
 }

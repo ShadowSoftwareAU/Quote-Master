@@ -306,6 +306,7 @@ export interface PublicQuoteLineItem {
   category: string;
   quantity: number;
   unit: string;
+  unitType: string;
   unitPrice: number;
   lineTotal: number;
 }
@@ -766,6 +767,7 @@ export interface QuotePortal {
   businessPhone: string | null;
   /** @nullable */
   businessTradeType: string | null;
+  businessLogoUrl: string;
   spec: DeckSpecInput;
   lineItems: PublicQuoteLineItem[];
   materialsSubtotal: number;
@@ -1150,4 +1152,3 @@ export interface AddPortfolioPhotoInput {
 export type ListMaterialsParams = {
 category?: string;
 };
-

@@ -933,6 +933,7 @@ export const GetQuotePortalResponse = zod.object({
   "businessName": zod.string().nullable(),
   "businessPhone": zod.string().nullable(),
   "businessTradeType": zod.string().nullable(),
+  "businessLogoUrl": zod.string(),
   "spec": zod.object({
   "lengthM": zod.number().describe('Deck length in metres'),
   "widthM": zod.number().describe('Deck width in metres'),
@@ -970,6 +971,7 @@ export const GetQuotePortalResponse = zod.object({
   "category": zod.string(),
   "quantity": zod.number(),
   "unit": zod.string(),
+  "unitType": zod.string(),
   "unitPrice": zod.number(),
   "lineTotal": zod.number()
 })),
@@ -1038,6 +1040,7 @@ export const UpdateQuotePortalResponse = zod.object({
   "businessName": zod.string().nullable(),
   "businessPhone": zod.string().nullable(),
   "businessTradeType": zod.string().nullable(),
+  "businessLogoUrl": zod.string(),
   "spec": zod.object({
   "lengthM": zod.number().describe('Deck length in metres'),
   "widthM": zod.number().describe('Deck width in metres'),
@@ -1075,6 +1078,7 @@ export const UpdateQuotePortalResponse = zod.object({
   "category": zod.string(),
   "quantity": zod.number(),
   "unit": zod.string(),
+  "unitType": zod.string(),
   "unitPrice": zod.number(),
   "lineTotal": zod.number()
 })),
@@ -1142,6 +1146,7 @@ export const SetQuotePortalStatusResponse = zod.object({
   "businessName": zod.string().nullable(),
   "businessPhone": zod.string().nullable(),
   "businessTradeType": zod.string().nullable(),
+  "businessLogoUrl": zod.string(),
   "spec": zod.object({
   "lengthM": zod.number().describe('Deck length in metres'),
   "widthM": zod.number().describe('Deck width in metres'),
@@ -1179,6 +1184,7 @@ export const SetQuotePortalStatusResponse = zod.object({
   "category": zod.string(),
   "quantity": zod.number(),
   "unit": zod.string(),
+  "unitType": zod.string(),
   "unitPrice": zod.number(),
   "lineTotal": zod.number()
 })),
@@ -1532,6 +1538,7 @@ export const GetMasterProjectResponse = zod.object({
   "category": zod.string(),
   "quantity": zod.number(),
   "unit": zod.string(),
+  "unitType": zod.string(),
   "unitPrice": zod.number(),
   "lineTotal": zod.number()
 })),
@@ -1554,6 +1561,7 @@ export const GetMasterProjectResponse = zod.object({
   "category": zod.string(),
   "quantity": zod.number(),
   "unit": zod.string(),
+  "unitType": zod.string(),
   "unitPrice": zod.number(),
   "lineTotal": zod.number()
 })),
@@ -1710,6 +1718,7 @@ export const UpdateMasterProjectResponse = zod.object({
   "category": zod.string(),
   "quantity": zod.number(),
   "unit": zod.string(),
+  "unitType": zod.string(),
   "unitPrice": zod.number(),
   "lineTotal": zod.number()
 })),
@@ -1732,6 +1741,7 @@ export const UpdateMasterProjectResponse = zod.object({
   "category": zod.string(),
   "quantity": zod.number(),
   "unit": zod.string(),
+  "unitType": zod.string(),
   "unitPrice": zod.number(),
   "lineTotal": zod.number()
 })),
@@ -1889,6 +1899,7 @@ export const SetMasterProjectQuotesResponse = zod.object({
   "category": zod.string(),
   "quantity": zod.number(),
   "unit": zod.string(),
+  "unitType": zod.string(),
   "unitPrice": zod.number(),
   "lineTotal": zod.number()
 })),
@@ -1911,6 +1922,7 @@ export const SetMasterProjectQuotesResponse = zod.object({
   "category": zod.string(),
   "quantity": zod.number(),
   "unit": zod.string(),
+  "unitType": zod.string(),
   "unitPrice": zod.number(),
   "lineTotal": zod.number()
 })),
@@ -2007,6 +2019,7 @@ export const GetMasterProjectPortalResponse = zod.object({
   "category": zod.string(),
   "quantity": zod.number(),
   "unit": zod.string(),
+  "unitType": zod.string(),
   "unitPrice": zod.number(),
   "lineTotal": zod.number()
 })),
@@ -2029,6 +2042,7 @@ export const GetMasterProjectPortalResponse = zod.object({
   "category": zod.string(),
   "quantity": zod.number(),
   "unit": zod.string(),
+  "unitType": zod.string(),
   "unitPrice": zod.number(),
   "lineTotal": zod.number()
 })),
@@ -2090,6 +2104,7 @@ export const SetMasterProjectPortalStatusResponse = zod.object({
   "category": zod.string(),
   "quantity": zod.number(),
   "unit": zod.string(),
+  "unitType": zod.string(),
   "unitPrice": zod.number(),
   "lineTotal": zod.number()
 })),
@@ -2112,6 +2127,7 @@ export const SetMasterProjectPortalStatusResponse = zod.object({
   "category": zod.string(),
   "quantity": zod.number(),
   "unit": zod.string(),
+  "unitType": zod.string(),
   "unitPrice": zod.number(),
   "lineTotal": zod.number()
 })),
@@ -2730,5 +2746,4 @@ export const CreateSignUpLeadBody = zod.object({
   "utmCampaign": zod.string().optional(),
   "notes": zod.string().optional()
 })
-
 

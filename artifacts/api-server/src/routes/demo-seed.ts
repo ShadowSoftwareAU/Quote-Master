@@ -1,4 +1,10 @@
-import { Router, type IRouter, type NextFunction, type Request, type Response } from "express";
+import {
+  Router,
+  type IRouter,
+  type NextFunction,
+  type Request,
+  type Response,
+} from "express";
 import { getAuthenticatedClerkUserId } from "../middlewares/apiAuth";
 import { requireOwner } from "../middlewares/businessRoleAuth";
 import { and, eq, inArray } from "drizzle-orm";
@@ -14,11 +20,17 @@ import {
 import { SeedDemoDataBody } from "@workspace/api-zod";
 import { recalculateMasterProjectTotals } from "../services/masterProjects";
 import { calculateRequiredQuantity } from "../lib/estimator";
+import { complianceDisclaimerForTrade } from "../lib/quoteCompliance";
 
 const router: IRouter = Router();
-const DEMO_SEED_MARKER = "Deck Me presentation demo data — temporary development seed";
+const DEMO_SEED_MARKER =
+  "Deck Me presentation demo data — temporary development seed";
 
-function developmentOnly(_req: Request, res: Response, next: NextFunction): void {
+function developmentOnly(
+  _req: Request,
+  res: Response,
+  next: NextFunction,
+): void {
   if (process.env.NODE_ENV !== "development") {
     res.status(404).json({ error: "Not found" });
     return;
@@ -41,11 +53,11 @@ router.post(
   async (req, res): Promise<void> => {
     const parsed = SeedDemoDataBody.safeParse(req.body);
     if (
-      !req.body
-      || typeof req.body !== "object"
-      || Array.isArray(req.body)
-      || Object.keys(req.body).length > 0
-      || !parsed.success
+      !req.body ||
+      typeof req.body !== "object" ||
+      Array.isArray(req.body) ||
+      Object.keys(req.body).length > 0 ||
+      !parsed.success
     ) {
       res.status(400).json({
         error: parsed.success
@@ -60,10 +72,12 @@ router.post(
       const [existing] = await tx
         .select({ id: customersTable.id })
         .from(customersTable)
-        .where(and(
-          eq(customersTable.clerkUserId, clerkUserId),
-          eq(customersTable.notes, DEMO_SEED_MARKER),
-        ))
+        .where(
+          and(
+            eq(customersTable.clerkUserId, clerkUserId),
+            eq(customersTable.notes, DEMO_SEED_MARKER),
+          ),
+        )
         .limit(1);
 
       if (existing) {
@@ -115,39 +129,151 @@ router.post(
 
       const customers = await tx
         .insert(customersTable)
-        .values(customerFixtures.map((customer) => ({ ...customer, clerkUserId })))
+        .values(
+          customerFixtures.map((customer) => ({ ...customer, clerkUserId })),
+        )
         .returning({ id: customersTable.id });
 
       const materialFixtures = [
-        ["Merbau decking board 90mm", "decking", "metre", 18.95, 12.4, null, "Bunnings", "Rich colour, kiln dried"],
-        ["Treated pine decking board 90mm", "decking", "metre", 9.8, 6.25, null, "Mitre 10", "H3 treated outdoor timber"],
-        ["Treated pine joist 90 × 45mm", "joist", "metre", 7.4, 4.55, null, "Bunnings", "Structural H3 treated pine"],
-        ["Treated pine bearer 140 × 45mm", "bearer", "metre", 12.9, 8.1, null, "Bunnings", "Structural H3 treated pine"],
-        ["Galvanised stirrup post support", "post", "each", 22.5, 14.6, 1, "Mitre 10", "Hot-dip galvanised"],
-        ["Concrete stump 300mm", "stump", "each", 14.75, 9.2, 1, "Local supplier", "Precast footing support"],
-        ["Type 17 decking screws 10g", "screw", "pack", 34.9, 22.75, 250, "Bunnings", "Exterior-grade galvanised screws"],
-        ["Galvanised joist hanger", "bracket", "each", 6.8, 4.15, 1, "Bunnings", "90mm joist compatible"],
-        ["Cabot's decking oil 4L", "sealant", "each", 79.95, 55.0, 1, "Mitre 10", "Natural finish, water repellent"],
-        ["Merbau fascia board 140mm", "other", "metre", 24.5, 16.9, null, "Local supplier", "Matching merbau trim"],
-      ].map(([name, category, unit, unitPrice, tradeCost, packSize, supplier, notes], index) => ({
-        name: name as string,
-        sku: `DEMO-${String(index + 1).padStart(3, "0")}`,
-        category: category as string,
-        unit: unit as string,
-        unitPrice: money(unitPrice as number),
-        tradeCost: money(tradeCost as number),
-        packSize: packSize as number | null,
-        supplier: supplier as string,
-        notes: notes as string,
-        clerkUserId,
-      }));
+        [
+          "Merbau decking board 90mm",
+          "decking",
+          "metre",
+          18.95,
+          12.4,
+          null,
+          "Bunnings",
+          "Rich colour, kiln dried",
+        ],
+        [
+          "Treated pine decking board 90mm",
+          "decking",
+          "metre",
+          9.8,
+          6.25,
+          null,
+          "Mitre 10",
+          "H3 treated outdoor timber",
+        ],
+        [
+          "Treated pine joist 90 × 45mm",
+          "joist",
+          "metre",
+          7.4,
+          4.55,
+          null,
+          "Bunnings",
+          "Structural H3 treated pine",
+        ],
+        [
+          "Treated pine bearer 140 × 45mm",
+          "bearer",
+          "metre",
+          12.9,
+          8.1,
+          null,
+          "Bunnings",
+          "Structural H3 treated pine",
+        ],
+        [
+          "Galvanised stirrup post support",
+          "post",
+          "each",
+          22.5,
+          14.6,
+          1,
+          "Mitre 10",
+          "Hot-dip galvanised",
+        ],
+        [
+          "Concrete stump 300mm",
+          "stump",
+          "each",
+          14.75,
+          9.2,
+          1,
+          "Local supplier",
+          "Precast footing support",
+        ],
+        [
+          "Type 17 decking screws 10g",
+          "screw",
+          "pack",
+          34.9,
+          22.75,
+          250,
+          "Bunnings",
+          "Exterior-grade galvanised screws",
+        ],
+        [
+          "Galvanised joist hanger",
+          "bracket",
+          "each",
+          6.8,
+          4.15,
+          1,
+          "Bunnings",
+          "90mm joist compatible",
+        ],
+        [
+          "Cabot's decking oil 4L",
+          "sealant",
+          "each",
+          79.95,
+          55.0,
+          1,
+          "Mitre 10",
+          "Natural finish, water repellent",
+        ],
+        [
+          "Merbau fascia board 140mm",
+          "other",
+          "metre",
+          24.5,
+          16.9,
+          null,
+          "Local supplier",
+          "Matching merbau trim",
+        ],
+      ].map(
+        (
+          [
+            name,
+            category,
+            unit,
+            unitPrice,
+            tradeCost,
+            packSize,
+            supplier,
+            notes,
+          ],
+          index,
+        ) => ({
+          name: name as string,
+          sku: `DEMO-${String(index + 1).padStart(3, "0")}`,
+          category: category as string,
+          unit: unit as string,
+          unitPrice: money(unitPrice as number),
+          tradeCost: money(tradeCost as number),
+          packSize: packSize as number | null,
+          supplier: supplier as string,
+          notes: notes as string,
+          clerkUserId,
+        }),
+      );
 
       const materials = await tx
         .insert(materialsTable)
         .values(materialFixtures)
-        .returning({ id: materialsTable.id, unitPrice: materialsTable.unitPrice, name: materialsTable.name });
+        .returning({
+          id: materialsTable.id,
+          unitPrice: materialsTable.unitPrice,
+          name: materialsTable.name,
+        });
 
-      const materialByName = new Map(materials.map((material) => [material.name, material]));
+      const materialByName = new Map(
+        materials.map((material) => [material.name, material]),
+      );
       const merbau = materialByName.get("Merbau decking board 90mm")!;
       const joist = materialByName.get("Treated pine joist 90 × 45mm")!;
       const bearer = materialByName.get("Treated pine bearer 140 × 45mm")!;
@@ -178,9 +304,39 @@ router.post(
           widthM: 3.6,
           labourHours: 28,
           lines: [
-            [merbau.id, merbau.name, "decking", 24, "metre", Number(merbau.unitPrice), "lm", 10, false],
-            [joist.id, joist.name, "joist", 22, "metre", Number(joist.unitPrice), "lm", 10, false],
-            [screws.id, screws.name, "screw", 1, "pack", Number(screws.unitPrice), "box", 0, true],
+            [
+              merbau.id,
+              merbau.name,
+              "decking",
+              24,
+              "metre",
+              Number(merbau.unitPrice),
+              "lm",
+              10,
+              false,
+            ],
+            [
+              joist.id,
+              joist.name,
+              "joist",
+              22,
+              "metre",
+              Number(joist.unitPrice),
+              "lm",
+              10,
+              false,
+            ],
+            [
+              screws.id,
+              screws.name,
+              "screw",
+              1,
+              "pack",
+              Number(screws.unitPrice),
+              "box",
+              0,
+              true,
+            ],
           ] satisfies DemoLineFixture[],
         },
         {
@@ -193,10 +349,50 @@ router.post(
           widthM: 4.1,
           labourHours: 42,
           lines: [
-            [merbau.id, merbau.name, "decking", 34, "metre", Number(merbau.unitPrice), "lm", 10, false],
-            [joist.id, joist.name, "joist", 29, "metre", Number(joist.unitPrice), "lm", 10, false],
-            [bearer.id, bearer.name, "bearer", 16, "metre", Number(bearer.unitPrice), "lm", 10, false],
-            [oil.id, oil.name, "sealant", 2, "each", Number(oil.unitPrice), "item", 5, false],
+            [
+              merbau.id,
+              merbau.name,
+              "decking",
+              34,
+              "metre",
+              Number(merbau.unitPrice),
+              "lm",
+              10,
+              false,
+            ],
+            [
+              joist.id,
+              joist.name,
+              "joist",
+              29,
+              "metre",
+              Number(joist.unitPrice),
+              "lm",
+              10,
+              false,
+            ],
+            [
+              bearer.id,
+              bearer.name,
+              "bearer",
+              16,
+              "metre",
+              Number(bearer.unitPrice),
+              "lm",
+              10,
+              false,
+            ],
+            [
+              oil.id,
+              oil.name,
+              "sealant",
+              2,
+              "each",
+              Number(oil.unitPrice),
+              "item",
+              5,
+              false,
+            ],
           ] satisfies DemoLineFixture[],
         },
         {
@@ -209,10 +405,50 @@ router.post(
           widthM: 3.2,
           labourHours: 31,
           lines: [
-            [merbau.id, merbau.name, "decking", 22, "metre", Number(merbau.unitPrice), "lm", 10, false],
-            [joist.id, joist.name, "joist", 20, "metre", Number(joist.unitPrice), "lm", 10, false],
-            [screws.id, screws.name, "screw", 1, "pack", Number(screws.unitPrice), "box", 0, true],
-            [oil.id, oil.name, "sealant", 1, "each", Number(oil.unitPrice), "item", 5, false],
+            [
+              merbau.id,
+              merbau.name,
+              "decking",
+              22,
+              "metre",
+              Number(merbau.unitPrice),
+              "lm",
+              10,
+              false,
+            ],
+            [
+              joist.id,
+              joist.name,
+              "joist",
+              20,
+              "metre",
+              Number(joist.unitPrice),
+              "lm",
+              10,
+              false,
+            ],
+            [
+              screws.id,
+              screws.name,
+              "screw",
+              1,
+              "pack",
+              Number(screws.unitPrice),
+              "box",
+              0,
+              true,
+            ],
+            [
+              oil.id,
+              oil.name,
+              "sealant",
+              1,
+              "each",
+              Number(oil.unitPrice),
+              "item",
+              5,
+              false,
+            ],
           ] satisfies DemoLineFixture[],
         },
         {
@@ -225,17 +461,52 @@ router.post(
           widthM: 3.8,
           labourHours: 39,
           lines: [
-            [merbau.id, merbau.name, "decking", 38, "metre", Number(merbau.unitPrice), "lm", 10, false],
-            [joist.id, joist.name, "joist", 31, "metre", Number(joist.unitPrice), "lm", 10, false],
-            [fascia.id, fascia.name, "other", 15, "metre", Number(fascia.unitPrice), "lm", 10, false],
+            [
+              merbau.id,
+              merbau.name,
+              "decking",
+              38,
+              "metre",
+              Number(merbau.unitPrice),
+              "lm",
+              10,
+              false,
+            ],
+            [
+              joist.id,
+              joist.name,
+              "joist",
+              31,
+              "metre",
+              Number(joist.unitPrice),
+              "lm",
+              10,
+              false,
+            ],
+            [
+              fascia.id,
+              fascia.name,
+              "other",
+              15,
+              "metre",
+              Number(fascia.unitPrice),
+              "lm",
+              10,
+              false,
+            ],
           ] satisfies DemoLineFixture[],
         },
       ];
 
       const quoteRows = quoteFixtures.map((quote) => {
         const materialsSubtotal = quote.lines.reduce(
-          (sum, [, , , quantity, , unitPrice, , wastagePercentage, isBulkItem]) =>
-            sum + calculateRequiredQuantity(quantity, wastagePercentage, isBulkItem) * unitPrice,
+          (
+            sum,
+            [, , , quantity, , unitPrice, , wastagePercentage, isBulkItem],
+          ) =>
+            sum +
+            calculateRequiredQuantity(quantity, wastagePercentage, isBulkItem) *
+              unitPrice,
           0,
         );
         const labourRate = 85;
@@ -249,7 +520,7 @@ router.post(
           customerId: quote.customerId,
           tradeType: "decking",
           portalToken: portalToken(),
-          complianceDisclaimer: "This estimate is indicative only. Confirm site conditions and local requirements before construction.",
+          complianceDisclaimer: complianceDisclaimerForTrade("Decking"),
           contractorLicenseNumber: null,
           siteAddress: quote.siteAddress,
           notes: quote.notes,
@@ -303,29 +574,45 @@ router.post(
 
       const quotes = await tx
         .insert(quotesTable)
-        .values(quoteRows.map(({ lineFixtures: _lineFixtures, ...quote }) => quote))
+        .values(
+          quoteRows.map(({ lineFixtures: _lineFixtures, ...quote }) => quote),
+        )
         .returning({ id: quotesTable.id });
 
       const lineRows = quoteRows.flatMap((quote, quoteIndex) =>
-        quote.lineFixtures.map((
-          [materialId, description, category, quantity, unit, unitPrice, unitType, wastagePercentage, isBulkItem],
-        ) => {
-          const effectiveQuantity = calculateRequiredQuantity(quantity, wastagePercentage, isBulkItem);
-          return {
-            quoteId: quotes[quoteIndex].id,
+        quote.lineFixtures.map(
+          ([
             materialId,
             description,
             category,
-            quantity: money(effectiveQuantity),
+            quantity,
             unit,
+            unitPrice,
             unitType,
-            unitPrice: money(unitPrice),
-            markupPercentage: "0.00",
-            wastagePercentage: money(wastagePercentage),
+            wastagePercentage,
             isBulkItem,
-            lineTotal: money(effectiveQuantity * unitPrice),
-          };
-        }),
+          ]) => {
+            const effectiveQuantity = calculateRequiredQuantity(
+              quantity,
+              wastagePercentage,
+              isBulkItem,
+            );
+            return {
+              quoteId: quotes[quoteIndex].id,
+              materialId,
+              description,
+              category,
+              quantity: money(effectiveQuantity),
+              unit,
+              unitType,
+              unitPrice: money(unitPrice),
+              markupPercentage: "0.00",
+              wastagePercentage: money(wastagePercentage),
+              isBulkItem,
+              lineTotal: money(effectiveQuantity * unitPrice),
+            };
+          },
+        ),
       );
       await tx.insert(quoteLineItemsTable).values(lineRows);
 
@@ -337,17 +624,20 @@ router.post(
           customerId: customers[0].id,
           portalToken: portalToken(),
           builderMarginPct: "12.00",
-          notes: "Temporary presentation demo project combining the draft and sent Byron Bay quotes.",
+          notes:
+            "Temporary presentation demo project combining the draft and sent Byron Bay quotes.",
         })
         .returning({ id: masterProjectsTable.id });
 
       await tx
         .update(quotesTable)
         .set({ masterProjectId: project.id })
-        .where(and(
-          eq(quotesTable.clerkUserId, clerkUserId),
-          inArray(quotesTable.id, [quotes[0].id, quotes[1].id]),
-        ));
+        .where(
+          and(
+            eq(quotesTable.clerkUserId, clerkUserId),
+            inArray(quotesTable.id, [quotes[0].id, quotes[1].id]),
+          ),
+        );
       await recalculateMasterProjectTotals(project.id, clerkUserId, tx);
 
       return {

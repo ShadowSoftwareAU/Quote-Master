@@ -1,17 +1,51 @@
-import { useGetQuote, useSetQuoteStatus, useDeleteQuote, useCreateQuoteVariation, useRegenerateQuotePortalToken, useUpdateQuote, useListTeamMembers, getGetQuoteQueryKey, getListQuotesQueryKey, getListMasterProjectsQueryKey, getGetMasterProjectQueryKey, getListTeamMembersQueryKey, type Quote } from "@workspace/api-client-react";
+import {
+  getQuotePdf,
+  useGetQuote,
+  useSetQuoteStatus,
+  useDeleteQuote,
+  useCreateQuoteVariation,
+  useRegenerateQuotePortalToken,
+  useUpdateQuote,
+  useListTeamMembers,
+  getGetQuoteQueryKey,
+  getListQuotesQueryKey,
+  getListMasterProjectsQueryKey,
+  getGetMasterProjectQueryKey,
+  getListTeamMembersQueryKey,
+  type Quote,
+} from "@workspace/api-client-react";
 import { useParams, useLocation } from "wouter";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { formatCurrency } from "@/lib/format";
-import { CheckCircle, XCircle, Send, Trash2, Copy, AlertTriangle, Download, Link2 } from "lucide-react";
+import {
+  CheckCircle,
+  XCircle,
+  Send,
+  Trash2,
+  Copy,
+  AlertTriangle,
+  Download,
+  Link2,
+} from "lucide-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { MoreVertical } from "lucide-react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { useState } from "react";
 import { useProfileAccess } from "@/lib/access";
 
@@ -21,7 +55,9 @@ export default function QuoteDetail() {
   const { id } = useParams();
   const [, setLocation] = useLocation();
   const quoteId = parseInt(id || "0");
-  const { data: quote, isLoading } = useGetQuote(quoteId, { query: { enabled: !!quoteId, queryKey: getGetQuoteQueryKey(quoteId) } });
+  const { data: quote, isLoading } = useGetQuote(quoteId, {
+    query: { enabled: !!quoteId, queryKey: getGetQuoteQueryKey(quoteId) },
+  });
   const setStatus = useSetQuoteStatus();
   const deleteQuote = useDeleteQuote();
   const createVariation = useCreateQuoteVariation();
@@ -29,19 +65,30 @@ export default function QuoteDetail() {
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const access = useProfileAccess();
-  const { data: teamMembers } = useListTeamMembers({ query: { enabled: access.isOwner, queryKey: getListTeamMembersQueryKey() } });
+  const { data: teamMembers } = useListTeamMembers({
+    query: { enabled: access.isOwner, queryKey: getListTeamMembersQueryKey() },
+  });
   const updateQuote = useUpdateQuote();
 
   const [variationOpen, setVariationOpen] = useState(false);
   const [varTitle, setVarTitle] = useState("");
   const [varNotes, setVarNotes] = useState("");
+  const [isCopyingPortalLink, setIsCopyingPortalLink] = useState(false);
+  const [isDownloadingPdf, setIsDownloadingPdf] = useState(false);
 
-  if (isLoading || !quote) return <div className="p-8"><Skeleton className="h-64" /></div>;
+  if (isLoading || !quote)
+    return (
+      <div className="p-8">
+        <Skeleton className="h-64" />
+      </div>
+    );
   if (access.isAssignedWorker) return <ReadOnlyAssignedQuote quote={quote} />;
 
   const councilWarning = quote.heightM >= COUNCIL_HEIGHT_M;
   const refreshMasterProjects = () => {
-    queryClient.invalidateQueries({ queryKey: getListMasterProjectsQueryKey() });
+    queryClient.invalidateQueries({
+      queryKey: getListMasterProjectsQueryKey(),
+    });
     if (quote.masterProjectId) {
       queryClient.invalidateQueries({
         queryKey: getGetMasterProjectQueryKey(quote.masterProjectId),
@@ -52,50 +99,99 @@ export default function QuoteDetail() {
   const updateStatus = (status: string) => {
     setStatus.mutate(
       { id: quoteId, data: { status } },
-      { onSuccess: () => {
-        queryClient.invalidateQueries({ queryKey: getGetQuoteQueryKey(quoteId) });
-        refreshMasterProjects();
-        toast({ title: `Quote marked as ${status}` });
-      }}
+      {
+        onSuccess: () => {
+          queryClient.invalidateQueries({
+            queryKey: getGetQuoteQueryKey(quoteId),
+          });
+          refreshMasterProjects();
+          toast({ title: `Quote marked as ${status}` });
+        },
+      },
     );
   };
 
   const handleDelete = () => {
     if (confirm("Are you sure you want to delete this quote?")) {
-      deleteQuote.mutate({ id: quoteId }, {
-        onSuccess: () => {
-          toast({ title: "Quote deleted" });
-          queryClient.invalidateQueries({ queryKey: getListQuotesQueryKey() });
-          refreshMasterProjects();
-          setLocation("/quotes");
-        }
-      });
+      deleteQuote.mutate(
+        { id: quoteId },
+        {
+          onSuccess: () => {
+            toast({ title: "Quote deleted" });
+            queryClient.invalidateQueries({
+              queryKey: getListQuotesQueryKey(),
+            });
+            refreshMasterProjects();
+            setLocation("/quotes");
+          },
+        },
+      );
     }
   };
 
   const handleCopyPortalLink = async () => {
-    const token = quote.portalToken ?? (
-      await regeneratePortalToken.mutateAsync({ id: quoteId })
-    ).portalToken;
-    refreshMasterProjects();
-    const basePath = import.meta.env.BASE_URL.replace(/\/$/, "");
-    const portalLink = new URL(`${basePath}/quote/${token}`, window.location.origin).toString();
+    setIsCopyingPortalLink(true);
+    let portalLink = "";
     try {
+      const token =
+        quote.portalToken ??
+        (await regeneratePortalToken.mutateAsync({ id: quoteId })).portalToken;
+      refreshMasterProjects();
+      const basePath = import.meta.env.BASE_URL.replace(/\/$/, "");
+      portalLink = new URL(
+        `${basePath}/quote/${token}`,
+        window.location.origin,
+      ).toString();
       await navigator.clipboard.writeText(portalLink);
       toast({ title: "Client portal link copied" });
     } catch {
-      window.prompt("Copy this client portal link:", portalLink);
+      if (portalLink) {
+        window.prompt("Copy this client portal link:", portalLink);
+      }
+      toast({
+        title: "Could not copy portal link",
+        description: portalLink
+          ? "Use the copy field shown by your browser."
+          : "Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsCopyingPortalLink(false);
     }
   };
 
-  const handleDownloadPdf = () => {
-    const basePath = import.meta.env.BASE_URL.replace(/\/$/, "");
-    window.open(`${basePath}/api/quotes/${quoteId}/pdf`, "_blank", "noopener,noreferrer");
+  const handleDownloadPdf = async () => {
+    setIsDownloadingPdf(true);
+    try {
+      const pdf = await getQuotePdf(quoteId, {
+        responseType: "blob",
+      } as RequestInit & { responseType: "blob" });
+      const url = URL.createObjectURL(pdf);
+      const anchor = document.createElement("a");
+      anchor.href = url;
+      anchor.download = `quote-${quoteId}.pdf`;
+      document.body.appendChild(anchor);
+      anchor.click();
+      anchor.remove();
+      window.setTimeout(() => URL.revokeObjectURL(url), 1_000);
+      toast({ title: "Quote PDF downloaded" });
+    } catch {
+      toast({
+        title: "Could not download quote PDF",
+        description: "Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsDownloadingPdf(false);
+    }
   };
 
   const handleCreateVariation = () => {
     if (!varTitle.trim()) {
-      toast({ title: "Enter a title for the variation", variant: "destructive" });
+      toast({
+        title: "Enter a title for the variation",
+        variant: "destructive",
+      });
       return;
     }
     createVariation.mutate(
@@ -106,8 +202,8 @@ export default function QuoteDetail() {
           toast({ title: "Variation quote created" });
           setVariationOpen(false);
           setLocation(`/quotes/${data.id}`);
-        }
-      }
+        },
+      },
     );
   };
 
@@ -117,9 +213,12 @@ export default function QuoteDetail() {
         <div className="flex items-start gap-3 bg-red-600 text-white rounded-lg px-5 py-4 border-2 border-red-700">
           <AlertTriangle className="w-5 h-5 shrink-0 mt-0.5" />
           <div>
-            <div className="font-black uppercase text-sm">Council Certification May Be Required</div>
+            <div className="font-black uppercase text-sm">
+              Council Certification May Be Required
+            </div>
             <div className="text-sm text-red-100">
-              Deck height {quote.heightM}m exceeds 1.0m — a building permit may be required.
+              Deck height {quote.heightM}m exceeds 1.0m — a building permit may
+              be required.
             </div>
           </div>
         </div>
@@ -127,30 +226,56 @@ export default function QuoteDetail() {
 
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-black uppercase tracking-tight">{quote.title}</h1>
-          <p className="text-muted-foreground font-medium text-lg mt-1">{quote.customerName}</p>
+          <h1 className="text-3xl font-black uppercase tracking-tight">
+            {quote.title}
+          </h1>
+          <p className="text-muted-foreground font-medium text-lg mt-1">
+            {quote.customerName}
+          </p>
         </div>
         <div className="flex gap-2 items-center flex-wrap">
           <Button
             variant="outline"
             className="font-bold uppercase"
             onClick={handleCopyPortalLink}
+            disabled={isCopyingPortalLink}
           >
-            <Link2 className="w-4 h-4 mr-2" /> Copy Portal Link
+            <Link2 className="w-4 h-4 mr-2" />
+            {isCopyingPortalLink ? "Preparing Link..." : "Copy Portal Link"}
           </Button>
-          {quote.status === 'draft' && (
-            <Button onClick={() => updateStatus('sent')} className="font-bold uppercase"><Send className="w-4 h-4 mr-2" /> Mark Sent</Button>
+          {quote.status === "draft" && (
+            <Button
+              onClick={() => updateStatus("sent")}
+              className="font-bold uppercase"
+            >
+              <Send className="w-4 h-4 mr-2" /> Mark Sent
+            </Button>
           )}
-          {quote.status === 'sent' && (
+          {quote.status === "sent" && (
             <>
-              <Button onClick={() => updateStatus('accepted')} className="bg-emerald-600 hover:bg-emerald-700 font-bold uppercase"><CheckCircle className="w-4 h-4 mr-2"/> Accepted</Button>
-              <Button onClick={() => updateStatus('rejected')} variant="destructive" className="font-bold uppercase"><XCircle className="w-4 h-4 mr-2"/> Rejected</Button>
+              <Button
+                onClick={() => updateStatus("accepted")}
+                className="bg-emerald-600 hover:bg-emerald-700 font-bold uppercase"
+              >
+                <CheckCircle className="w-4 h-4 mr-2" /> Accepted
+              </Button>
+              <Button
+                onClick={() => updateStatus("rejected")}
+                variant="destructive"
+                className="font-bold uppercase"
+              >
+                <XCircle className="w-4 h-4 mr-2" /> Rejected
+              </Button>
             </>
           )}
-          {(quote.status === 'accepted' || quote.status === 'sent') && (
+          {(quote.status === "accepted" || quote.status === "sent") && (
             <Button
               variant="outline"
-              onClick={() => { setVarTitle(`${quote.title} — Variation`); setVarNotes(""); setVariationOpen(true); }}
+              onClick={() => {
+                setVarTitle(`${quote.title} — Variation`);
+                setVarNotes("");
+                setVariationOpen(true);
+              }}
               className="font-bold uppercase"
             >
               <Copy className="w-4 h-4 mr-2" /> Variation
@@ -159,16 +284,23 @@ export default function QuoteDetail() {
           <Button
             variant="outline"
             className="font-bold uppercase"
-              onClick={handleDownloadPdf}
+            onClick={handleDownloadPdf}
+            disabled={isDownloadingPdf}
           >
-              <Download className="w-4 h-4 mr-2" /> Download PDF
+            <Download className="w-4 h-4 mr-2" />
+            {isDownloadingPdf ? "Downloading..." : "Download PDF"}
           </Button>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="outline" size="icon"><MoreVertical className="w-4 h-4" /></Button>
+              <Button variant="outline" size="icon">
+                <MoreVertical className="w-4 h-4" />
+              </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
-              <DropdownMenuItem onClick={handleDelete} className="text-destructive">
+              <DropdownMenuItem
+                onClick={handleDelete}
+                className="text-destructive"
+              >
                 <Trash2 className="w-4 h-4 mr-2" /> Delete Quote
               </DropdownMenuItem>
             </DropdownMenuContent>
@@ -180,21 +312,35 @@ export default function QuoteDetail() {
         <div className="md:col-span-2 space-y-6">
           <Card className="border-2 shadow-sm">
             <CardHeader className="bg-muted/30 border-b pb-4">
-              <CardTitle className="font-display font-black uppercase">Bill of Materials</CardTitle>
+              <CardTitle className="font-display font-black uppercase">
+                Bill of Materials
+              </CardTitle>
             </CardHeader>
             <CardContent className="p-0">
               <div className="divide-y">
                 {quote.lineItems?.map((item) => (
-                  <div key={item.id} className="p-4 flex justify-between items-center text-sm hover:bg-muted/10">
+                  <div
+                    key={item.id}
+                    className="p-4 flex justify-between items-center text-sm hover:bg-muted/10"
+                  >
                     <div>
-                      <div className="font-bold text-foreground">{item.description}</div>
-                      <div className="text-xs text-muted-foreground">{item.quantity} {item.unit} @ {formatCurrency(item.unitPrice)}</div>
+                      <div className="font-bold text-foreground">
+                        {item.description}
+                      </div>
+                      <div className="text-xs text-muted-foreground">
+                        {item.quantity} {item.unit} @{" "}
+                        {formatCurrency(item.unitPrice)}
+                      </div>
                     </div>
-                    <div className="font-mono font-bold text-base">{formatCurrency(item.lineTotal)}</div>
+                    <div className="font-mono font-bold text-base">
+                      {formatCurrency(item.lineTotal)}
+                    </div>
                   </div>
                 ))}
                 {(!quote.lineItems || quote.lineItems.length === 0) && (
-                  <div className="p-8 text-center text-muted-foreground font-medium">No materials listed.</div>
+                  <div className="p-8 text-center text-muted-foreground font-medium">
+                    No materials listed.
+                  </div>
                 )}
               </div>
             </CardContent>
@@ -204,56 +350,116 @@ export default function QuoteDetail() {
         <div className="space-y-6">
           {access.isOwner && (
             <Card className="border-2 shadow-sm">
-              <CardHeader><CardTitle className="text-sm font-bold uppercase">Assigned Subcontractor</CardTitle></CardHeader>
+              <CardHeader>
+                <CardTitle className="text-sm font-bold uppercase">
+                  Assigned Subcontractor
+                </CardTitle>
+              </CardHeader>
               <CardContent>
                 <select
                   className="flex h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
                   value={quote.assignedTeamMemberId ?? ""}
-                  onChange={(event) => updateQuote.mutate(
-                    { id: quoteId, data: { assignedTeamMemberId: event.target.value ? Number(event.target.value) : null } },
-                    { onSuccess: () => queryClient.invalidateQueries({ queryKey: getGetQuoteQueryKey(quoteId) }) },
-                  )}
+                  onChange={(event) =>
+                    updateQuote.mutate(
+                      {
+                        id: quoteId,
+                        data: {
+                          assignedTeamMemberId: event.target.value
+                            ? Number(event.target.value)
+                            : null,
+                        },
+                      },
+                      {
+                        onSuccess: () =>
+                          queryClient.invalidateQueries({
+                            queryKey: getGetQuoteQueryKey(quoteId),
+                          }),
+                      },
+                    )
+                  }
                 >
                   <option value="">Unassigned</option>
-                  {teamMembers?.filter((member) => member.active && member.role.toLowerCase() === "subcontractor" && member.linkedClerkUserId).map((member) => (
-                    <option key={member.id} value={member.id}>{member.name}</option>
-                  ))}
+                  {teamMembers
+                    ?.filter(
+                      (member) =>
+                        member.active &&
+                        member.role.toLowerCase() === "subcontractor" &&
+                        member.linkedClerkUserId,
+                    )
+                    .map((member) => (
+                      <option key={member.id} value={member.id}>
+                        {member.name}
+                      </option>
+                    ))}
                 </select>
               </CardContent>
             </Card>
           )}
           <Card className="border-2 border-primary/30 bg-primary/5 shadow-sm">
             <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-bold uppercase text-muted-foreground">Total Value</CardTitle>
+              <CardTitle className="text-sm font-bold uppercase text-muted-foreground">
+                Total Value
+              </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-4xl font-black text-foreground font-mono">{formatCurrency(quote.total)}</div>
+              <div className="text-4xl font-black text-foreground font-mono">
+                {formatCurrency(quote.total)}
+              </div>
               <div className="mt-4 space-y-2 text-sm font-medium text-muted-foreground">
-                <div className="flex justify-between border-b pb-1"><span>Materials</span> <span className="font-mono text-foreground">{formatCurrency(quote.materialsSubtotal)}</span></div>
-                <div className="flex justify-between border-b pb-1"><span>Labour</span> <span className="font-mono text-foreground">{formatCurrency(quote.labourCost)}</span></div>
-                <div className="flex justify-between"><span>GST</span> <span className="font-mono text-foreground">{formatCurrency(quote.gst)}</span></div>
+                <div className="flex justify-between border-b pb-1">
+                  <span>Materials</span>{" "}
+                  <span className="font-mono text-foreground">
+                    {formatCurrency(quote.materialsSubtotal)}
+                  </span>
+                </div>
+                <div className="flex justify-between border-b pb-1">
+                  <span>Labour</span>{" "}
+                  <span className="font-mono text-foreground">
+                    {formatCurrency(quote.labourCost)}
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span>GST</span>{" "}
+                  <span className="font-mono text-foreground">
+                    {formatCurrency(quote.gst)}
+                  </span>
+                </div>
               </div>
             </CardContent>
           </Card>
-          
+
           <Card className="border-2 shadow-sm">
             <CardContent className="p-4 space-y-4 text-sm font-medium">
               <div>
-                <span className="text-muted-foreground uppercase text-xs font-bold block mb-1">Dimensions</span>
-                {quote.lengthM}m × {quote.widthM}m ({Math.round(quote.lengthM * quote.widthM * 100) / 100}m²)
+                <span className="text-muted-foreground uppercase text-xs font-bold block mb-1">
+                  Dimensions
+                </span>
+                {quote.lengthM}m × {quote.widthM}m (
+                {Math.round(quote.lengthM * quote.widthM * 100) / 100}m²)
               </div>
               <div>
-                <span className="text-muted-foreground uppercase text-xs font-bold block mb-1">Height</span>
+                <span className="text-muted-foreground uppercase text-xs font-bold block mb-1">
+                  Height
+                </span>
                 {quote.heightM}m above ground
-                {councilWarning && <span className="ml-2 text-red-600 text-xs font-bold">⚠ Permit req'd</span>}
+                {councilWarning && (
+                  <span className="ml-2 text-red-600 text-xs font-bold">
+                    ⚠ Permit req'd
+                  </span>
+                )}
               </div>
               <div>
-                <span className="text-muted-foreground uppercase text-xs font-bold block mb-1">Labour</span>
-                {quote.labourHours} hours @ {formatCurrency(quote.labourRate || 0)}/hr
+                <span className="text-muted-foreground uppercase text-xs font-bold block mb-1">
+                  Labour
+                </span>
+                {quote.labourHours} hours @{" "}
+                {formatCurrency(quote.labourRate || 0)}/hr
               </div>
               {quote.notes && (
                 <div>
-                  <span className="text-muted-foreground uppercase text-xs font-bold block mb-1">Notes</span>
+                  <span className="text-muted-foreground uppercase text-xs font-bold block mb-1">
+                    Notes
+                  </span>
                   <p className="text-foreground">{quote.notes}</p>
                 </div>
               )}
@@ -265,24 +471,43 @@ export default function QuoteDetail() {
       <Dialog open={variationOpen} onOpenChange={setVariationOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle className="font-display font-black uppercase text-xl">Create Variation</DialogTitle>
+            <DialogTitle className="font-display font-black uppercase text-xl">
+              Create Variation
+            </DialogTitle>
           </DialogHeader>
           <div className="space-y-4 py-4">
-            <p className="text-sm text-muted-foreground">Create a new quote based on <strong>{quote.title}</strong> with different dimensions or labour.</p>
+            <p className="text-sm text-muted-foreground">
+              Create a new quote based on <strong>{quote.title}</strong> with
+              different dimensions or labour.
+            </p>
             <div className="space-y-2">
-              <Label className="font-bold uppercase text-xs">Variation Title</Label>
-              <Input value={varTitle} onChange={e => setVarTitle(e.target.value)} placeholder="E.g. Smith Deck — Extended" />
+              <Label className="font-bold uppercase text-xs">
+                Variation Title
+              </Label>
+              <Input
+                value={varTitle}
+                onChange={(e) => setVarTitle(e.target.value)}
+                placeholder="E.g. Smith Deck — Extended"
+              />
             </div>
             <div className="space-y-2">
-              <Label className="font-bold uppercase text-xs">Notes (what's different)</Label>
-              <Input value={varNotes} onChange={e => setVarNotes(e.target.value)} placeholder="E.g. Added 2m extension on north side" />
+              <Label className="font-bold uppercase text-xs">
+                Notes (what's different)
+              </Label>
+              <Input
+                value={varNotes}
+                onChange={(e) => setVarNotes(e.target.value)}
+                placeholder="E.g. Added 2m extension on north side"
+              />
             </div>
             <Button
               className="w-full font-bold uppercase"
               onClick={handleCreateVariation}
               disabled={createVariation.isPending || !varTitle.trim()}
             >
-              {createVariation.isPending ? "Creating..." : "Create Variation Quote"}
+              {createVariation.isPending
+                ? "Creating..."
+                : "Create Variation Quote"}
             </Button>
           </div>
         </DialogContent>
@@ -294,10 +519,44 @@ export default function QuoteDetail() {
 function ReadOnlyAssignedQuote({ quote }: { quote: Quote }) {
   return (
     <div className="max-w-4xl mx-auto space-y-6">
-      <div><p className="text-xs font-bold uppercase text-primary">Assigned quote</p><h1 className="text-3xl font-black uppercase">{quote.title}</h1><p className="text-muted-foreground">{quote.customerName}</p></div>
-      <Card><CardHeader><CardTitle>Scope of work</CardTitle></CardHeader><CardContent className="divide-y">{quote.lineItems.map((line) => <div key={line.id} className="flex justify-between gap-4 py-3"><span>{line.description} · {line.quantity} {line.unit}</span><strong>{formatCurrency(line.lineTotal)}</strong></div>)}</CardContent></Card>
-      <Card><CardContent className="p-5 flex justify-between"><span className="font-bold uppercase">Total incl. GST</span><strong className="text-xl">{formatCurrency(quote.total)}</strong></CardContent></Card>
-      {quote.notes && <Card><CardContent className="p-5"><p className="text-xs font-bold uppercase text-muted-foreground mb-2">Notes</p><p>{quote.notes}</p></CardContent></Card>}
+      <div>
+        <p className="text-xs font-bold uppercase text-primary">
+          Assigned quote
+        </p>
+        <h1 className="text-3xl font-black uppercase">{quote.title}</h1>
+        <p className="text-muted-foreground">{quote.customerName}</p>
+      </div>
+      <Card>
+        <CardHeader>
+          <CardTitle>Scope of work</CardTitle>
+        </CardHeader>
+        <CardContent className="divide-y">
+          {quote.lineItems.map((line) => (
+            <div key={line.id} className="flex justify-between gap-4 py-3">
+              <span>
+                {line.description} · {line.quantity} {line.unit}
+              </span>
+              <strong>{formatCurrency(line.lineTotal)}</strong>
+            </div>
+          ))}
+        </CardContent>
+      </Card>
+      <Card>
+        <CardContent className="p-5 flex justify-between">
+          <span className="font-bold uppercase">Total incl. GST</span>
+          <strong className="text-xl">{formatCurrency(quote.total)}</strong>
+        </CardContent>
+      </Card>
+      {quote.notes && (
+        <Card>
+          <CardContent className="p-5">
+            <p className="text-xs font-bold uppercase text-muted-foreground mb-2">
+              Notes
+            </p>
+            <p>{quote.notes}</p>
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 }
