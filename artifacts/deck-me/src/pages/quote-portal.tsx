@@ -69,7 +69,12 @@ export default function QuotePortalPage() {
         onSuccess: (data) => {
           setEstimate({
             spec: data.spec,
-            lines: data.lineItems,
+            lines: data.lineItems.map((line) => ({
+              ...line,
+              unitType: line.unit,
+              wastagePercentage: 0,
+              isBulkItem: false,
+            })),
             materialsSubtotal: data.materialsSubtotal,
             labourCost: data.labourCost,
             gst: data.gst,

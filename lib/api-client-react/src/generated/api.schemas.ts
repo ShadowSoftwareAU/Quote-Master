@@ -274,9 +274,12 @@ export interface QuoteLineItem {
   category: string;
   quantity: number;
   unit: string;
+  unitType: string;
   unitPrice: number;
   unitCost?: number;
   markupPercentage?: number;
+  wastagePercentage: number;
+  isBulkItem: boolean;
   lineTotal: number;
 }
 
@@ -288,6 +291,17 @@ export interface PublicQuoteLineItem {
   unitPrice: number;
   lineTotal: number;
 }
+
+export type QuoteLineItemInputUnitType = typeof QuoteLineItemInputUnitType[keyof typeof QuoteLineItemInputUnitType];
+
+
+export const QuoteLineItemInputUnitType = {
+  sqm: 'sqm',
+  lm: 'lm',
+  m3: 'm3',
+  item: 'item',
+  box: 'box',
+} as const;
 
 export interface QuoteLineItemInput {
   /**
@@ -315,6 +329,13 @@ export interface QuoteLineItemInput {
      * @maxLength 40
      */
   unit?: string;
+  unitType?: QuoteLineItemInputUnitType;
+  /**
+     * @minimum 0
+     * @maximum 100
+     */
+  wastagePercentage?: number;
+  isBulkItem?: boolean;
 }
 
 export interface QuoteEstimateLine {
@@ -324,8 +345,42 @@ export interface QuoteEstimateLine {
   category: string;
   quantity: number;
   unit: string;
+  unitType: string;
   unitPrice: number;
+  wastagePercentage: number;
+  isBulkItem: boolean;
   lineTotal: number;
+}
+
+export type TradeTemplateLineItemUnitType = typeof TradeTemplateLineItemUnitType[keyof typeof TradeTemplateLineItemUnitType];
+
+
+export const TradeTemplateLineItemUnitType = {
+  sqm: 'sqm',
+  lm: 'lm',
+  m3: 'm3',
+  item: 'item',
+  box: 'box',
+} as const;
+
+export interface TradeTemplateLineItem {
+  description: string;
+  category: string;
+  quantity: number;
+  unit: string;
+  unitType: TradeTemplateLineItemUnitType;
+  unitCost: number;
+  markupPercentage: number;
+  wastagePercentage: number;
+  isBulkItem: boolean;
+}
+
+export interface TradeTemplate {
+  id: number;
+  tradeType: string;
+  name: string;
+  slug: string;
+  defaultLineItems: TradeTemplateLineItem[];
 }
 
 export type ComplianceWarningSeverity = typeof ComplianceWarningSeverity[keyof typeof ComplianceWarningSeverity];

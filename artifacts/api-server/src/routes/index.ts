@@ -13,6 +13,7 @@ import referralsRouter from "./referrals";
 import pdfRouter from "./pdf";
 import masterProjectsRouter from "./master-projects";
 import profilesRouter from "./profiles";
+import tradeTemplatesRouter from "./trade-templates";
 
 const router: IRouter = Router();
 
@@ -30,5 +31,6 @@ router.use(referralsRouter);
 router.use(pdfRouter);
 router.use(masterProjectsRouter);
 router.use(profilesRouter);
+router.use(tradeTemplatesRouter);
 
 export default router;

@@ -5,6 +5,7 @@
  * Deck Me API — decking quotes, materials, customers, and bookings.
  * OpenAPI spec version: 0.1.0
  */
+import type { QuoteLineItemInputUnitType } from './quoteLineItemInputUnitType';
 
 export interface QuoteLineItemInput {
   /**
@@ -32,4 +33,11 @@ export interface QuoteLineItemInput {
      * @maxLength 40
      */
   unit?: string;
+  unitType?: QuoteLineItemInputUnitType;
+  /**
+     * @minimum 0
+     * @maximum 100
+     */
+  wastagePercentage?: number;
+  isBulkItem?: boolean;
 }

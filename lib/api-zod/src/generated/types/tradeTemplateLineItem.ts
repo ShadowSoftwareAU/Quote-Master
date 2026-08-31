@@ -5,21 +5,16 @@
  * Deck Me API — decking quotes, materials, customers, and bookings.
  * OpenAPI spec version: 0.1.0
  */
+import type { TradeTemplateLineItemUnitType } from './tradeTemplateLineItemUnitType';
 
-export interface QuoteLineItem {
-  id: number;
-  quoteId: number;
-  /** @nullable */
-  materialId?: number | null;
+export interface TradeTemplateLineItem {
   description: string;
   category: string;
   quantity: number;
   unit: string;
-  unitType: string;
-  unitPrice: number;
-  unitCost?: number;
-  markupPercentage?: number;
+  unitType: TradeTemplateLineItemUnitType;
+  unitCost: number;
+  markupPercentage: number;
   wastagePercentage: number;
   isBulkItem: boolean;
-  lineTotal: number;
 }

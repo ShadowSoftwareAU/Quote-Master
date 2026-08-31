@@ -30,7 +30,12 @@ import {
   SetQuotePortalStatusBody,
   SetQuotePortalStatusParams,
 } from "@workspace/api-zod";
-import { estimateDeck, calcTotals, type DeckSpec } from "../lib/estimator";
+import {
+  calculateRequiredQuantity,
+  estimateDeck,
+  calcTotals,
+  type DeckSpec,
+} from "../lib/estimator";
 import { recalculateMasterProjectTotals } from "../services/masterProjects";
 import { complianceDisclaimerForTrade } from "../lib/quoteCompliance";
 import { getLinkedTeamMember } from "../lib/assignmentAccess";
@@ -45,29 +50,38 @@ type CustomQuoteLineItemInput = {
   unitCost: number;
   markupPercentage: number;
   unit?: string;
+  unitType?: string;
+  wastagePercentage?: number;
+  isBulkItem?: boolean;
 };
 
 function roundMoney(value: number): number {
   return Math.round((value + Number.EPSILON) * 100) / 100;
 }
 
-function roundQuantity(value: number): number {
-  return Math.round((value + Number.EPSILON) * 1000) / 1000;
-}
-
 function buildCustomQuoteLines(items: CustomQuoteLineItemInput[] = []) {
   return items.map((item) => {
-    const quantity = roundQuantity(item.quantity);
+    const wastagePercentage = roundMoney(item.wastagePercentage ?? 0);
+    const isBulkItem = item.isBulkItem ?? false;
+    const quantity = calculateRequiredQuantity(
+      item.quantity,
+      wastagePercentage,
+      isBulkItem,
+    );
     const unitCost = roundMoney(item.unitCost);
     const markupPercentage = roundMoney(item.markupPercentage);
+    const unit = item.unit?.trim() || "each";
     return {
       materialId: null,
       description: item.description.trim(),
       category: "custom",
       quantity,
-      unit: item.unit?.trim() || "each",
+      unit,
+      unitType: item.unitType?.trim() || unit,
       unitPrice: unitCost,
       markupPercentage,
+      wastagePercentage,
+      isBulkItem,
       lineTotal: roundMoney(
         quantity * unitCost * (1 + markupPercentage / 100),
       ),
@@ -84,13 +98,19 @@ async function loadStoredCustomQuoteLines(quoteId: number) {
       eq(quoteLineItemsTable.category, "custom"),
     ))
     .orderBy(quoteLineItemsTable.id);
-  return buildCustomQuoteLines(rows.map((row) => ({
+  return rows.map((row) => ({
+    materialId: null,
     description: row.description,
+    category: "custom",
     quantity: Number(row.quantity),
-    unitCost: Number(row.unitPrice),
-    markupPercentage: Number(row.markupPercentage),
     unit: row.unit,
-  })));
+    unitType: row.unitType,
+    unitPrice: Number(row.unitPrice),
+    markupPercentage: Number(row.markupPercentage),
+    wastagePercentage: Number(row.wastagePercentage),
+    isBulkItem: row.isBulkItem,
+    lineTotal: Number(row.lineTotal),
+  }));
 }
 
 function combineEstimateAndCustomLines(
@@ -371,9 +391,12 @@ async function loadQuoteJson(id: number, userId?: string) {
       category: l.category,
       quantity: Number(l.quantity),
       unit: l.unit,
+      unitType: l.unitType,
       unitPrice: roundMoney(Number(l.lineTotal) / Number(l.quantity)),
       unitCost: Number(l.unitPrice),
       markupPercentage: Number(l.markupPercentage),
+      wastagePercentage: Number(l.wastagePercentage),
+      isBulkItem: l.isBulkItem,
       lineTotal: Number(l.lineTotal),
     })),
     createdAt: row.q.createdAt.toISOString(),
@@ -620,8 +643,11 @@ router.post("/quotes", requireQuoteManager, async (req, res): Promise<void> => {
           category: l.category,
           quantity: String(l.quantity),
           unit: l.unit,
+          unitType: l.unitType,
           unitPrice: String(l.unitPrice),
           markupPercentage: String(l.markupPercentage ?? 0),
+          wastagePercentage: String(l.wastagePercentage),
+          isBulkItem: l.isBulkItem,
           lineTotal: String(l.lineTotal),
         })),
       );
@@ -814,8 +840,11 @@ router.patch("/quotes/:id", requireQuoteManager, async (req, res): Promise<void>
           category: l.category,
           quantity: String(l.quantity),
           unit: l.unit,
+          unitType: l.unitType,
           unitPrice: String(l.unitPrice),
           markupPercentage: String(l.markupPercentage),
+          wastagePercentage: String(l.wastagePercentage),
+          isBulkItem: l.isBulkItem,
           lineTotal: String(l.lineTotal),
         })),
       );
@@ -940,8 +969,11 @@ router.patch("/quote/:token", async (req, res): Promise<void> => {
         category: l.category,
         quantity: String(l.quantity),
         unit: l.unit,
+        unitType: l.unitType,
         unitPrice: String(l.unitPrice),
         markupPercentage: String(l.markupPercentage),
+        wastagePercentage: String(l.wastagePercentage),
+        isBulkItem: l.isBulkItem,
         lineTotal: String(l.lineTotal),
       })));
     }
@@ -1021,17 +1053,21 @@ router.post("/quotes/:id/variation", requireQuoteManager, async (req, res): Prom
     widthM: b.widthM ?? original.spec.widthM,
   });
   const materials = await ownedMaterials(userId);
-  const customLines = buildCustomQuoteLines(
-    original.lineItems
-      .filter((line) => line.category === "custom")
-      .map((line) => ({
-        description: line.description,
-        quantity: line.quantity,
-        unitCost: line.unitCost ?? line.unitPrice,
-        markupPercentage: line.markupPercentage ?? 0,
-        unit: line.unit,
-      })),
-  );
+  const customLines = original.lineItems
+    .filter((line) => line.category === "custom")
+    .map((line) => ({
+      materialId: null,
+      description: line.description,
+      category: "custom",
+      quantity: line.quantity,
+      unit: line.unit,
+      unitType: line.unitType,
+      unitPrice: line.unitCost ?? line.unitPrice,
+      markupPercentage: line.markupPercentage ?? 0,
+      wastagePercentage: line.wastagePercentage ?? 0,
+      isBulkItem: line.isBulkItem ?? false,
+      lineTotal: line.lineTotal,
+    }));
   const estimate = estimateDeck(spec, materials);
   const { lines, materialsSubtotal } = combineEstimateAndCustomLines(estimate, customLines);
   const labourHours = b.labourHours ?? original.labourHours;
@@ -1082,8 +1118,11 @@ router.post("/quotes/:id/variation", requireQuoteManager, async (req, res): Prom
         category: l.category,
         quantity: String(l.quantity),
         unit: l.unit,
+        unitType: l.unitType,
         unitPrice: String(l.unitPrice),
         markupPercentage: String(l.markupPercentage),
+        wastagePercentage: String(l.wastagePercentage),
+        isBulkItem: l.isBulkItem,
         lineTotal: String(l.lineTotal),
         })),
       );

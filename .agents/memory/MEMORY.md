@@ -7,3 +7,4 @@
 - [Assignment identity](assignment-identity.md) — fail closed until authenticated users have an explicit link to team-member assignments.
 - [Master Proposal acceptance evidence](master-proposal-acceptance-evidence.md) — keep accepted snapshots customer-safe, append-only, and independent of portal-token lifecycle.
 - [Drizzle constraint errors](drizzle-constraint-errors.md) — inspect bounded error causes when mapping exact PostgreSQL constraint violations to API responses.
+- [Line-item wastage](line-item-wastage.md) — persist effective quantities after wastage and bulk rounding, then never apply wastage again when copying stored lines.

@@ -82,7 +82,8 @@ import type {
   TeamMemberAccountLinkInput,
   TeamMemberInput,
   TeamMemberUpdate,
-  TimeEntry
+  TimeEntry,
+  TradeTemplate
 } from './api.schemas';
 
 import { customFetch } from '../custom-fetch';
@@ -1227,6 +1228,83 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
       > => {
       return useMutation(getDeleteMaterialMutationOptions(options));
     }
+
+export const getListTradeTemplatesUrl = () => {
+
+
+
+
+  return `/api/trade-templates`
+}
+
+/**
+ * @summary List the seeded trade-specific quote templates
+ */
+export const listTradeTemplates = async ( options?: RequestInit): Promise<TradeTemplate[]> => {
+
+  return customFetch<TradeTemplate[]>(getListTradeTemplatesUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListTradeTemplatesQueryKey = () => {
+    return [
+    `/api/trade-templates`
+    ] as const;
+    }
+
+
+export const getListTradeTemplatesQueryOptions = <TData = Awaited<ReturnType<typeof listTradeTemplates>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listTradeTemplates>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListTradeTemplatesQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listTradeTemplates>>> = ({ signal }) => listTradeTemplates({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listTradeTemplates>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListTradeTemplatesQueryResult = NonNullable<Awaited<ReturnType<typeof listTradeTemplates>>>
+export type ListTradeTemplatesQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary List the seeded trade-specific quote templates
+ */
+
+export function useListTradeTemplates<TData = Awaited<ReturnType<typeof listTradeTemplates>>, TError = ErrorType<unknown>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listTradeTemplates>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListTradeTemplatesQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
 
 export const getListQuotesUrl = () => {
 

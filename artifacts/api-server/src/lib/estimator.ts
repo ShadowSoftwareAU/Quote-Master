@@ -45,7 +45,10 @@ export interface EstimateLine {
   category: string;
   quantity: number;
   unit: string;
+  unitType: string;
   unitPrice: number;
+  wastagePercentage: number;
+  isBulkItem: boolean;
   lineTotal: number;
 }
 
@@ -100,6 +103,24 @@ function round2(n: number): number {
   return Math.round(n * 100) / 100;
 }
 
+export function calculateRequiredQuantity(
+  quantity: number,
+  wastagePercentage = 0,
+  isBulkItem = false,
+): number {
+  const withWastage = quantity * (1 + wastagePercentage / 100);
+  if (isBulkItem) return Math.ceil(withWastage);
+  return Math.round((withWastage + Number.EPSILON) * 1000) / 1000;
+}
+
+function unitTypeFor(unit: string): string {
+  if (unit === "pack") return "box";
+  if (unit === "metre" || unit === "linear metre") return "lm";
+  if (unit === "square metre") return "sqm";
+  if (unit === "cubic metre") return "m3";
+  return "item";
+}
+
 export function estimateDeck(
   spec: DeckSpec,
   materials: Material[],
@@ -134,7 +155,10 @@ export function estimateDeck(
       category,
       quantity,
       unit,
+      unitType: unitTypeFor(unit),
       unitPrice: round2(unitPrice),
+      wastagePercentage: 0,
+      isBulkItem: unit === "pack",
       lineTotal,
     });
   };
@@ -195,7 +219,10 @@ export function estimateDeck(
       category: "sealant",
       quantity: sealEach,
       unit: sealMaterial.unit,
+      unitType: unitTypeFor(sealMaterial.unit),
       unitPrice: round2(Number(sealMaterial.unitPrice)),
+      wastagePercentage: 0,
+      isBulkItem: sealMaterial.unit === "pack",
       lineTotal: round2(sealEach * Number(sealMaterial.unitPrice)),
     });
   } else {

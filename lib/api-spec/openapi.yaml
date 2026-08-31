@@ -21,6 +21,7 @@ tags:
   - name: referrals
   - name: profile
   - name: master-projects
+  - name: trade-templates
 paths:
   /healthz:
     get:
@@ -271,6 +272,20 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/DeletionSuccess" }
+
+  /trade-templates:
+    get:
+      operationId: listTradeTemplates
+      tags: [trade-templates]
+      summary: List the seeded trade-specific quote templates
+      responses:
+        "200":
+          description: Available trade templates
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/TradeTemplate" }
 
   /quotes:
     get:
@@ -1447,7 +1462,7 @@ components:
 
     QuoteLineItem:
       type: object
-      required: [id, quoteId, description, category, quantity, unit, unitPrice, lineTotal]
+      required: [id, quoteId, description, category, quantity, unit, unitType, unitPrice, wastagePercentage, isBulkItem, lineTotal]
       properties:
         id: { type: integer }
         quoteId: { type: integer }
@@ -1456,9 +1471,12 @@ components:
         category: { type: string }
         quantity: { type: number }
         unit: { type: string }
+        unitType: { type: string }
         unitPrice: { type: number }
         unitCost: { type: number }
         markupPercentage: { type: number }
+        wastagePercentage: { type: number }
+        isBulkItem: { type: boolean }
         lineTotal: { type: number }
 
     PublicQuoteLineItem:
@@ -1482,18 +1500,61 @@ components:
         unitCost: { type: number, minimum: 0, maximum: 9000 }
         markupPercentage: { type: number, minimum: 0, maximum: 1000 }
         unit: { type: string, minLength: 1, maxLength: 40, default: each }
+        unitType:
+          type: string
+          enum: [sqm, lm, m3, item, box]
+          default: item
+        wastagePercentage:
+          type: number
+          minimum: 0
+          maximum: 100
+          default: 0
+        isBulkItem:
+          type: boolean
+          default: false
 
     QuoteEstimateLine:
       type: object
-      required: [description, category, quantity, unit, unitPrice, lineTotal]
+      required: [description, category, quantity, unit, unitType, unitPrice, wastagePercentage, isBulkItem, lineTotal]
       properties:
         materialId: { type: ["integer", "null"] }
         description: { type: string }
         category: { type: string }
         quantity: { type: number }
         unit: { type: string }
+        unitType: { type: string }
         unitPrice: { type: number }
+        wastagePercentage: { type: number }
+        isBulkItem: { type: boolean }
         lineTotal: { type: number }
+
+    TradeTemplateLineItem:
+      type: object
+      required: [description, category, quantity, unit, unitType, unitCost, markupPercentage, wastagePercentage, isBulkItem]
+      properties:
+        description: { type: string }
+        category: { type: string }
+        quantity: { type: number }
+        unit: { type: string }
+        unitType:
+          type: string
+          enum: [sqm, lm, m3, item, box]
+        unitCost: { type: number }
+        markupPercentage: { type: number }
+        wastagePercentage: { type: number }
+        isBulkItem: { type: boolean }
+
+    TradeTemplate:
+      type: object
+      required: [id, tradeType, name, slug, defaultLineItems]
+      properties:
+        id: { type: integer }
+        tradeType: { type: string }
+        name: { type: string }
+        slug: { type: string }
+        defaultLineItems:
+          type: array
+          items: { $ref: "#/components/schemas/TradeTemplateLineItem" }
 
     QuoteEstimate:
       type: object

@@ -352,6 +352,29 @@ export const DeleteMaterialResponse = zod.object({
 })
 
 
+/**
+ * @summary List the seeded trade-specific quote templates
+ */
+export const ListTradeTemplatesResponseItem = zod.object({
+  "id": zod.number(),
+  "tradeType": zod.string(),
+  "name": zod.string(),
+  "slug": zod.string(),
+  "defaultLineItems": zod.array(zod.object({
+  "description": zod.string(),
+  "category": zod.string(),
+  "quantity": zod.number(),
+  "unit": zod.string(),
+  "unitType": zod.enum(['sqm', 'lm', 'm3', 'item', 'box']),
+  "unitCost": zod.number(),
+  "markupPercentage": zod.number(),
+  "wastagePercentage": zod.number(),
+  "isBulkItem": zod.boolean()
+}))
+})
+export const ListTradeTemplatesResponse = zod.array(ListTradeTemplatesResponseItem)
+
+
 export const ListQuotesResponseItem = zod.object({
   "id": zod.number(),
   "title": zod.string(),
@@ -385,6 +408,12 @@ export const createQuoteBodyLineItemsItemMarkupPercentageMax = 1000;
 export const createQuoteBodyLineItemsItemUnitDefault = `each`;
 export const createQuoteBodyLineItemsItemUnitMax = 40;
 
+export const createQuoteBodyLineItemsItemUnitTypeDefault = `item`;
+export const createQuoteBodyLineItemsItemWastagePercentageDefault = 0;
+export const createQuoteBodyLineItemsItemWastagePercentageMin = 0;
+export const createQuoteBodyLineItemsItemWastagePercentageMax = 100;
+
+export const createQuoteBodyLineItemsItemIsBulkItemDefault = false;
 export const createQuoteBodyLineItemsMax = 200;
 
 
@@ -429,7 +458,10 @@ export const CreateQuoteBody = zod.object({
   "quantity": zod.number().gt(createQuoteBodyLineItemsItemQuantityExclusiveMin).max(createQuoteBodyLineItemsItemQuantityMax),
   "unitCost": zod.number().min(createQuoteBodyLineItemsItemUnitCostMin).max(createQuoteBodyLineItemsItemUnitCostMax),
   "markupPercentage": zod.number().min(createQuoteBodyLineItemsItemMarkupPercentageMin).max(createQuoteBodyLineItemsItemMarkupPercentageMax),
-  "unit": zod.string().min(1).max(createQuoteBodyLineItemsItemUnitMax).default(createQuoteBodyLineItemsItemUnitDefault)
+  "unit": zod.string().min(1).max(createQuoteBodyLineItemsItemUnitMax).default(createQuoteBodyLineItemsItemUnitDefault),
+  "unitType": zod.enum(['sqm', 'lm', 'm3', 'item', 'box']).default(createQuoteBodyLineItemsItemUnitTypeDefault),
+  "wastagePercentage": zod.number().min(createQuoteBodyLineItemsItemWastagePercentageMin).max(createQuoteBodyLineItemsItemWastagePercentageMax).default(createQuoteBodyLineItemsItemWastagePercentageDefault),
+  "isBulkItem": zod.boolean().default(createQuoteBodyLineItemsItemIsBulkItemDefault)
 })).max(createQuoteBodyLineItemsMax).optional()
 })
 
@@ -535,9 +567,12 @@ export const GetQuoteResponse = zod.object({
   "category": zod.string(),
   "quantity": zod.number(),
   "unit": zod.string(),
+  "unitType": zod.string(),
   "unitPrice": zod.number(),
   "unitCost": zod.number().optional(),
   "markupPercentage": zod.number().optional(),
+  "wastagePercentage": zod.number(),
+  "isBulkItem": zod.boolean(),
   "lineTotal": zod.number()
 })),
   "createdAt": zod.coerce.date(),
@@ -687,9 +722,12 @@ export const UpdateQuoteResponse = zod.object({
   "category": zod.string(),
   "quantity": zod.number(),
   "unit": zod.string(),
+  "unitType": zod.string(),
   "unitPrice": zod.number(),
   "unitCost": zod.number().optional(),
   "markupPercentage": zod.number().optional(),
+  "wastagePercentage": zod.number(),
+  "isBulkItem": zod.boolean(),
   "lineTotal": zod.number()
 })),
   "createdAt": zod.coerce.date(),
@@ -812,9 +850,12 @@ export const SetQuoteStatusResponse = zod.object({
   "category": zod.string(),
   "quantity": zod.number(),
   "unit": zod.string(),
+  "unitType": zod.string(),
   "unitPrice": zod.number(),
   "unitCost": zod.number().optional(),
   "markupPercentage": zod.number().optional(),
+  "wastagePercentage": zod.number(),
+  "isBulkItem": zod.boolean(),
   "lineTotal": zod.number()
 })),
   "createdAt": zod.coerce.date(),
@@ -1297,7 +1338,10 @@ export const EstimateDeckResponse = zod.object({
   "category": zod.string(),
   "quantity": zod.number(),
   "unit": zod.string(),
+  "unitType": zod.string(),
   "unitPrice": zod.number(),
+  "wastagePercentage": zod.number(),
+  "isBulkItem": zod.boolean(),
   "lineTotal": zod.number()
 })),
   "materialsSubtotal": zod.number(),
@@ -1388,9 +1432,12 @@ export const GetMasterProjectResponse = zod.object({
   "category": zod.string(),
   "quantity": zod.number(),
   "unit": zod.string(),
+  "unitType": zod.string(),
   "unitPrice": zod.number(),
   "unitCost": zod.number().optional(),
   "markupPercentage": zod.number().optional(),
+  "wastagePercentage": zod.number(),
+  "isBulkItem": zod.boolean(),
   "lineTotal": zod.number()
 })),
   "createdAt": zod.coerce.date()
@@ -1416,9 +1463,12 @@ export const GetMasterProjectResponse = zod.object({
   "category": zod.string(),
   "quantity": zod.number(),
   "unit": zod.string(),
+  "unitType": zod.string(),
   "unitPrice": zod.number(),
   "unitCost": zod.number().optional(),
   "markupPercentage": zod.number().optional(),
+  "wastagePercentage": zod.number(),
+  "isBulkItem": zod.boolean(),
   "lineTotal": zod.number()
 })),
   "createdAt": zod.coerce.date()
@@ -1560,9 +1610,12 @@ export const UpdateMasterProjectResponse = zod.object({
   "category": zod.string(),
   "quantity": zod.number(),
   "unit": zod.string(),
+  "unitType": zod.string(),
   "unitPrice": zod.number(),
   "unitCost": zod.number().optional(),
   "markupPercentage": zod.number().optional(),
+  "wastagePercentage": zod.number(),
+  "isBulkItem": zod.boolean(),
   "lineTotal": zod.number()
 })),
   "createdAt": zod.coerce.date()
@@ -1588,9 +1641,12 @@ export const UpdateMasterProjectResponse = zod.object({
   "category": zod.string(),
   "quantity": zod.number(),
   "unit": zod.string(),
+  "unitType": zod.string(),
   "unitPrice": zod.number(),
   "unitCost": zod.number().optional(),
   "markupPercentage": zod.number().optional(),
+  "wastagePercentage": zod.number(),
+  "isBulkItem": zod.boolean(),
   "lineTotal": zod.number()
 })),
   "createdAt": zod.coerce.date()
@@ -1733,9 +1789,12 @@ export const SetMasterProjectQuotesResponse = zod.object({
   "category": zod.string(),
   "quantity": zod.number(),
   "unit": zod.string(),
+  "unitType": zod.string(),
   "unitPrice": zod.number(),
   "unitCost": zod.number().optional(),
   "markupPercentage": zod.number().optional(),
+  "wastagePercentage": zod.number(),
+  "isBulkItem": zod.boolean(),
   "lineTotal": zod.number()
 })),
   "createdAt": zod.coerce.date()
@@ -1761,9 +1820,12 @@ export const SetMasterProjectQuotesResponse = zod.object({
   "category": zod.string(),
   "quantity": zod.number(),
   "unit": zod.string(),
+  "unitType": zod.string(),
   "unitPrice": zod.number(),
   "unitCost": zod.number().optional(),
   "markupPercentage": zod.number().optional(),
+  "wastagePercentage": zod.number(),
+  "isBulkItem": zod.boolean(),
   "lineTotal": zod.number()
 })),
   "createdAt": zod.coerce.date()

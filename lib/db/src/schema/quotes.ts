@@ -1,4 +1,5 @@
 import {
+  boolean,
   pgTable,
   serial,
   text,
@@ -84,10 +85,15 @@ export const quoteLineItemsTable = pgTable("quote_line_items", {
   category: text("category").notNull(),
   quantity: numeric("quantity", { precision: 12, scale: 3 }).notNull(),
   unit: text("unit").notNull(),
+  unitType: text("unit_type").notNull().default("item"),
   unitPrice: numeric("unit_price", { precision: 12, scale: 2 }).notNull(),
   markupPercentage: numeric("markup_percentage", { precision: 7, scale: 2 })
     .notNull()
     .default("0"),
+  wastagePercentage: numeric("wastage_percentage", { precision: 5, scale: 2 })
+    .notNull()
+    .default("0"),
+  isBulkItem: boolean("is_bulk_item").notNull().default(false),
   lineTotal: numeric("line_total", { precision: 12, scale: 2 }).notNull(),
 });
 

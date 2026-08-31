@@ -13,6 +13,9 @@ export interface QuoteEstimateLine {
   category: string;
   quantity: number;
   unit: string;
+  unitType: string;
   unitPrice: number;
+  wastagePercentage: number;
+  isBulkItem: boolean;
   lineTotal: number;
 }
