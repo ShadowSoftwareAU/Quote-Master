@@ -222,6 +222,19 @@ export async function getBusinessProfile(
   return profile ?? null;
 }
 
+export async function setMasterBuilderFlag(
+  clerkUserId: string,
+  isMasterBuilder: boolean,
+  database: BusinessProfileDb = db,
+): Promise<BusinessProfileRow | null> {
+  const [profile] = await database
+    .update(businessProfilesTable)
+    .set({ isMasterBuilder, updatedAt: new Date() })
+    .where(eq(businessProfilesTable.clerkUserId, clerkUserId))
+    .returning();
+  return profile ?? null;
+}
+
 export async function onboardBusinessProfile(
   clerkUserId: string,
   input: OnboardingProfileInput,
@@ -246,7 +259,6 @@ export async function onboardBusinessProfile(
         phoneNumber: input.phoneNumber.trim(),
         tradeType: input.tradeType.trim(),
         licenseNumber: cleanOptional(input.licenseNumber),
-        role: input.role,
         metadataSyncStatus: "pending",
         metadataSyncError: null,
         metadataSyncedAt: null,
@@ -281,7 +293,6 @@ export async function updateBusinessProfileSettings(
     .set({
       tradeType: input.tradeType.trim(),
       licenseNumber: cleanOptional(input.licenseNumber),
-      role: input.role,
       metadataSyncStatus: "pending",
       metadataSyncError: null,
       metadataSyncedAt: null,

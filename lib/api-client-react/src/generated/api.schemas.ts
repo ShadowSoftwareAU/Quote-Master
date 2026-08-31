@@ -35,6 +35,7 @@ export interface BusinessProfile {
   /** @nullable */
   licenseNumber?: string | null;
   role: BusinessRole;
+  isMasterBuilder: boolean;
   metadataSyncStatus: BusinessProfileMetadataSyncStatus;
   createdAt: string;
   updatedAt: string;
@@ -81,6 +82,10 @@ export interface ProfileSettingsInput {
      */
   licenseNumber?: string | null;
   role: BusinessRole;
+}
+
+export interface MasterBuilderFlagInput {
+  isMasterBuilder: boolean;
 }
 
 export const DeletionSuccessValue = {
@@ -415,6 +420,8 @@ export interface Quote {
   /** @nullable */
   masterProjectId: number | null;
   tradeType: string;
+  /** @nullable */
+  portalToken: string | null;
   complianceDisclaimer: string;
   /** @nullable */
   contractorLicenseNumber: string | null;
@@ -539,6 +546,20 @@ export interface QuoteUpdate {
 export interface QuoteStatusInput {
   status: string;
 }
+
+export interface QuotePortalUpgradeInput {
+  deckBoardType?: string;
+  balustradeType?: string;
+}
+
+export interface QuotePortalToken {
+  portalToken: string;
+}
+
+export const QuotePortalRevocationValue = {
+  revoked: true,
+} as const;
+export type QuotePortalRevocation = typeof QuotePortalRevocationValue;
 
 export interface QuotePortal {
   id: number;

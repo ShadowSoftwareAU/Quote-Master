@@ -9,6 +9,7 @@ import {
   customersTable,
   materialsTable,
 } from "@workspace/db";
+import { requireOwner } from "../middlewares/businessRoleAuth";
 
 const router: IRouter = Router();
 
@@ -166,7 +167,7 @@ router.get("/dashboard/summary", async (req, res): Promise<void> => {
   });
 });
 
-router.get("/dashboard/pnl", async (req, res): Promise<void> => {
+router.get("/dashboard/pnl", requireOwner, async (req, res): Promise<void> => {
   const clerkUserId = getAuth(req).userId;
   if (!clerkUserId) { res.status(401).json({ error: "Unauthorized" }); return; }
   // Pull all accepted + sent quotes with customer names

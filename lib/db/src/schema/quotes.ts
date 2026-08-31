@@ -7,6 +7,7 @@ import {
   jsonb,
   timestamp,
   index,
+  uniqueIndex,
 } from "drizzle-orm/pg-core";
 import { masterProjectsTable } from "./master-projects";
 
@@ -23,6 +24,7 @@ export const quotesTable = pgTable(
       { onDelete: "set null" },
     ),
     tradeType: text("trade_type").notNull().default("decking"),
+    portalToken: text("portal_token"),
     complianceDisclaimer: text("compliance_disclaimer"),
     contractorLicenseNumber: text("contractor_license_number"),
     siteAddress: text("site_address"),
@@ -62,7 +64,10 @@ export const quotesTable = pgTable(
       .defaultNow()
       .$onUpdate(() => new Date()),
   },
-  (table) => [index("quotes_clerk_user_id_idx").on(table.clerkUserId)],
+  (table) => [
+    index("quotes_clerk_user_id_idx").on(table.clerkUserId),
+    uniqueIndex("quotes_portal_token_uidx").on(table.portalToken),
+  ],
 );
 
 export const quoteLineItemsTable = pgTable("quote_line_items", {

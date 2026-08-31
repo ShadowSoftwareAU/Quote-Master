@@ -7,6 +7,13 @@ import { logger } from "./lib/logger";
 import { requireApiAuth } from "./middlewares/apiAuth";
 
 const app: Express = express();
+const QUOTE_PORTAL_TOKEN_IN_PATH = /\/api\/quote\/[A-Za-z0-9_-]{43}/g;
+
+function requestPathForLogs(url: string | undefined): string | undefined {
+  return url
+    ?.split("?")[0]
+    .replace(QUOTE_PORTAL_TOKEN_IN_PATH, "/api/quote/[REDACTED]");
+}
 
 app.use(
   pinoHttp({
@@ -16,7 +23,7 @@ app.use(
         return {
           id: req.id,
           method: req.method,
-          url: req.url?.split("?")[0],
+            url: requestPathForLogs(req.url),
         };
       },
       res(res) {

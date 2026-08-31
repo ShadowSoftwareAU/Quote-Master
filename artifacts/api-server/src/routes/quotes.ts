@@ -1,6 +1,7 @@
 import { Router, type IRouter } from "express";
 import { getAuth } from "@clerk/express";
 import { and, eq, desc } from "drizzle-orm";
+import { randomBytes } from "node:crypto";
 import {
   db,
   quotesTable,
@@ -20,12 +21,21 @@ import {
   EstimateDeckBody,
   CreateQuoteVariationBody,
   CreateQuoteVariationParams,
+  GetQuotePortalParams,
+  UpdateQuotePortalBody,
+  UpdateQuotePortalParams,
+  SetQuotePortalStatusBody,
+  SetQuotePortalStatusParams,
 } from "@workspace/api-zod";
 import { estimateDeck, calcTotals, type DeckSpec } from "../lib/estimator";
 import { recalculateMasterProjectTotals } from "../services/masterProjects";
 import { complianceDisclaimerForTrade } from "../lib/quoteCompliance";
 
 const router: IRouter = Router();
+
+function generatePortalToken(): string {
+  return randomBytes(32).toString("base64url");
+}
 
 function verifiedUserId(req: Parameters<typeof getAuth>[0]): string | null {
   try {
@@ -142,6 +152,7 @@ function quoteSummaryRow(row: typeof quotesTable.$inferSelect & {
     status: row.status,
     customerId: row.customerId,
     masterProjectId: row.masterProjectId,
+    portalToken: row.portalToken,
     tradeType: row.tradeType,
     customerName: row.customerName,
     lengthM: Number(row.lengthM),
@@ -227,6 +238,7 @@ async function loadQuoteJson(id: number, userId?: string) {
     status: row.q.status,
     customerId: row.q.customerId,
     masterProjectId: row.q.masterProjectId,
+    portalToken: userId ? row.q.portalToken : null,
     tradeType: row.q.tradeType,
     complianceDisclaimer:
       row.q.complianceDisclaimer ??
@@ -292,6 +304,7 @@ function publicQuoteResponse(quote: LoadedQuote) {
     status: quote.status,
     customerName: quote.customerName,
     siteAddress: quote.siteAddress,
+    notes: quote.notes,
     complianceDisclaimer: quote.complianceDisclaimer,
     contractorLicenseNumber: quote.contractorLicenseNumber,
     spec: publicSpec,
@@ -312,6 +325,21 @@ function isStrictPublicUpgrade(body: unknown): boolean {
     keys.length > 0 &&
     keys.every((key) => key === "deckBoardType" || key === "balustradeType")
   );
+}
+
+function isStrictPublicAcceptance(body: unknown): boolean {
+  if (!body || typeof body !== "object" || Array.isArray(body)) return false;
+  const keys = Object.keys(body);
+  return keys.length === 1 && keys[0] === "status";
+}
+
+async function loadQuoteJsonByPortalToken(token: string) {
+  const [quote] = await db
+    .select({ id: quotesTable.id })
+    .from(quotesTable)
+    .where(eq(quotesTable.portalToken, token))
+    .limit(1);
+  return quote ? loadQuoteJson(quote.id) : null;
 }
 
 router.get("/quotes", async (req, res): Promise<void> => {
@@ -444,6 +472,7 @@ router.post("/quotes", async (req, res): Promise<void> => {
         title: data.title,
         customerId: data.customerId,
         tradeType: data.tradeType ?? "decking",
+        portalToken: generatePortalToken(),
         complianceDisclaimer: complianceDisclaimerForTrade(profile.tradeType),
         contractorLicenseNumber: profile.licenseNumber,
         siteAddress: data.siteAddress ?? null,
@@ -507,13 +536,13 @@ router.get("/quotes/:id", async (req, res): Promise<void> => {
   res.json(json);
 });
 
-router.get("/quotes/:id/portal", async (req, res): Promise<void> => {
-  const params = GetQuoteParams.safeParse(req.params);
+router.get("/quote/:token", async (req, res): Promise<void> => {
+  const params = GetQuotePortalParams.safeParse(req.params);
   if (!params.success) {
     res.status(400).json({ error: params.error.message });
     return;
   }
-  const quote = await loadQuoteJson(params.data.id);
+  const quote = await loadQuoteJsonByPortalToken(params.data.token);
   if (!quote) {
     res.status(404).json({ error: "Quote not found" });
     return;
@@ -524,8 +553,11 @@ router.get("/quotes/:id/portal", async (req, res): Promise<void> => {
 
 router.patch("/quotes/:id", async (req, res): Promise<void> => {
   const userId = verifiedUserId(req);
+  if (!userId) {
+    res.status(401).json({ error: "Unauthorized" });
+    return;
+  }
   const clerkUserId = userId;
-  const isPublic = !userId;
   const params = UpdateQuoteParams.safeParse(req.params);
   if (!params.success) {
     res.status(400).json({ error: params.error.message });
@@ -534,10 +566,6 @@ router.patch("/quotes/:id", async (req, res): Promise<void> => {
   const body = UpdateQuoteBody.safeParse(req.body);
   if (!body.success) {
     res.status(400).json({ error: body.error.message });
-    return;
-  }
-  if (isPublic && !isStrictPublicUpgrade(req.body)) {
-    res.status(401).json({ error: "Unauthorized" });
     return;
   }
   const [existing] = await db
@@ -658,11 +686,15 @@ router.patch("/quotes/:id", async (req, res): Promise<void> => {
   }
   const json = await loadQuoteJson(params.data.id, userId ?? undefined);
   if (!json) { res.status(404).json({ error: "Quote not found" }); return; }
-  res.json(isPublic ? publicQuoteResponse(json) : json);
+  res.json(json);
 });
 
 router.patch("/quotes/:id/status", async (req, res): Promise<void> => {
   const userId = verifiedUserId(req);
+  if (!userId) {
+    res.status(401).json({ error: "Unauthorized" });
+    return;
+  }
   const params = SetQuoteStatusParams.safeParse(req.params);
   if (!params.success) {
     res.status(400).json({ error: params.error.message });
@@ -671,19 +703,6 @@ router.patch("/quotes/:id/status", async (req, res): Promise<void> => {
   const body = SetQuoteStatusBody.safeParse(req.body);
   if (!body.success) {
     res.status(400).json({ error: body.error.message });
-    return;
-  }
-  const publicStatusKeys =
-    req.body && typeof req.body === "object" && !Array.isArray(req.body)
-      ? Object.keys(req.body)
-      : [];
-  if (
-    !userId &&
-    (body.data.status !== "accepted" ||
-      publicStatusKeys.length !== 1 ||
-      publicStatusKeys[0] !== "status")
-  ) {
-    res.status(401).json({ error: "Unauthorized" });
     return;
   }
   const [row] = await db
@@ -701,8 +720,98 @@ router.patch("/quotes/:id/status", async (req, res): Promise<void> => {
   }
   const json = await loadQuoteJson(params.data.id, userId ?? undefined);
   if (!json) { res.status(404).json({ error: "Quote not found" }); return; }
-  res.json(!userId ? publicQuoteResponse(json) : json);
+  res.json(json);
   void quoteSummaryRow; // silence unused
+});
+
+router.patch("/quote/:token", async (req, res): Promise<void> => {
+  const params = UpdateQuotePortalParams.safeParse(req.params);
+  const body = UpdateQuotePortalBody.safeParse(req.body);
+  if (!params.success || !body.success || !isStrictPublicUpgrade(req.body)) {
+    res.status(401).json({ error: "Unauthorized" });
+    return;
+  }
+  const [existing] = await db
+    .select()
+    .from(quotesTable)
+    .where(eq(quotesTable.portalToken, params.data.token))
+    .limit(1);
+  if (!existing) {
+    res.status(404).json({ error: "Quote not found" });
+    return;
+  }
+  const d = body.data;
+  const savedSpec = specFromStoredQuote(existing);
+  const spec = specFromQuoteInput({
+    ...savedSpec,
+    ...d,
+    lengthM: savedSpec.lengthM,
+    widthM: savedSpec.widthM,
+  });
+  const materials = await ownedMaterials(existing.clerkUserId);
+  const { lines, materialsSubtotal } = estimateDeck(spec, materials);
+  const labourHours = Number(existing.labourHours);
+  const labourRate = Number(existing.labourRate);
+  const { labourCost, gst, total } = calcTotals({ materialsSubtotal, labourHours, labourRate });
+  const updated = await db.transaction(async (tx) => {
+    const [row] = await tx.update(quotesTable).set({
+      specJson: serialiseSpec(spec),
+      materialsSubtotal: String(materialsSubtotal),
+      labourCost: String(labourCost),
+      gst: String(gst),
+      total: String(total),
+    }).where(eq(quotesTable.portalToken, params.data.token)).returning();
+    if (!row) return null;
+    await tx.delete(quoteLineItemsTable).where(eq(quoteLineItemsTable.quoteId, row.id));
+    if (lines.length > 0) {
+      await tx.insert(quoteLineItemsTable).values(lines.map((l) => ({
+        quoteId: row.id,
+        materialId: l.materialId,
+        description: l.description,
+        category: l.category,
+        quantity: String(l.quantity),
+        unit: l.unit,
+        unitPrice: String(l.unitPrice),
+        lineTotal: String(l.lineTotal),
+      })));
+    }
+    if (row.masterProjectId && row.clerkUserId) {
+      await recalculateMasterProjectTotals(row.masterProjectId, row.clerkUserId, tx);
+    }
+    return row;
+  });
+  if (!updated) {
+    res.status(404).json({ error: "Quote not found" });
+    return;
+  }
+  const json = await loadQuoteJson(updated.id);
+  if (!json) { res.status(404).json({ error: "Quote not found" }); return; }
+  res.json(publicQuoteResponse(json));
+});
+
+router.patch("/quote/:token/status", async (req, res): Promise<void> => {
+  const params = SetQuotePortalStatusParams.safeParse(req.params);
+  const body = SetQuotePortalStatusBody.safeParse(req.body);
+  if (
+    !params.success ||
+    !body.success ||
+    body.data.status !== "accepted" ||
+    !isStrictPublicAcceptance(req.body)
+  ) {
+    res.status(401).json({ error: "Unauthorized" });
+    return;
+  }
+  const [row] = await db.update(quotesTable)
+    .set({ status: "accepted" })
+    .where(eq(quotesTable.portalToken, params.data.token))
+    .returning({ id: quotesTable.id });
+  if (!row) {
+    res.status(404).json({ error: "Quote not found" });
+    return;
+  }
+  const json = await loadQuoteJson(row.id);
+  if (!json) { res.status(404).json({ error: "Quote not found" }); return; }
+  res.json(publicQuoteResponse(json));
 });
 
 router.post("/quotes/:id/variation", async (req, res): Promise<void> => {
@@ -761,6 +870,7 @@ router.post("/quotes/:id/variation", async (req, res): Promise<void> => {
       title: b.title,
       customerId: original.customerId,
       tradeType: original.tradeType,
+      portalToken: generatePortalToken(),
       complianceDisclaimer: complianceDisclaimerForTrade(profile.tradeType),
       contractorLicenseNumber: profile.licenseNumber,
       siteAddress: original.siteAddress ?? null,
@@ -841,6 +951,34 @@ router.delete("/quotes/:id", async (req, res): Promise<void> => {
   });
   if (!row) { res.status(404).json({ error: "Quote not found" }); return; }
   res.json({ deleted: true, id: row.deleted.id });
+});
+
+router.post("/quotes/:id/portal-token", async (req, res): Promise<void> => {
+  const userId = verifiedUserId(req);
+  if (!userId) { res.status(401).json({ error: "Unauthorized" }); return; }
+  const params = GetQuoteParams.safeParse(req.params);
+  if (!params.success) { res.status(400).json({ error: params.error.message }); return; }
+  const [row] = await db.update(quotesTable)
+    .set({ portalToken: generatePortalToken() })
+    .where(and(eq(quotesTable.id, params.data.id), eq(quotesTable.clerkUserId, userId)))
+    .returning({ portalToken: quotesTable.portalToken });
+  if (!row) { res.status(404).json({ error: "Quote not found" }); return; }
+  req.log?.info({ userId, quoteId: params.data.id }, "Quote portal token regenerated");
+  res.json({ portalToken: row.portalToken });
+});
+
+router.delete("/quotes/:id/portal-token", async (req, res): Promise<void> => {
+  const userId = verifiedUserId(req);
+  if (!userId) { res.status(401).json({ error: "Unauthorized" }); return; }
+  const params = GetQuoteParams.safeParse(req.params);
+  if (!params.success) { res.status(400).json({ error: params.error.message }); return; }
+  const [row] = await db.update(quotesTable)
+    .set({ portalToken: null })
+    .where(and(eq(quotesTable.id, params.data.id), eq(quotesTable.clerkUserId, userId)))
+    .returning({ id: quotesTable.id });
+  if (!row) { res.status(404).json({ error: "Quote not found" }); return; }
+  req.log?.info({ userId, quoteId: params.data.id }, "Quote portal token revoked");
+  res.json({ revoked: true });
 });
 
 export default router;

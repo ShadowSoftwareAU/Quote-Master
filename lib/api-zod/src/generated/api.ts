@@ -56,6 +56,7 @@ export const GetProfileSettingsResponse = zod.object({
   "tradeType": zod.string(),
   "licenseNumber": zod.string().nullish(),
   "role": zod.enum(['Owner', 'Employee', 'Subcontractor']),
+  "isMasterBuilder": zod.boolean(),
   "metadataSyncStatus": zod.enum(['pending', 'synced', 'failed']),
   "createdAt": zod.coerce.date(),
   "updatedAt": zod.coerce.date()
@@ -88,6 +89,28 @@ export const UpdateProfileSettingsResponse = zod.object({
   "tradeType": zod.string(),
   "licenseNumber": zod.string().nullish(),
   "role": zod.enum(['Owner', 'Employee', 'Subcontractor']),
+  "isMasterBuilder": zod.boolean(),
+  "metadataSyncStatus": zod.enum(['pending', 'synced', 'failed']),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+})
+
+
+/**
+ * @summary Set the authenticated Owner's Master Builder test flag
+ */
+export const SetMasterBuilderFlagBody = zod.object({
+  "isMasterBuilder": zod.boolean()
+})
+
+export const SetMasterBuilderFlagResponse = zod.object({
+  "id": zod.number(),
+  "businessName": zod.string(),
+  "phoneNumber": zod.string(),
+  "tradeType": zod.string(),
+  "licenseNumber": zod.string().nullish(),
+  "role": zod.enum(['Owner', 'Employee', 'Subcontractor']),
+  "isMasterBuilder": zod.boolean(),
   "metadataSyncStatus": zod.enum(['pending', 'synced', 'failed']),
   "createdAt": zod.coerce.date(),
   "updatedAt": zod.coerce.date()
@@ -425,6 +448,7 @@ export const GetQuoteResponse = zod.object({
   "customerId": zod.number(),
   "masterProjectId": zod.number().nullable(),
   "tradeType": zod.string(),
+  "portalToken": zod.string().nullable(),
   "complianceDisclaimer": zod.string(),
   "contractorLicenseNumber": zod.string().nullable(),
   "customerName": zod.string().nullish(),
@@ -572,6 +596,7 @@ export const UpdateQuoteResponse = zod.object({
   "customerId": zod.number(),
   "masterProjectId": zod.number().nullable(),
   "tradeType": zod.string(),
+  "portalToken": zod.string().nullable(),
   "complianceDisclaimer": zod.string(),
   "contractorLicenseNumber": zod.string().nullable(),
   "customerName": zod.string().nullish(),
@@ -693,6 +718,7 @@ export const SetQuoteStatusResponse = zod.object({
   "customerId": zod.number(),
   "masterProjectId": zod.number().nullable(),
   "tradeType": zod.string(),
+  "portalToken": zod.string().nullable(),
   "complianceDisclaimer": zod.string(),
   "contractorLicenseNumber": zod.string().nullable(),
   "customerName": zod.string().nullish(),
@@ -763,8 +789,11 @@ export const SetQuoteStatusResponse = zod.object({
 /**
  * @summary Get the customer-safe view of a quote
  */
+export const getQuotePortalPathTokenRegExp = new RegExp('^[A-Za-z0-9_-]{43}$');
+
+
 export const GetQuotePortalParams = zod.object({
-  "id": zod.coerce.number()
+  "token": zod.coerce.string().regex(getQuotePortalPathTokenRegExp)
 })
 
 export const getQuotePortalResponseSpecHeightMDefault = 0.6;
@@ -854,6 +883,239 @@ export const GetQuotePortalResponse = zod.object({
   "total": zod.number(),
   "createdAt": zod.coerce.date(),
   "updatedAt": zod.coerce.date()
+})
+
+
+/**
+ * @summary Apply an allowed customer upgrade using a secure portal token
+ */
+export const updateQuotePortalPathTokenRegExp = new RegExp('^[A-Za-z0-9_-]{43}$');
+
+
+export const UpdateQuotePortalParams = zod.object({
+  "token": zod.coerce.string().regex(updateQuotePortalPathTokenRegExp)
+})
+
+export const UpdateQuotePortalBody = zod.object({
+  "deckBoardType": zod.string().optional(),
+  "balustradeType": zod.string().optional()
+})
+
+export const updateQuotePortalResponseSpecHeightMDefault = 0.6;
+export const updateQuotePortalResponseSpecBoardWidthMmDefault = 90;
+export const updateQuotePortalResponseSpecGapSpacingMmDefault = 4;
+export const updateQuotePortalResponseSpecJoistSpacingMmDefault = 450;
+export const updateQuotePortalResponseSpecBearerSpacingMmDefault = 1800;
+export const updateQuotePortalResponseSpecPostSpacingMmDefault = 1800;
+export const updateQuotePortalResponseSpecFootingDepthMmDefault = 450;
+export const updateQuotePortalResponseSpecWastageFactorDefault = 1.1;
+export const updateQuotePortalResponseSpecLabourHoursDefault = 0;
+export const updateQuotePortalResponseSpecLabourRateDefault = 85;
+export const updateQuotePortalResponseSpecDeckBoardTypeDefault = `treated_pine`;
+export const updateQuotePortalResponseSpecSubframeTypeDefault = `stumps`;
+export const updateQuotePortalResponseSpecFastenerTypeDefault = `screws`;
+export const updateQuotePortalResponseSpecFasciaTypeDefault = `none`;
+export const updateQuotePortalResponseSpecIncludeHandrailsDefault = false;
+export const updateQuotePortalResponseSpecHandrailHeightMmDefault = 1000;
+export const updateQuotePortalResponseSpecBalustradeTypeDefault = `timber`;
+export const updateQuotePortalResponseSpecTimberGapMmDefault = 15;
+export const updateQuotePortalResponseSpecWireSpacingMmDefault = 100;
+export const updateQuotePortalResponseSpecIncludeStairsDefault = false;
+export const updateQuotePortalResponseSpecStairFlightsDefault = 1;
+export const updateQuotePortalResponseSpecIncludeFencingDefault = false;
+export const updateQuotePortalResponseSpecFencingSidesDefault = 1;
+export const updateQuotePortalResponseSpecFencingHeightMDefault = 1.8;
+export const updateQuotePortalResponseSpecFencingWidthMDefault = 1.8;
+export const updateQuotePortalResponseSpecIncludeAwningDefault = false;
+export const updateQuotePortalResponseSpecAwningWidthMDefault = 3;
+export const updateQuotePortalResponseSpecAwningLengthMDefault = 3;
+
+export const UpdateQuotePortalResponse = zod.object({
+  "id": zod.number(),
+  "title": zod.string(),
+  "status": zod.string(),
+  "customerName": zod.string().nullable(),
+  "siteAddress": zod.string().nullable(),
+  "notes": zod.string().nullable(),
+  "complianceDisclaimer": zod.string(),
+  "contractorLicenseNumber": zod.string().nullable(),
+  "spec": zod.object({
+  "lengthM": zod.number().describe('Deck length in metres'),
+  "widthM": zod.number().describe('Deck width in metres'),
+  "heightM": zod.number().default(updateQuotePortalResponseSpecHeightMDefault).describe('Sub-floor height in metres'),
+  "boardWidthMm": zod.number().default(updateQuotePortalResponseSpecBoardWidthMmDefault).describe('Decking board width in mm'),
+  "gapSpacingMm": zod.number().default(updateQuotePortalResponseSpecGapSpacingMmDefault).describe('Gap between boards in mm'),
+  "joistSpacingMm": zod.number().default(updateQuotePortalResponseSpecJoistSpacingMmDefault).describe('Joist centres in mm'),
+  "bearerSpacingMm": zod.number().default(updateQuotePortalResponseSpecBearerSpacingMmDefault).describe('Bearer centres in mm'),
+  "postSpacingMm": zod.number().default(updateQuotePortalResponseSpecPostSpacingMmDefault).describe('Post centres in mm'),
+  "footingDepthMm": zod.number().default(updateQuotePortalResponseSpecFootingDepthMmDefault).describe('Footing depth in mm for stump subframes'),
+  "wastageFactor": zod.number().default(updateQuotePortalResponseSpecWastageFactorDefault).describe('Multiplier for cuts and offcuts'),
+  "labourHours": zod.number().default(updateQuotePortalResponseSpecLabourHoursDefault).describe('Labour hours for the job'),
+  "labourRate": zod.number().default(updateQuotePortalResponseSpecLabourRateDefault).describe('AUD per hour labour rate'),
+  "deckBoardType": zod.string().default(updateQuotePortalResponseSpecDeckBoardTypeDefault).describe('hardwood | composite | treated_pine'),
+  "subframeType": zod.string().default(updateQuotePortalResponseSpecSubframeTypeDefault).describe('stumps | concrete_slab | existing_structure'),
+  "fastenerType": zod.string().default(updateQuotePortalResponseSpecFastenerTypeDefault).describe('screws | hidden_clips'),
+  "fasciaType": zod.string().default(updateQuotePortalResponseSpecFasciaTypeDefault).describe('none | timber | composite'),
+  "includeHandrails": zod.boolean().default(updateQuotePortalResponseSpecIncludeHandrailsDefault),
+  "handrailHeightMm": zod.number().default(updateQuotePortalResponseSpecHandrailHeightMmDefault).describe('Handrail height in mm'),
+  "balustradeType": zod.string().default(updateQuotePortalResponseSpecBalustradeTypeDefault).describe('timber | stainless_cable'),
+  "timberGapMm": zod.number().default(updateQuotePortalResponseSpecTimberGapMmDefault).describe('Gap between timber pickets in mm'),
+  "wireSpacingMm": zod.number().default(updateQuotePortalResponseSpecWireSpacingMmDefault).describe('Stainless cable wire spacing in mm'),
+  "includeStairs": zod.boolean().default(updateQuotePortalResponseSpecIncludeStairsDefault),
+  "stairFlights": zod.number().default(updateQuotePortalResponseSpecStairFlightsDefault).describe('Number of stair flights'),
+  "includeFencing": zod.boolean().default(updateQuotePortalResponseSpecIncludeFencingDefault),
+  "fencingSides": zod.number().default(updateQuotePortalResponseSpecFencingSidesDefault).describe('Number of sides with fencing'),
+  "fencingHeightM": zod.number().default(updateQuotePortalResponseSpecFencingHeightMDefault).describe('Fence height in metres'),
+  "fencingWidthM": zod.number().default(updateQuotePortalResponseSpecFencingWidthMDefault).describe('Fence bay\/panel width in metres'),
+  "includeAwning": zod.boolean().default(updateQuotePortalResponseSpecIncludeAwningDefault),
+  "awningWidthM": zod.number().default(updateQuotePortalResponseSpecAwningWidthMDefault).describe('Awning width in metres (creates cutout in boards)'),
+  "awningLengthM": zod.number().default(updateQuotePortalResponseSpecAwningLengthMDefault).describe('Awning length in metres')
+}),
+  "lineItems": zod.array(zod.object({
+  "id": zod.number(),
+  "quoteId": zod.number(),
+  "materialId": zod.number().nullish(),
+  "description": zod.string(),
+  "category": zod.string(),
+  "quantity": zod.number(),
+  "unit": zod.string(),
+  "unitPrice": zod.number(),
+  "lineTotal": zod.number()
+})),
+  "materialsSubtotal": zod.number(),
+  "labourCost": zod.number(),
+  "gst": zod.number(),
+  "total": zod.number(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+})
+
+
+/**
+ * @summary Accept a quote using a secure portal token
+ */
+export const setQuotePortalStatusPathTokenRegExp = new RegExp('^[A-Za-z0-9_-]{43}$');
+
+
+export const SetQuotePortalStatusParams = zod.object({
+  "token": zod.coerce.string().regex(setQuotePortalStatusPathTokenRegExp)
+})
+
+export const SetQuotePortalStatusBody = zod.object({
+  "status": zod.string()
+})
+
+export const setQuotePortalStatusResponseSpecHeightMDefault = 0.6;
+export const setQuotePortalStatusResponseSpecBoardWidthMmDefault = 90;
+export const setQuotePortalStatusResponseSpecGapSpacingMmDefault = 4;
+export const setQuotePortalStatusResponseSpecJoistSpacingMmDefault = 450;
+export const setQuotePortalStatusResponseSpecBearerSpacingMmDefault = 1800;
+export const setQuotePortalStatusResponseSpecPostSpacingMmDefault = 1800;
+export const setQuotePortalStatusResponseSpecFootingDepthMmDefault = 450;
+export const setQuotePortalStatusResponseSpecWastageFactorDefault = 1.1;
+export const setQuotePortalStatusResponseSpecLabourHoursDefault = 0;
+export const setQuotePortalStatusResponseSpecLabourRateDefault = 85;
+export const setQuotePortalStatusResponseSpecDeckBoardTypeDefault = `treated_pine`;
+export const setQuotePortalStatusResponseSpecSubframeTypeDefault = `stumps`;
+export const setQuotePortalStatusResponseSpecFastenerTypeDefault = `screws`;
+export const setQuotePortalStatusResponseSpecFasciaTypeDefault = `none`;
+export const setQuotePortalStatusResponseSpecIncludeHandrailsDefault = false;
+export const setQuotePortalStatusResponseSpecHandrailHeightMmDefault = 1000;
+export const setQuotePortalStatusResponseSpecBalustradeTypeDefault = `timber`;
+export const setQuotePortalStatusResponseSpecTimberGapMmDefault = 15;
+export const setQuotePortalStatusResponseSpecWireSpacingMmDefault = 100;
+export const setQuotePortalStatusResponseSpecIncludeStairsDefault = false;
+export const setQuotePortalStatusResponseSpecStairFlightsDefault = 1;
+export const setQuotePortalStatusResponseSpecIncludeFencingDefault = false;
+export const setQuotePortalStatusResponseSpecFencingSidesDefault = 1;
+export const setQuotePortalStatusResponseSpecFencingHeightMDefault = 1.8;
+export const setQuotePortalStatusResponseSpecFencingWidthMDefault = 1.8;
+export const setQuotePortalStatusResponseSpecIncludeAwningDefault = false;
+export const setQuotePortalStatusResponseSpecAwningWidthMDefault = 3;
+export const setQuotePortalStatusResponseSpecAwningLengthMDefault = 3;
+
+export const SetQuotePortalStatusResponse = zod.object({
+  "id": zod.number(),
+  "title": zod.string(),
+  "status": zod.string(),
+  "customerName": zod.string().nullable(),
+  "siteAddress": zod.string().nullable(),
+  "notes": zod.string().nullable(),
+  "complianceDisclaimer": zod.string(),
+  "contractorLicenseNumber": zod.string().nullable(),
+  "spec": zod.object({
+  "lengthM": zod.number().describe('Deck length in metres'),
+  "widthM": zod.number().describe('Deck width in metres'),
+  "heightM": zod.number().default(setQuotePortalStatusResponseSpecHeightMDefault).describe('Sub-floor height in metres'),
+  "boardWidthMm": zod.number().default(setQuotePortalStatusResponseSpecBoardWidthMmDefault).describe('Decking board width in mm'),
+  "gapSpacingMm": zod.number().default(setQuotePortalStatusResponseSpecGapSpacingMmDefault).describe('Gap between boards in mm'),
+  "joistSpacingMm": zod.number().default(setQuotePortalStatusResponseSpecJoistSpacingMmDefault).describe('Joist centres in mm'),
+  "bearerSpacingMm": zod.number().default(setQuotePortalStatusResponseSpecBearerSpacingMmDefault).describe('Bearer centres in mm'),
+  "postSpacingMm": zod.number().default(setQuotePortalStatusResponseSpecPostSpacingMmDefault).describe('Post centres in mm'),
+  "footingDepthMm": zod.number().default(setQuotePortalStatusResponseSpecFootingDepthMmDefault).describe('Footing depth in mm for stump subframes'),
+  "wastageFactor": zod.number().default(setQuotePortalStatusResponseSpecWastageFactorDefault).describe('Multiplier for cuts and offcuts'),
+  "labourHours": zod.number().default(setQuotePortalStatusResponseSpecLabourHoursDefault).describe('Labour hours for the job'),
+  "labourRate": zod.number().default(setQuotePortalStatusResponseSpecLabourRateDefault).describe('AUD per hour labour rate'),
+  "deckBoardType": zod.string().default(setQuotePortalStatusResponseSpecDeckBoardTypeDefault).describe('hardwood | composite | treated_pine'),
+  "subframeType": zod.string().default(setQuotePortalStatusResponseSpecSubframeTypeDefault).describe('stumps | concrete_slab | existing_structure'),
+  "fastenerType": zod.string().default(setQuotePortalStatusResponseSpecFastenerTypeDefault).describe('screws | hidden_clips'),
+  "fasciaType": zod.string().default(setQuotePortalStatusResponseSpecFasciaTypeDefault).describe('none | timber | composite'),
+  "includeHandrails": zod.boolean().default(setQuotePortalStatusResponseSpecIncludeHandrailsDefault),
+  "handrailHeightMm": zod.number().default(setQuotePortalStatusResponseSpecHandrailHeightMmDefault).describe('Handrail height in mm'),
+  "balustradeType": zod.string().default(setQuotePortalStatusResponseSpecBalustradeTypeDefault).describe('timber | stainless_cable'),
+  "timberGapMm": zod.number().default(setQuotePortalStatusResponseSpecTimberGapMmDefault).describe('Gap between timber pickets in mm'),
+  "wireSpacingMm": zod.number().default(setQuotePortalStatusResponseSpecWireSpacingMmDefault).describe('Stainless cable wire spacing in mm'),
+  "includeStairs": zod.boolean().default(setQuotePortalStatusResponseSpecIncludeStairsDefault),
+  "stairFlights": zod.number().default(setQuotePortalStatusResponseSpecStairFlightsDefault).describe('Number of stair flights'),
+  "includeFencing": zod.boolean().default(setQuotePortalStatusResponseSpecIncludeFencingDefault),
+  "fencingSides": zod.number().default(setQuotePortalStatusResponseSpecFencingSidesDefault).describe('Number of sides with fencing'),
+  "fencingHeightM": zod.number().default(setQuotePortalStatusResponseSpecFencingHeightMDefault).describe('Fence height in metres'),
+  "fencingWidthM": zod.number().default(setQuotePortalStatusResponseSpecFencingWidthMDefault).describe('Fence bay\/panel width in metres'),
+  "includeAwning": zod.boolean().default(setQuotePortalStatusResponseSpecIncludeAwningDefault),
+  "awningWidthM": zod.number().default(setQuotePortalStatusResponseSpecAwningWidthMDefault).describe('Awning width in metres (creates cutout in boards)'),
+  "awningLengthM": zod.number().default(setQuotePortalStatusResponseSpecAwningLengthMDefault).describe('Awning length in metres')
+}),
+  "lineItems": zod.array(zod.object({
+  "id": zod.number(),
+  "quoteId": zod.number(),
+  "materialId": zod.number().nullish(),
+  "description": zod.string(),
+  "category": zod.string(),
+  "quantity": zod.number(),
+  "unit": zod.string(),
+  "unitPrice": zod.number(),
+  "lineTotal": zod.number()
+})),
+  "materialsSubtotal": zod.number(),
+  "labourCost": zod.number(),
+  "gst": zod.number(),
+  "total": zod.number(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+})
+
+
+/**
+ * @summary Replace a quote's public portal token
+ */
+export const RegenerateQuotePortalTokenParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+export const RegenerateQuotePortalTokenResponse = zod.object({
+  "portalToken": zod.string()
+})
+
+
+/**
+ * @summary Revoke a quote's public portal token
+ */
+export const RevokeQuotePortalTokenParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+export const RevokeQuotePortalTokenResponse = zod.object({
+  "revoked": zod.boolean()
 })
 
 

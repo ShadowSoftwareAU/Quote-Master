@@ -1,14 +1,17 @@
 import { Router, type IRouter, type Request, type Response } from "express";
 import {
   CreateOnboardingProfileBody,
+  SetMasterBuilderFlagBody,
   UpdateProfileSettingsBody,
 } from "@workspace/api-zod";
 import { getAuthenticatedClerkUserId } from "../middlewares/apiAuth";
+import { requireOwner } from "../middlewares/businessRoleAuth";
 import {
   getBusinessProfile,
   onboardBusinessProfile,
   ProfileMetadataSyncError,
   ProfileMetadataSupersededError,
+  setMasterBuilderFlag,
   updateBusinessProfileSettings,
 } from "../services/businessProfiles";
 
@@ -37,6 +40,7 @@ function publicProfile(profile: {
   tradeType: string;
   licenseNumber: string | null;
   role: string;
+  isMasterBuilder: boolean;
   metadataSyncStatus: string;
   createdAt: Date;
   updatedAt: Date;
@@ -48,6 +52,7 @@ function publicProfile(profile: {
     tradeType: profile.tradeType,
     licenseNumber: profile.licenseNumber,
     role: profile.role,
+    isMasterBuilder: profile.isMasterBuilder,
     metadataSyncStatus: profile.metadataSyncStatus,
     createdAt: profile.createdAt,
     updatedAt: profile.updatedAt,
@@ -81,8 +86,13 @@ router.post("/onboarding", async (req: Request, res: Response) => {
   }
 
   try {
+    const userId = getAuthenticatedClerkUserId(req);
+    if (await getBusinessProfile(userId)) {
+      res.status(409).json({ error: "Onboarding is already complete" });
+      return;
+    }
     const profile = await onboardBusinessProfile(
-      getAuthenticatedClerkUserId(req),
+      userId,
       parsed.data,
     );
     res.status(201).json(publicProfile(profile));
@@ -108,8 +118,18 @@ router.put("/settings/profile", async (req: Request, res: Response) => {
   }
 
   try {
+    const userId = getAuthenticatedClerkUserId(req);
+    const existing = await getBusinessProfile(userId);
+    if (!existing) {
+      res.status(404).json({ error: "Complete onboarding before updating your profile" });
+      return;
+    }
+    if (parsed.data.role !== existing.role) {
+      res.status(403).json({ error: "Business roles can only be changed by an Owner or administrator" });
+      return;
+    }
     const profile = await updateBusinessProfileSettings(
-      getAuthenticatedClerkUserId(req),
+      userId,
       parsed.data,
     );
     if (!profile) {
@@ -121,5 +141,31 @@ router.put("/settings/profile", async (req: Request, res: Response) => {
     requestFailure(req, res, error);
   }
 });
+
+router.patch(
+  "/settings/profile/master-builder",
+  requireOwner,
+  async (req: Request, res: Response) => {
+    const parsed = SetMasterBuilderFlagBody.safeParse(req.body);
+    if (!parsed.success) {
+      res.status(400).json({ error: parsed.error.message });
+      return;
+    }
+    const userId = getAuthenticatedClerkUserId(req);
+    const updated = await setMasterBuilderFlag(
+      userId,
+      parsed.data.isMasterBuilder,
+    );
+    if (!updated) {
+      res.status(404).json({ error: "Complete onboarding before updating your profile" });
+      return;
+    }
+    req.log?.info(
+      { userId, isMasterBuilder: parsed.data.isMasterBuilder },
+      "Master Builder profile flag changed",
+    );
+    res.json(publicProfile(updated));
+  },
+);
 
 export default router;

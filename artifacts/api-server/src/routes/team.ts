@@ -18,8 +18,11 @@ import {
   RemoveJobAssignmentParams,
   RemoveJobAssignmentBody,
 } from "@workspace/api-zod";
+import { requireOwner } from "../middlewares/businessRoleAuth";
 
 const router: IRouter = Router();
+router.use("/team", requireOwner);
+router.use("/bookings/:jobId/assignments", requireOwner);
 
 function memberToJson(row: typeof teamMembersTable.$inferSelect) {
   return {

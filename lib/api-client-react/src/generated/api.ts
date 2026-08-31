@@ -40,6 +40,7 @@ import type {
   JobAssignment,
   ListMaterialsParams,
   ManualTimeEntryInput,
+  MasterBuilderFlagInput,
   MasterProject,
   MasterProjectInput,
   MasterProjectQuoteSelection,
@@ -57,6 +58,9 @@ import type {
   QuoteEstimate,
   QuoteInput,
   QuotePortal,
+  QuotePortalRevocation,
+  QuotePortalToken,
+  QuotePortalUpgradeInput,
   QuoteStatusInput,
   QuoteSummary,
   QuoteUpdate,
@@ -384,6 +388,77 @@ export const useUpdateProfileSettings = <TError = ErrorType<void>,
       return useMutation(getUpdateProfileSettingsMutationOptions(options));
     }
 
+export const getSetMasterBuilderFlagUrl = () => {
+
+
+
+
+  return `/api/settings/profile/master-builder`
+}
+
+/**
+ * @summary Set the authenticated Owner's Master Builder test flag
+ */
+export const setMasterBuilderFlag = async (masterBuilderFlagInput: MasterBuilderFlagInput, options?: RequestInit): Promise<BusinessProfile> => {
+
+  return customFetch<BusinessProfile>(getSetMasterBuilderFlagUrl(),
+  {
+    ...options,
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      masterBuilderFlagInput,)
+  }
+);}
+
+
+
+
+export const getSetMasterBuilderFlagMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof setMasterBuilderFlag>>, TError,{data: BodyType<MasterBuilderFlagInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof setMasterBuilderFlag>>, TError,{data: BodyType<MasterBuilderFlagInput>}, TContext> => {
+
+const mutationKey = ['setMasterBuilderFlag'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof setMasterBuilderFlag>>, {data: BodyType<MasterBuilderFlagInput>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  setMasterBuilderFlag(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type SetMasterBuilderFlagMutationResult = NonNullable<Awaited<ReturnType<typeof setMasterBuilderFlag>>>
+    export type SetMasterBuilderFlagMutationBody = BodyType<MasterBuilderFlagInput>
+    export type SetMasterBuilderFlagMutationError = ErrorType<void>
+
+    /**
+ * @summary Set the authenticated Owner's Master Builder test flag
+ */
+export const useSetMasterBuilderFlag = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof setMasterBuilderFlag>>, TError,{data: BodyType<MasterBuilderFlagInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof setMasterBuilderFlag>>,
+        TError,
+        {data: BodyType<MasterBuilderFlagInput>},
+        TContext
+      > => {
+      return useMutation(getSetMasterBuilderFlagMutationOptions(options));
+    }
+
 export const getGetDashboardSummaryUrl = () => {
 
 
@@ -494,7 +569,7 @@ export const getGetPnlReportQueryKey = () => {
     }
 
 
-export const getGetPnlReportQueryOptions = <TData = Awaited<ReturnType<typeof getPnlReport>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getPnlReport>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+export const getGetPnlReportQueryOptions = <TData = Awaited<ReturnType<typeof getPnlReport>>, TError = ErrorType<void>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getPnlReport>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
 ) => {
 
 const {query: queryOptions, request: requestOptions} = options ?? {};
@@ -513,14 +588,14 @@ const {query: queryOptions, request: requestOptions} = options ?? {};
 }
 
 export type GetPnlReportQueryResult = NonNullable<Awaited<ReturnType<typeof getPnlReport>>>
-export type GetPnlReportQueryError = ErrorType<unknown>
+export type GetPnlReportQueryError = ErrorType<void>
 
 
 /**
  * @summary P&L breakdown per accepted quote and monthly rollup
  */
 
-export function useGetPnlReport<TData = Awaited<ReturnType<typeof getPnlReport>>, TError = ErrorType<unknown>>(
+export function useGetPnlReport<TData = Awaited<ReturnType<typeof getPnlReport>>, TError = ErrorType<void>>(
   options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getPnlReport>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
 
  ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
@@ -1551,20 +1626,20 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
       return useMutation(getSetQuoteStatusMutationOptions(options));
     }
 
-export const getGetQuotePortalUrl = (id: number,) => {
+export const getGetQuotePortalUrl = (token: string,) => {
 
 
 
 
-  return `/api/quotes/${id}/portal`
+  return `/api/quote/${token}`
 }
 
 /**
  * @summary Get the customer-safe view of a quote
  */
-export const getQuotePortal = async (id: number, options?: RequestInit): Promise<QuotePortal> => {
+export const getQuotePortal = async (token: string, options?: RequestInit): Promise<QuotePortal> => {
 
-  return customFetch<QuotePortal>(getGetQuotePortalUrl(id),
+  return customFetch<QuotePortal>(getGetQuotePortalUrl(token),
   {
     ...options,
     method: 'GET'
@@ -1577,29 +1652,29 @@ export const getQuotePortal = async (id: number, options?: RequestInit): Promise
 
 
 
-export const getGetQuotePortalQueryKey = (id: number,) => {
+export const getGetQuotePortalQueryKey = (token: string,) => {
     return [
-    `/api/quotes/${id}/portal`
+    `/api/quote/${token}`
     ] as const;
     }
 
 
-export const getGetQuotePortalQueryOptions = <TData = Awaited<ReturnType<typeof getQuotePortal>>, TError = ErrorType<unknown>>(id: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getQuotePortal>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+export const getGetQuotePortalQueryOptions = <TData = Awaited<ReturnType<typeof getQuotePortal>>, TError = ErrorType<unknown>>(token: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getQuotePortal>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
 ) => {
 
 const {query: queryOptions, request: requestOptions} = options ?? {};
 
-  const queryKey =  queryOptions?.queryKey ?? getGetQuotePortalQueryKey(id);
+  const queryKey =  queryOptions?.queryKey ?? getGetQuotePortalQueryKey(token);
 
 
 
-    const queryFn: QueryFunction<Awaited<ReturnType<typeof getQuotePortal>>> = ({ signal }) => getQuotePortal(id, { signal, ...requestOptions });
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getQuotePortal>>> = ({ signal }) => getQuotePortal(token, { signal, ...requestOptions });
 
 
 
 
 
-   return  { queryKey, queryFn, enabled: !!(id), ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getQuotePortal>>, TError, TData> & { queryKey: QueryKey }
+   return  { queryKey, queryFn, enabled: !!(token), ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getQuotePortal>>, TError, TData> & { queryKey: QueryKey }
 }
 
 export type GetQuotePortalQueryResult = NonNullable<Awaited<ReturnType<typeof getQuotePortal>>>
@@ -1611,11 +1686,11 @@ export type GetQuotePortalQueryError = ErrorType<unknown>
  */
 
 export function useGetQuotePortal<TData = Awaited<ReturnType<typeof getQuotePortal>>, TError = ErrorType<unknown>>(
- id: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getQuotePortal>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+ token: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getQuotePortal>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
 
  ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
 
-  const queryOptions = getGetQuotePortalQueryOptions(id,options)
+  const queryOptions = getGetQuotePortalQueryOptions(token,options)
 
   const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
 
@@ -1627,6 +1702,290 @@ export function useGetQuotePortal<TData = Awaited<ReturnType<typeof getQuotePort
 
 
 
+
+export const getUpdateQuotePortalUrl = (token: string,) => {
+
+
+
+
+  return `/api/quote/${token}`
+}
+
+/**
+ * @summary Apply an allowed customer upgrade using a secure portal token
+ */
+export const updateQuotePortal = async (token: string,
+    quotePortalUpgradeInput: QuotePortalUpgradeInput, options?: RequestInit): Promise<QuotePortal> => {
+
+  return customFetch<QuotePortal>(getUpdateQuotePortalUrl(token),
+  {
+    ...options,
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      quotePortalUpgradeInput,)
+  }
+);}
+
+
+
+
+export const getUpdateQuotePortalMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateQuotePortal>>, TError,{token: string;data: BodyType<QuotePortalUpgradeInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updateQuotePortal>>, TError,{token: string;data: BodyType<QuotePortalUpgradeInput>}, TContext> => {
+
+const mutationKey = ['updateQuotePortal'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateQuotePortal>>, {token: string;data: BodyType<QuotePortalUpgradeInput>}> = (props) => {
+          const {token,data} = props ?? {};
+
+          return  updateQuotePortal(token,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdateQuotePortalMutationResult = NonNullable<Awaited<ReturnType<typeof updateQuotePortal>>>
+    export type UpdateQuotePortalMutationBody = BodyType<QuotePortalUpgradeInput>
+    export type UpdateQuotePortalMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Apply an allowed customer upgrade using a secure portal token
+ */
+export const useUpdateQuotePortal = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateQuotePortal>>, TError,{token: string;data: BodyType<QuotePortalUpgradeInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof updateQuotePortal>>,
+        TError,
+        {token: string;data: BodyType<QuotePortalUpgradeInput>},
+        TContext
+      > => {
+      return useMutation(getUpdateQuotePortalMutationOptions(options));
+    }
+
+export const getSetQuotePortalStatusUrl = (token: string,) => {
+
+
+
+
+  return `/api/quote/${token}/status`
+}
+
+/**
+ * @summary Accept a quote using a secure portal token
+ */
+export const setQuotePortalStatus = async (token: string,
+    quoteStatusInput: QuoteStatusInput, options?: RequestInit): Promise<QuotePortal> => {
+
+  return customFetch<QuotePortal>(getSetQuotePortalStatusUrl(token),
+  {
+    ...options,
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      quoteStatusInput,)
+  }
+);}
+
+
+
+
+export const getSetQuotePortalStatusMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof setQuotePortalStatus>>, TError,{token: string;data: BodyType<QuoteStatusInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof setQuotePortalStatus>>, TError,{token: string;data: BodyType<QuoteStatusInput>}, TContext> => {
+
+const mutationKey = ['setQuotePortalStatus'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof setQuotePortalStatus>>, {token: string;data: BodyType<QuoteStatusInput>}> = (props) => {
+          const {token,data} = props ?? {};
+
+          return  setQuotePortalStatus(token,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type SetQuotePortalStatusMutationResult = NonNullable<Awaited<ReturnType<typeof setQuotePortalStatus>>>
+    export type SetQuotePortalStatusMutationBody = BodyType<QuoteStatusInput>
+    export type SetQuotePortalStatusMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Accept a quote using a secure portal token
+ */
+export const useSetQuotePortalStatus = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof setQuotePortalStatus>>, TError,{token: string;data: BodyType<QuoteStatusInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof setQuotePortalStatus>>,
+        TError,
+        {token: string;data: BodyType<QuoteStatusInput>},
+        TContext
+      > => {
+      return useMutation(getSetQuotePortalStatusMutationOptions(options));
+    }
+
+export const getRegenerateQuotePortalTokenUrl = (id: number,) => {
+
+
+
+
+  return `/api/quotes/${id}/portal-token`
+}
+
+/**
+ * @summary Replace a quote's public portal token
+ */
+export const regenerateQuotePortalToken = async (id: number, options?: RequestInit): Promise<QuotePortalToken> => {
+
+  return customFetch<QuotePortalToken>(getRegenerateQuotePortalTokenUrl(id),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+export const getRegenerateQuotePortalTokenMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof regenerateQuotePortalToken>>, TError,{id: number}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof regenerateQuotePortalToken>>, TError,{id: number}, TContext> => {
+
+const mutationKey = ['regenerateQuotePortalToken'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof regenerateQuotePortalToken>>, {id: number}> = (props) => {
+          const {id} = props ?? {};
+
+          return  regenerateQuotePortalToken(id,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type RegenerateQuotePortalTokenMutationResult = NonNullable<Awaited<ReturnType<typeof regenerateQuotePortalToken>>>
+
+    export type RegenerateQuotePortalTokenMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Replace a quote's public portal token
+ */
+export const useRegenerateQuotePortalToken = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof regenerateQuotePortalToken>>, TError,{id: number}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof regenerateQuotePortalToken>>,
+        TError,
+        {id: number},
+        TContext
+      > => {
+      return useMutation(getRegenerateQuotePortalTokenMutationOptions(options));
+    }
+
+export const getRevokeQuotePortalTokenUrl = (id: number,) => {
+
+
+
+
+  return `/api/quotes/${id}/portal-token`
+}
+
+/**
+ * @summary Revoke a quote's public portal token
+ */
+export const revokeQuotePortalToken = async (id: number, options?: RequestInit): Promise<QuotePortalRevocation> => {
+
+  return customFetch<QuotePortalRevocation>(getRevokeQuotePortalTokenUrl(id),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+);}
+
+
+
+
+export const getRevokeQuotePortalTokenMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof revokeQuotePortalToken>>, TError,{id: number}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof revokeQuotePortalToken>>, TError,{id: number}, TContext> => {
+
+const mutationKey = ['revokeQuotePortalToken'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof revokeQuotePortalToken>>, {id: number}> = (props) => {
+          const {id} = props ?? {};
+
+          return  revokeQuotePortalToken(id,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type RevokeQuotePortalTokenMutationResult = NonNullable<Awaited<ReturnType<typeof revokeQuotePortalToken>>>
+
+    export type RevokeQuotePortalTokenMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Revoke a quote's public portal token
+ */
+export const useRevokeQuotePortalToken = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof revokeQuotePortalToken>>, TError,{id: number}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof revokeQuotePortalToken>>,
+        TError,
+        {id: number},
+        TContext
+      > => {
+      return useMutation(getRevokeQuotePortalTokenMutationOptions(options));
+    }
 
 export const getEstimateDeckUrl = () => {
 

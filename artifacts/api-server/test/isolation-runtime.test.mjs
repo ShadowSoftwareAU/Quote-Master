@@ -129,25 +129,28 @@ test("private routes deny an unauthenticated request", () => {
 });
 
 test("only the exact public quote routes bypass authentication", () => {
+  const token = "A".repeat(43);
   const allowed = [
-    request({ method: "GET", path: "/quotes/42/portal" }),
-    request({ method: "POST", path: "/quotes/estimate", body: { lengthM: 2, widthM: 2 } }),
-    request({ method: "PATCH", path: "/quotes/42", body: { deckBoardType: "treated_pine" } }),
-    request({ method: "PATCH", path: "/quotes/42", body: { balustradeType: "timber" } }),
-    request({ method: "PATCH", path: "/quotes/42/status", body: { status: "accepted" } }),
+    request({ method: "GET", path: `/quote/${token}` }),
+    request({ method: "PATCH", path: `/quote/${token}`, body: { deckBoardType: "treated_pine" } }),
+    request({ method: "PATCH", path: `/quote/${token}`, body: { balustradeType: "timber" } }),
+    request({ method: "PATCH", path: `/quote/${token}/status`, body: { status: "accepted" } }),
   ];
   for (const req of allowed) assert.equal(invoke(req).nextCalled, true, `${req.method} ${req.path}`);
 
   const denied = [
     request({ method: "GET", path: "/quotes/42" }),
+    request({ method: "POST", path: "/quotes/estimate", body: { lengthM: 2, widthM: 2 } }),
+    request({ method: "GET", path: "/quotes/42/portal" }),
     request({ method: "POST", path: "/onboarding", body: {} }),
     request({ method: "PUT", path: "/settings/profile", body: {} }),
-    request({ method: "GET", path: "/quotes/42/portal/extra" }),
+    request({ method: "GET", path: `/quote/${token}/extra` }),
+    request({ method: "GET", path: "/quote/too-short" }),
     request({ method: "POST", path: "/quotes/42/estimate", body: { lengthM: 2, widthM: 2 } }),
-    request({ method: "PATCH", path: "/quotes/42", body: { title: "privileged" } }),
-    request({ method: "PATCH", path: "/quotes/42", body: { deckBoardType: "treated_pine", title: "smuggled" } }),
-    request({ method: "PATCH", path: "/quotes/42/status", body: { status: "rejected" } }),
-    request({ method: "PATCH", path: "/quotes/42/status", body: { status: "accepted", clerkUserId: "user_a" } }),
+    request({ method: "PATCH", path: `/quote/${token}`, body: { title: "privileged" } }),
+    request({ method: "PATCH", path: `/quote/${token}`, body: { deckBoardType: "treated_pine", title: "smuggled" } }),
+    request({ method: "PATCH", path: `/quote/${token}/status`, body: { status: "rejected" } }),
+    request({ method: "PATCH", path: `/quote/${token}/status`, body: { status: "accepted", clerkUserId: "user_a" } }),
   ];
   for (const req of denied) assert.equal(invoke(req).statusCode, 401, `${req.method} ${req.path}`);
 });

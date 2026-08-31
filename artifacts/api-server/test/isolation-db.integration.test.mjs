@@ -120,12 +120,21 @@ test("database-backed onboarding and profile settings stay user scoped", { skip:
   });
   assert.equal(onboarding.response.status, 201);
   assert.equal(onboarding.json.metadataSyncStatus, "synced");
+  assert.equal(onboarding.json.isMasterBuilder, false);
   assert.equal(onboarding.json.clerkUserId, undefined);
 
   const profileRead = await api(userA, "GET", "/settings/profile");
   assert.equal(profileRead.response.status, 200);
   assert.equal(profileRead.json.businessName, `${fixture} Carpentry Pty Ltd`);
   assert.equal(profileRead.json.clerkUserId, undefined);
+  assert.equal((await api(userA, "GET", "/dashboard/pnl")).response.status, 200);
+  assert.equal((await api(userA, "GET", "/team")).response.status, 200);
+  const enabledMasterBuilder = await api(userA, "PATCH", "/settings/profile/master-builder", {
+    isMasterBuilder: true,
+  });
+  assert.equal(enabledMasterBuilder.response.status, 200);
+  assert.equal(enabledMasterBuilder.json.isMasterBuilder, true);
+  assert.equal((await api(userA, "GET", "/master-projects")).response.status, 200);
 
   const missingProfileRead = await api(userB, "GET", "/settings/profile");
   assert.equal(missingProfileRead.response.status, 404);
@@ -139,13 +148,33 @@ test("database-backed onboarding and profile settings stay user scoped", { skip:
 
   const update = await api(userA, "PUT", "/settings/profile", {
     tradeType: "Builder",
-    role: "Subcontractor",
+    role: "Owner",
     licenseNumber: "QBCC 7654321",
   });
   assert.equal(update.response.status, 200);
   assert.equal(update.json.tradeType, "Builder");
-  assert.equal(update.json.role, "Subcontractor");
+  assert.equal(update.json.role, "Owner");
   assert.equal(update.json.metadataSyncStatus, "synced");
+
+  await pool.query("UPDATE business_profiles SET role = 'Employee' WHERE clerk_user_id = $1", [userA]);
+  assert.equal((await api(userA, "GET", "/dashboard/pnl")).response.status, 403);
+  assert.equal((await api(userA, "GET", "/team")).response.status, 403);
+  assert.equal(
+    (await api(userA, "PUT", "/settings/profile", {
+      tradeType: "Builder",
+      role: "Owner",
+      licenseNumber: "QBCC 7654321",
+    })).response.status,
+    403,
+  );
+  assert.equal(
+    (await api(userA, "PATCH", "/settings/profile/master-builder", { isMasterBuilder: false })).response.status,
+    403,
+  );
+
+  await pool.query("UPDATE business_profiles SET role = 'Subcontractor' WHERE clerk_user_id = $1", [userA]);
+  assert.equal((await api(userA, "GET", "/dashboard/pnl")).response.status, 403);
+  assert.equal((await api(userA, "GET", "/team")).response.status, 403);
 
   const stored = await pool.query(
     "SELECT clerk_user_id, trade_type, role, metadata_sync_status FROM business_profiles WHERE clerk_user_id = $1",
@@ -162,7 +191,7 @@ test("database-backed onboarding and profile settings stay user scoped", { skip:
   const latest = metadataUpdates.at(-1);
   assert.equal(latest.userId, userA);
   assert.deepEqual(latest.update.publicMetadata, {
-    role: "Subcontractor",
+    role: "Owner",
     accessRole: "MASTER_BUILDER",
     tradeType: "Builder",
     existing: "preserved",
@@ -203,9 +232,24 @@ test("failed Clerk metadata delivery retries from the durable outbox", { skip: !
     (globalThis.__profileMetadataUpdates ?? []).some((update) => update.userId === userB),
     true,
   );
+
+  const masterBuilder = await api(userB, "PATCH", "/settings/profile/master-builder", {
+    isMasterBuilder: true,
+  });
+  assert.equal(masterBuilder.response.status, 200);
+  assert.equal(masterBuilder.json.isMasterBuilder, true);
+  const flags = await pool.query(
+    "SELECT clerk_user_id, is_master_builder FROM business_profiles WHERE clerk_user_id = ANY($1::text[]) ORDER BY clerk_user_id",
+    [[userA, userB]],
+  );
+  assert.deepEqual(flags.rows, [
+    { clerk_user_id: userA, is_master_builder: true },
+    { clerk_user_id: userB, is_master_builder: true },
+  ]);
 });
 
 test("database-backed customer and nested route isolation", { skip: !hasDatabase }, async () => {
+  await pool.query("UPDATE business_profiles SET role = 'Owner' WHERE clerk_user_id = $1", [userA]);
   const createdA = await api(userA, "POST", "/customers", { name: `${fixture}-customer-a` });
   const createdB = await api(userB, "POST", "/customers", { name: `${fixture}-customer-b` });
   assert.equal(createdA.response.status, 201);
@@ -264,6 +308,7 @@ test("database-backed customer and nested route isolation", { skip: !hasDatabase
     labourRate: 100,
   });
   assert.equal(quote.response.status, 201);
+  assert.match(quote.json.portalToken, /^[A-Za-z0-9_-]{43}$/);
   assert.equal(
     quote.json.complianceDisclaimer.startsWith(
       "All specified works conform to the current Australian National Construction Code (NCC) and relevant Australian Standards (AS).",
@@ -273,6 +318,17 @@ test("database-backed customer and nested route isolation", { skip: !hasDatabase
   assert.equal(quote.json.complianceDisclaimer.includes("Primary trade classification: Builder."), true);
   assert.equal(quote.json.contractorLicenseNumber, "QBCC 7654321");
   createdQuoteIds.push(quote.json.id);
+
+  const quoteB = await api(userB, "POST", "/quotes", {
+    title: `${fixture}-user-b-secure-quote`,
+    customerId: createdB.json.id,
+    lengthM: 2,
+    widthM: 2,
+  });
+  assert.equal(quoteB.response.status, 201);
+  assert.match(quoteB.json.portalToken, /^[A-Za-z0-9_-]{43}$/);
+  assert.notEqual(quoteB.json.portalToken, quote.json.portalToken);
+  createdQuoteIds.push(quoteB.json.id);
 
   // Master-project writes require a role, so use direct disposable setup for
   // this relationship while exercising the actual public quote update route.
@@ -288,8 +344,10 @@ test("database-backed customer and nested route isolation", { skip: !hasDatabase
 
   // No auth context is installed: the actual portal and its deliberately
   // limited upgrade PATCH remain available to the customer.
-  const publicPortal = await api(null, "GET", `/quotes/${quote.json.id}/portal`);
+  assert.equal((await api(null, "GET", `/quotes/${quote.json.id}/portal`)).response.status, 404);
+  const publicPortal = await api(null, "GET", `/quote/${quote.json.portalToken}`);
   assert.equal(publicPortal.response.status, 200);
+  assert.equal(publicPortal.json.id, quote.json.id);
   assert.equal(publicPortal.json.complianceDisclaimer, quote.json.complianceDisclaimer);
   assert.equal(publicPortal.json.contractorLicenseNumber, "QBCC 7654321");
 
@@ -297,15 +355,27 @@ test("database-backed customer and nested route isolation", { skip: !hasDatabase
     "UPDATE quotes SET compliance_disclaimer = NULL, contractor_license_number = NULL WHERE id = $1",
     [quote.json.id],
   );
-  const legacyPortal = await api(null, "GET", `/quotes/${quote.json.id}/portal`);
+  const legacyPortal = await api(null, "GET", `/quote/${quote.json.portalToken}`);
   assert.equal(legacyPortal.response.status, 200);
   assert.equal(legacyPortal.json.complianceDisclaimer.includes("Primary trade classification: Builder."), true);
   assert.equal(legacyPortal.json.contractorLicenseNumber, "QBCC 7654321");
-  const upgraded = await api(null, "PATCH", `/quotes/${quote.json.id}`, {
+  const upgraded = await api(null, "PATCH", `/quote/${quote.json.portalToken}`, {
     deckBoardType: "public-upgrade-fixture",
   });
   assert.equal(upgraded.response.status, 200);
   assert.equal(upgraded.json.spec.deckBoardType, "public-upgrade-fixture");
+  assert.equal(
+    (await api(null, "PATCH", `/quote/${quote.json.portalToken}/status`, { status: "accepted" })).response.status,
+    200,
+  );
+  assert.equal(
+    (await api(null, "GET", `/quote/${"Z".repeat(43)}`)).response.status,
+    404,
+  );
+  assert.equal(
+    (await api(null, "PATCH", `/quotes/${quote.json.id}`, { deckBoardType: "treated_pine" })).response.status,
+    401,
+  );
 
   // The public update recalculates after commit. With one child quote and a
   // zero project margin, both independently calculated GST-inclusive totals
@@ -317,4 +387,20 @@ test("database-backed customer and nested route isolation", { skip: !hasDatabase
     [quote.json.id],
   );
   assert.equal(Number(totals.rows[0].quote_total), Number(totals.rows[0].project_total));
+
+  assert.equal(
+    (await api(userB, "POST", `/quotes/${quote.json.id}/portal-token`)).response.status,
+    404,
+  );
+  const regenerated = await api(userA, "POST", `/quotes/${quote.json.id}/portal-token`);
+  assert.equal(regenerated.response.status, 200);
+  assert.match(regenerated.json.portalToken, /^[A-Za-z0-9_-]{43}$/);
+  assert.notEqual(regenerated.json.portalToken, quote.json.portalToken);
+  assert.equal((await api(null, "GET", `/quote/${quote.json.portalToken}`)).response.status, 404);
+  assert.equal((await api(null, "GET", `/quote/${regenerated.json.portalToken}`)).response.status, 200);
+  assert.equal(
+    (await api(userA, "DELETE", `/quotes/${quote.json.id}/portal-token`)).response.status,
+    200,
+  );
+  assert.equal((await api(null, "GET", `/quote/${regenerated.json.portalToken}`)).response.status, 404);
 });

@@ -1,4 +1,4 @@
-import { useGetQuote, useSetQuoteStatus, useDeleteQuote, useCreateQuoteVariation, getGetQuoteQueryKey, getListQuotesQueryKey } from "@workspace/api-client-react";
+import { useGetQuote, useSetQuoteStatus, useDeleteQuote, useCreateQuoteVariation, useRegenerateQuotePortalToken, getGetQuoteQueryKey, getListQuotesQueryKey } from "@workspace/api-client-react";
 import { useParams, useLocation } from "wouter";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -24,6 +24,7 @@ export default function QuoteDetail() {
   const setStatus = useSetQuoteStatus();
   const deleteQuote = useDeleteQuote();
   const createVariation = useCreateQuoteVariation();
+  const regeneratePortalToken = useRegenerateQuotePortalToken();
   const queryClient = useQueryClient();
   const { toast } = useToast();
 
@@ -57,7 +58,11 @@ export default function QuoteDetail() {
   };
 
   const handleCopyPortalLink = async () => {
-    const portalLink = new URL(`/quote/${quoteId}`, window.location.origin).toString();
+    const token = quote.portalToken ?? (
+      await regeneratePortalToken.mutateAsync({ id: quoteId })
+    ).portalToken;
+    const basePath = import.meta.env.BASE_URL.replace(/\/$/, "");
+    const portalLink = new URL(`${basePath}/quote/${token}`, window.location.origin).toString();
     try {
       await navigator.clipboard.writeText(portalLink);
       toast({ title: "Client portal link copied" });

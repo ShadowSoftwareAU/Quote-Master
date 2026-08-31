@@ -16,6 +16,7 @@ export interface BusinessProfile {
   /** @nullable */
   licenseNumber?: string | null;
   role: BusinessRole;
+  isMasterBuilder: boolean;
   metadataSyncStatus: BusinessProfileMetadataSyncStatus;
   createdAt: Date;
   updatedAt: Date;

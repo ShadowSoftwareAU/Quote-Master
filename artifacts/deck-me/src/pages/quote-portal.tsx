@@ -4,9 +4,8 @@ import { useQueryClient } from "@tanstack/react-query";
 import {
   useGetQuotePortal,
   getGetQuotePortalQueryKey,
-  useEstimateDeck,
-  useUpdateQuote,
-  useSetQuoteStatus,
+  useUpdateQuotePortal,
+  useSetQuotePortalStatus,
 } from "@workspace/api-client-react";
 import type { QuoteEstimate, DeckSpecInput } from "@workspace/api-client-react";
 import { Check, ChevronRight, HardHat, Info, Hammer, MapPin, Ruler, FileText, CheckCircle2 } from "lucide-react";
@@ -14,21 +13,20 @@ import { useToast } from "@/hooks/use-toast";
 
 export default function QuotePortalPage() {
   const params = useParams();
-  const id = Number(params.id);
+  const token = params.token ?? "";
   const queryClient = useQueryClient();
   const { toast } = useToast();
 
-  const { data: quote, isLoading, isError } = useGetQuotePortal(id, {
-    query: { enabled: !!id, queryKey: getGetQuotePortalQueryKey(id) },
+  const { data: quote, isLoading, isError } = useGetQuotePortal(token, {
+    query: { enabled: !!token, queryKey: getGetQuotePortalQueryKey(token) },
   });
 
   const [activeSpec, setActiveSpec] = useState<DeckSpecInput | null>(null);
   const [estimate, setEstimate] = useState<QuoteEstimate | null>(null);
   const [isAccepting, setIsAccepting] = useState(false);
 
-  const estimateDeck = useEstimateDeck();
-  const updateQuote = useUpdateQuote();
-  const setQuoteStatus = useSetQuoteStatus();
+  const updateQuote = useUpdateQuotePortal();
+  const setQuoteStatus = useSetQuotePortalStatus();
 
   // Initialize state when quote loads
   const initializedForId = useRef<number | null>(null);
@@ -46,11 +44,29 @@ export default function QuotePortalPage() {
     const newSpec = { ...activeSpec, ...updates };
     setActiveSpec(newSpec);
 
-    estimateDeck.mutate(
-      { data: newSpec },
+    updateQuote.mutate(
+      {
+        token,
+        data: {
+          ...(updates.deckBoardType !== undefined
+            ? { deckBoardType: updates.deckBoardType }
+            : {}),
+          ...(updates.balustradeType !== undefined
+            ? { balustradeType: updates.balustradeType }
+            : {}),
+        },
+      },
       {
         onSuccess: (data) => {
-          setEstimate(data);
+          setEstimate({
+            spec: data.spec,
+            lines: data.lineItems,
+            materialsSubtotal: data.materialsSubtotal,
+            labourCost: data.labourCost,
+            gst: data.gst,
+            total: data.total,
+            complianceWarnings: [],
+          });
         },
         onError: () => {
           toast({
@@ -69,10 +85,10 @@ export default function QuotePortalPage() {
 
     const markAccepted = () => {
       setQuoteStatus.mutate(
-        { id: quote.id, data: { status: "accepted" } },
+        { token, data: { status: "accepted" } },
         {
           onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: getGetQuotePortalQueryKey(quote.id) });
+            queryClient.invalidateQueries({ queryKey: getGetQuotePortalQueryKey(token) });
             setIsAccepting(false);
           },
           onError: () => {
@@ -98,7 +114,7 @@ export default function QuotePortalPage() {
 
     updateQuote.mutate(
       {
-        id: quote.id,
+        token,
         data: {
           deckBoardType: activeSpec.deckBoardType,
           balustradeType: activeSpec.balustradeType,
@@ -418,7 +434,7 @@ export default function QuotePortalPage() {
                       {formatCurrency(displayTotal)}
                     </span>
                   </div>
-                  {estimateDeck.isPending && (
+                  {updateQuote.isPending && (
                     <div className="absolute right-0 top-6">
                       <div className="w-5 h-5 border-2 border-primary border-t-transparent rounded-full animate-spin"></div>
                     </div>
@@ -428,7 +444,7 @@ export default function QuotePortalPage() {
                 {!isAccepted ? (
                   <button
                     onClick={handleAccept}
-                    disabled={isAccepting || estimateDeck.isPending || updateQuote.isPending}
+                    disabled={isAccepting || updateQuote.isPending}
                     className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-bold text-lg py-4 rounded-xl shadow-[0_4px_14px_0_rgba(234,88,12,0.39)] hover:shadow-[0_6px_20px_rgba(234,88,12,0.23)] hover:-translate-y-0.5 transition-all duration-200 disabled:opacity-50 disabled:pointer-events-none flex justify-center items-center gap-2"
                   >
                     {isAccepting ? (

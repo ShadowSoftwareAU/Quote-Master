@@ -90,16 +90,14 @@ check(
   "a route reads clerkUserId from request-controlled input",
 );
 
-// Public quote behavior is deliberately narrow: portal read, estimate, the two
-// cosmetic upgrade fields, and acceptance only. Exact key checks prevent a
+// Public quote behavior is deliberately narrow: token-bound portal read, the
+// two cosmetic upgrade fields, and acceptance only. Exact key checks prevent a
 // nested/extra-field payload from smuggling a privileged update.
 check(
   "public quote allowlist",
   containsAll(auth, [
     'req.method === "GET"',
     "PUBLIC_QUOTE_PORTAL_PATH.test(path)",
-    'req.method === "POST"',
-    'path === "/quotes/estimate"',
     'req.method === "PATCH"',
     "isPublicUpgradeRequest(req) || isPublicAcceptanceRequest(req)",
     'keys.length !== 1 || keys[0] !== "status"',

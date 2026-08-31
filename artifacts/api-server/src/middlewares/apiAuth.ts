@@ -19,9 +19,10 @@ declare global {
   }
 }
 
-const PUBLIC_QUOTE_PORTAL_PATH = /^\/quotes\/\d+\/portal$/;
-const PUBLIC_QUOTE_UPDATE_PATH = /^\/quotes\/\d+$/;
-const PUBLIC_QUOTE_STATUS_PATH = /^\/quotes\/\d+\/status$/;
+const PORTAL_TOKEN_PATTERN = "[A-Za-z0-9_-]{43}";
+const PUBLIC_QUOTE_PORTAL_PATH = new RegExp(`^/quote/${PORTAL_TOKEN_PATTERN}$`);
+const PUBLIC_QUOTE_UPDATE_PATH = new RegExp(`^/quote/${PORTAL_TOKEN_PATTERN}$`);
+const PUBLIC_QUOTE_STATUS_PATH = new RegExp(`^/quote/${PORTAL_TOKEN_PATTERN}/status$`);
 const PUBLIC_UPGRADE_FIELDS = new Set(["deckBoardType", "balustradeType"]);
 
 function objectKeys(value: unknown): string[] | null {
@@ -86,7 +87,7 @@ function isPublicAcceptanceRequest(req: Request): boolean {
 
 /**
  * Customer quote pages are intentionally public. The web portal uses the
- * quote portal and estimate endpoints to display and accept a quote without
+ * token-bound quote portal endpoints to display and accept a quote without
  * requiring the customer to create an account.
  */
 function isPublicQuoteRequest(req: Request): boolean {
@@ -94,10 +95,6 @@ function isPublicQuoteRequest(req: Request): boolean {
 
   if (req.method === "GET") {
     return PUBLIC_QUOTE_PORTAL_PATH.test(path);
-  }
-
-  if (req.method === "POST") {
-    return path === "/quotes/estimate";
   }
 
   if (req.method === "PATCH") {

@@ -17,6 +17,8 @@ export interface Quote {
   /** @nullable */
   masterProjectId: number | null;
   tradeType: string;
+  /** @nullable */
+  portalToken: string | null;
   complianceDisclaimer: string;
   /** @nullable */
   contractorLicenseNumber: string | null;

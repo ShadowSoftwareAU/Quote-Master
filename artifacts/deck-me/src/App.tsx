@@ -171,7 +171,7 @@ function Router() {
     <Switch>
       <Route path="/sign-in/*?" component={SignInPage} />
       <Route path="/sign-up/*?" component={SignUpPage} />
-      <Route path="/quote/:id" component={QuotePortal} />
+      <Route path="/quote/:token" component={QuotePortal} />
       <Route component={ProtectedWorkspace} />
     </Switch>
   );

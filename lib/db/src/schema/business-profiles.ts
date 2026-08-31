@@ -1,4 +1,5 @@
 import {
+  boolean,
   index,
   integer,
   pgTable,
@@ -18,6 +19,7 @@ export const businessProfilesTable = pgTable(
     tradeType: text("trade_type").notNull(),
     licenseNumber: text("license_number"),
     role: text("role").notNull(),
+    isMasterBuilder: boolean("is_master_builder").notNull().default(false),
     metadataSyncStatus: text("metadata_sync_status").notNull().default("pending"),
     metadataSyncError: text("metadata_sync_error"),
     metadataSyncVersion: integer("metadata_sync_version").notNull().default(1),
