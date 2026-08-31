@@ -21,6 +21,22 @@ import {
 import { StripedBar, TextInputStyled } from "@/components/ui";
 import { useColors } from "@/hooks/useColors";
 
+type OnboardingDraft = {
+  businessName: string;
+  phoneNumber: string;
+  role: BusinessRole | "";
+  tradeType: string;
+  licenseNumber: string;
+};
+
+const EMPTY_DRAFT: OnboardingDraft = {
+  businessName: "",
+  phoneNumber: "",
+  role: "",
+  tradeType: "",
+  licenseNumber: "",
+};
+
 export default function OnboardingScreen() {
   const colors = useColors();
   const { userId } = useAuth();
@@ -28,25 +44,36 @@ export default function OnboardingScreen() {
   const router = useRouter();
   const queryClient = useQueryClient();
   const createProfile = useCreateOnboardingProfile();
+  const draftQueryKey = ["onboardingDraft", userId] as const;
 
-  const [businessName, setBusinessName] = useState("");
-  const [phoneNumber, setPhoneNumber] = useState("");
-  const [role, setRole] = useState<BusinessRole | "">("");
-  const [tradeType, setTradeType] = useState("");
-  const [licenseNumber, setLicenseNumber] = useState("");
+  const [draft, setDraft] = useState<OnboardingDraft>(
+    () => queryClient.getQueryData<OnboardingDraft>(draftQueryKey) ?? EMPTY_DRAFT,
+  );
   
   const [errors, setErrors] = useState<Record<string, string>>({});
 
   const busy = createProfile.isPending;
   const topPadding = Platform.OS === "web" ? Math.max(insets.top, 67) : insets.top;
 
+  function updateDraft<K extends keyof OnboardingDraft>(
+    field: K,
+    value: OnboardingDraft[K],
+  ) {
+    setDraft((current) => {
+      const next = { ...current, [field]: value };
+      queryClient.setQueryData(draftQueryKey, next);
+      return next;
+    });
+    setErrors((current) => ({ ...current, [field]: "" }));
+  }
+
   function validate() {
     const newErrors: Record<string, string> = {};
-    if (businessName.trim().length < 2) newErrors.businessName = "Business name must be at least 2 characters.";
-    if (!/^\+?[0-9 ()-]+$/.test(phoneNumber) || phoneNumber.trim().length < 8) newErrors.phoneNumber = "Enter a valid phone number.";
-    if (!role) newErrors.role = "Please select a system role.";
-    if (tradeType.trim().length < 2) newErrors.tradeType = "Trade type must be at least 2 characters.";
-    if (licenseNumber && !/^[A-Za-z0-9 ./-]+$/.test(licenseNumber)) newErrors.licenseNumber = "Invalid characters in license number.";
+    if (draft.businessName.trim().length < 2) newErrors.businessName = "Business name must be at least 2 characters.";
+    if (!/^\+?[0-9 ()-]+$/.test(draft.phoneNumber) || draft.phoneNumber.trim().length < 8) newErrors.phoneNumber = "Enter a valid phone number.";
+    if (!draft.role) newErrors.role = "Please select a system role.";
+    if (draft.tradeType.trim().length < 2) newErrors.tradeType = "Trade type must be at least 2 characters.";
+    if (draft.licenseNumber && !/^[A-Za-z0-9 ./-]+$/.test(draft.licenseNumber)) newErrors.licenseNumber = "Invalid characters in licence number.";
     
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
@@ -57,11 +84,11 @@ export default function OnboardingScreen() {
     
     createProfile.mutate({
       data: {
-        businessName: businessName.trim(),
-        phoneNumber: phoneNumber.trim(),
-        role: role as BusinessRole,
-        tradeType: tradeType.trim(),
-        licenseNumber: licenseNumber.trim() || null,
+        businessName: draft.businessName.trim(),
+        phoneNumber: draft.phoneNumber.trim(),
+        role: draft.role as BusinessRole,
+        tradeType: draft.tradeType.trim(),
+        licenseNumber: draft.licenseNumber.trim() || null,
       }
     }, {
       onSuccess: (profile) => {
@@ -69,6 +96,7 @@ export default function OnboardingScreen() {
           [...getGetProfileSettingsQueryKey(), userId],
           profile,
         );
+        queryClient.removeQueries({ queryKey: draftQueryKey, exact: true });
         router.replace("/");
       },
       onError: (err: any) => {
@@ -104,8 +132,8 @@ export default function OnboardingScreen() {
         <View style={{ gap: 6 }}>
           <Text style={{ fontFamily: "Inter_700Bold", color: colors.foreground, fontSize: 12 }}>BUSINESS NAME</Text>
           <TextInputStyled
-            value={businessName}
-            onChangeText={(text) => { setBusinessName(text); setErrors(prev => ({...prev, businessName: ""})) }}
+            value={draft.businessName}
+            onChangeText={(text) => updateDraft("businessName", text)}
             placeholder="Deck Me Pty Ltd"
           />
           {errors.businessName ? <Text style={{ color: colors.destructive, fontSize: 12, fontFamily: "Inter_500Medium" }}>{errors.businessName}</Text> : null}
@@ -114,8 +142,8 @@ export default function OnboardingScreen() {
         <View style={{ gap: 6 }}>
           <Text style={{ fontFamily: "Inter_700Bold", color: colors.foreground, fontSize: 12 }}>PHONE NUMBER</Text>
           <TextInputStyled
-            value={phoneNumber}
-            onChangeText={(text) => { setPhoneNumber(text); setErrors(prev => ({...prev, phoneNumber: ""})) }}
+            value={draft.phoneNumber}
+            onChangeText={(text) => updateDraft("phoneNumber", text)}
             keyboardType="phone-pad"
             placeholder="0400 000 000"
           />
@@ -128,19 +156,19 @@ export default function OnboardingScreen() {
             {["Owner", "Employee", "Subcontractor"].map((r) => (
               <Pressable
                 key={r}
-                onPress={() => { setRole(r as BusinessRole); setErrors(prev => ({...prev, role: ""})) }}
+                onPress={() => updateDraft("role", r as BusinessRole)}
                 style={{
                   flex: 1,
                   minWidth: 100,
-                  backgroundColor: role === r ? colors.primary : colors.card,
-                  borderColor: role === r ? colors.primary : colors.border,
+                  backgroundColor: draft.role === r ? colors.primary : colors.card,
+                  borderColor: draft.role === r ? colors.primary : colors.border,
                   borderWidth: 1,
                   borderRadius: colors.radius,
                   paddingVertical: 12,
                   alignItems: "center"
                 }}
               >
-                <Text style={{ fontFamily: "Inter_700Bold", fontSize: 12, color: role === r ? "#fff" : colors.foreground }}>
+                <Text style={{ fontFamily: "Inter_700Bold", fontSize: 12, color: draft.role === r ? "#fff" : colors.foreground }}>
                   {r.toUpperCase()}
                 </Text>
               </Pressable>
@@ -152,8 +180,8 @@ export default function OnboardingScreen() {
         <View style={{ gap: 6 }}>
           <Text style={{ fontFamily: "Inter_700Bold", color: colors.foreground, fontSize: 12 }}>PRIMARY TRADE TYPE</Text>
           <TextInputStyled
-            value={tradeType}
-            onChangeText={(text) => { setTradeType(text); setErrors(prev => ({...prev, tradeType: ""})) }}
+            value={draft.tradeType}
+            onChangeText={(text) => updateDraft("tradeType", text)}
             placeholder="e.g. Carpenter, Landscaper"
           />
           {errors.tradeType ? <Text style={{ color: colors.destructive, fontSize: 12, fontFamily: "Inter_500Medium" }}>{errors.tradeType}</Text> : null}
@@ -162,8 +190,8 @@ export default function OnboardingScreen() {
         <View style={{ gap: 6 }}>
           <Text style={{ fontFamily: "Inter_700Bold", color: colors.foreground, fontSize: 12 }}>BUILDER / CONTRACTOR LICENSE NUMBER</Text>
           <TextInputStyled
-            value={licenseNumber}
-            onChangeText={(text) => { setLicenseNumber(text); setErrors(prev => ({...prev, licenseNumber: ""})) }}
+            value={draft.licenseNumber}
+            onChangeText={(text) => updateDraft("licenseNumber", text)}
             placeholder="Optional"
           />
           {errors.licenseNumber ? <Text style={{ color: colors.destructive, fontSize: 12, fontFamily: "Inter_500Medium" }}>{errors.licenseNumber}</Text> : null}

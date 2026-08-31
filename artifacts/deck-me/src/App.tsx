@@ -74,8 +74,8 @@ function ProtectedWorkspace() {
     query: {
       enabled: isLoaded && isSignedIn,
       queryKey: assignmentAccessQueryKey,
-      refetchOnWindowFocus: true,
-      refetchInterval: 10_000,
+      refetchOnWindowFocus: location !== "/onboarding",
+      refetchInterval: location === "/onboarding" ? false : 10_000,
     },
   });
 
@@ -84,8 +84,8 @@ function ProtectedWorkspace() {
       enabled: isLoaded && isSignedIn,
       retry: false,
       queryKey: profileQueryKey,
-      refetchOnWindowFocus: true,
-      refetchInterval: 10_000,
+      refetchOnWindowFocus: location !== "/onboarding",
+      refetchInterval: location === "/onboarding" ? false : 10_000,
     }
   });
 

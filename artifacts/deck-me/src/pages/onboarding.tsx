@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
@@ -37,17 +38,27 @@ export default function Onboarding() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const createProfile = useCreateOnboardingProfile();
+  const draftQueryKey = ["onboardingDraft", userId] as const;
+  const cachedDraft =
+    queryClient.getQueryData<Partial<OnboardingValues>>(draftQueryKey);
 
   const form = useForm<OnboardingValues>({
     resolver: zodResolver(onboardingSchema),
     defaultValues: {
-      businessName: "",
-      phoneNumber: "",
-      role: undefined,
-      tradeType: "",
-      licenseNumber: "",
+      businessName: cachedDraft?.businessName ?? "",
+      phoneNumber: cachedDraft?.phoneNumber ?? "",
+      role: cachedDraft?.role,
+      tradeType: cachedDraft?.tradeType ?? "",
+      licenseNumber: cachedDraft?.licenseNumber ?? "",
     },
   });
+
+  useEffect(() => {
+    const subscription = form.watch((values) => {
+      queryClient.setQueryData(["onboardingDraft", userId], values);
+    });
+    return () => subscription.unsubscribe();
+  }, [form, queryClient, userId]);
 
   function onSubmit(data: OnboardingValues) {
     createProfile.mutate(
@@ -66,6 +77,7 @@ export default function Onboarding() {
             [...getGetProfileSettingsQueryKey(), userId],
             profile,
           );
+          queryClient.removeQueries({ queryKey: draftQueryKey, exact: true });
           setLocation("/");
         },
         onError: (err: any) => {

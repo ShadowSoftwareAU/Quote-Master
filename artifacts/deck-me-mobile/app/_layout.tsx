@@ -169,7 +169,7 @@ function RootLayoutNav() {
     query: {
       enabled: isLoaded && isSignedIn,
       queryKey: [...getGetAssignmentAccessQueryKey(), userId],
-      refetchInterval: 10_000,
+      refetchInterval: isOnboardingRoute ? false : 10_000,
     },
   });
 
@@ -178,7 +178,7 @@ function RootLayoutNav() {
       enabled: isLoaded && isSignedIn,
       retry: false,
       queryKey: [...getGetProfileSettingsQueryKey(), userId],
-      refetchInterval: 10_000,
+      refetchInterval: isOnboardingRoute ? false : 10_000,
     }
   });
 
