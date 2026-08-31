@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { ReactNode } from "react";
 import { Show, UserButton, useAuth } from "@clerk/react";
+import { useProfileAccess } from "@/lib/access";
 
 const navItems = [
   { href: "/", label: "Dashboard", icon: Hammer },
@@ -24,6 +25,7 @@ const navItems = [
 export function Layout({ children }: { children: ReactNode }) {
   const [location] = useLocation();
   const { isSignedIn } = useAuth();
+  const { canManageTeam, canViewFinancials, canViewGeneralWorkspace } = useProfileAccess();
   const { isSuccess: canAccessProjects } = useListMasterProjects({
     query: {
       queryKey: getListMasterProjectsQueryKey(),
@@ -31,7 +33,15 @@ export function Layout({ children }: { children: ReactNode }) {
       enabled: isSignedIn === true,
     },
   });
-  const visibleNavItems = canAccessProjects ? [...navItems, { href: "/projects", label: "Projects", icon: FolderKanban }] : navItems;
+  const roleFilteredItems = navItems.filter((item) => {
+    if (item.href === "/finance") return canViewFinancials;
+    if (item.href === "/team" || item.href === "/planner") return canManageTeam;
+    if (["/customers", "/materials", "/portfolio", "/referrals"].includes(item.href)) return canViewGeneralWorkspace;
+    return true;
+  });
+  const visibleNavItems = canAccessProjects && canManageTeam
+    ? [...roleFilteredItems, { href: "/projects", label: "Projects", icon: FolderKanban }]
+    : roleFilteredItems;
 
   return (
     <div className="flex min-h-[100dvh] w-full bg-background flex-col md:flex-row">

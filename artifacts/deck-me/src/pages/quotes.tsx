@@ -1,12 +1,22 @@
-import { useListQuotes } from "@workspace/api-client-react";
+import { getListQuotesQueryKey, useListQuotes } from "@workspace/api-client-react";
 import { Link } from "wouter";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { formatCurrency } from "@/lib/format";
 import { FileText, Plus, Search } from "lucide-react";
+import { useUser } from "@clerk/react";
+import { useProfileAccess, visibleToProfile } from "@/lib/access";
 
 export default function Quotes() {
-  const { data: quotes, isLoading } = useListQuotes();
+  const { user } = useUser();
+  const access = useProfileAccess();
+  const { data: quotes, isLoading } = useListQuotes({
+    query: { enabled: !access.isSubcontractor, queryKey: getListQuotesQueryKey() },
+  });
+  const visibleQuotes = visibleToProfile(quotes, {
+    ...access,
+    identity: { userId: user?.id, email: user?.primaryEmailAddress?.emailAddress },
+  });
 
   return (
     <div className="max-w-5xl mx-auto space-y-6">
@@ -15,29 +25,29 @@ export default function Quotes() {
           <h1 className="text-3xl font-black uppercase tracking-tight">Quotes</h1>
           <p className="text-muted-foreground font-medium">All your drafted and sent jobs.</p>
         </div>
-        <Link href="/calculator">
+        {!access.isSubcontractor && <Link href="/calculator">
           <Button className="font-bold uppercase">
             <Plus className="w-4 h-4 mr-2" /> New Quote
           </Button>
-        </Link>
+        </Link>}
       </div>
 
       {isLoading ? (
         <div className="space-y-3">
           {[1,2,3].map(i => <div key={i} className="h-24 bg-muted animate-pulse rounded-md" />)}
         </div>
-      ) : quotes?.length === 0 ? (
+      ) : visibleQuotes.length === 0 ? (
         <div className="text-center py-20 border-2 border-dashed rounded-lg">
           <FileText className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
           <h2 className="text-xl font-bold uppercase mb-2">No Quotes Yet</h2>
           <p className="text-muted-foreground mb-6">Quote up a job to get started.</p>
-          <Link href="/calculator">
+          {!access.isSubcontractor && <Link href="/calculator">
             <Button className="font-bold uppercase"><Plus className="w-4 h-4 mr-2"/> Start Estimating</Button>
-          </Link>
+          </Link>}
         </div>
       ) : (
         <div className="grid gap-3">
-          {quotes?.map((quote) => (
+          {visibleQuotes.map((quote) => (
             <Link key={quote.id} href={`/quotes/${quote.id}`}>
               <Card className="hover:border-primary/50 transition-colors cursor-pointer group shadow-sm border-2">
                 <CardContent className="p-4 md:p-6 flex flex-col md:flex-row md:items-center justify-between gap-4">

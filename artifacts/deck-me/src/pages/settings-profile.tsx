@@ -144,7 +144,7 @@ export default function ProfileSettings() {
         </div>
         <div>
           <h1 className="text-3xl font-black uppercase tracking-tight text-foreground">Profile Settings</h1>
-          <p className="text-muted-foreground font-medium">Manage your trade details and system role.</p>
+          <p className="text-muted-foreground font-medium">Manage your trade details and view your system role.</p>
         </div>
       </div>
 
@@ -172,7 +172,7 @@ export default function ProfileSettings() {
       <Card className="border-2 shadow-sm">
         <CardHeader className="bg-muted/30 border-b pb-6">
           <CardTitle className="font-display font-black uppercase text-xl">Trade Settings</CardTitle>
-          <CardDescription>Update your system role and trade credentials.</CardDescription>
+          <CardDescription>Your role is managed by an Owner. You can update your trade credentials.</CardDescription>
         </CardHeader>
         <CardContent className="pt-6">
           <Form {...form}>
@@ -183,7 +183,7 @@ export default function ProfileSettings() {
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel className="text-xs font-bold uppercase tracking-wider text-muted-foreground">System Role</FormLabel>
-                    <Select onValueChange={field.onChange} value={field.value}>
+                      <Select onValueChange={field.onChange} value={field.value} disabled>
                       <FormControl>
                         <SelectTrigger className="font-medium bg-card h-12">
                           <SelectValue placeholder="Select role..." />

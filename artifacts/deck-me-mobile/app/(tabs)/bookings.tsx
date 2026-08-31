@@ -1,5 +1,5 @@
 import { Feather } from "@expo/vector-icons";
-import { useAuth } from "@clerk/expo";
+import { useAuth, useUser } from "@clerk/expo";
 import { useQueryClient } from "@tanstack/react-query";
 import {
   useListBookings,
@@ -10,6 +10,7 @@ import {
   useClockOn,
   useClockOff,
   getListBookingsQueryKey,
+  getListTeamMembersQueryKey,
   useRequestStorageUploadUrl,
 } from "@workspace/api-client-react";
 import * as ImagePicker from "expo-image-picker";
@@ -32,6 +33,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { Button, Card, EmptyState, StatusBadge, StripedBar } from "@/components/ui";
 import { useColors } from "@/hooks/useColors";
+import { useProfileAccess, visibleToProfile } from "@/lib/access";
 
 async function uploadToPresigned(uploadURL: string, uri: string, contentType: string): Promise<void> {
   const res = await fetch(uploadURL, {
@@ -142,8 +144,18 @@ export default function BookingsScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const qc = useQueryClient();
-  const { data, isLoading, refetch, isRefetching } = useListBookings();
-  const { data: teamMembers } = useListTeamMembers();
+  const { user } = useUser();
+  const access = useProfileAccess();
+  const { data, isLoading, refetch, isRefetching } = useListBookings({
+    query: { enabled: !access.isSubcontractor, queryKey: getListBookingsQueryKey() },
+  });
+  const { data: teamMembers } = useListTeamMembers({
+    query: { enabled: access.isOwner, queryKey: getListTeamMembersQueryKey() },
+  });
+  const visibleBookings = visibleToProfile(data, {
+    ...access,
+    identity: { userId: user?.id, email: user?.primaryEmailAddress?.emailAddress },
+  });
   const addPhoto = useAddBookingPhoto();
   const removePhoto = useRemoveBookingPhoto();
   const clockOn = useClockOn();
@@ -157,9 +169,9 @@ export default function BookingsScreen() {
 
   const topPad = Platform.OS === "web" ? Math.max(insets.top, 67) : insets.top;
 
-  const selectedBooking = data?.find(b => b.id === selectedBookingId) as AnyBooking | undefined;
+  const selectedBooking = visibleBookings.find(b => b.id === selectedBookingId) as AnyBooking | undefined;
   const photos: string[] = (selectedBooking?.photos as string[]) ?? [];
-  const clockBooking = data?.find(b => b.id === clockBookingId) as AnyBooking | undefined;
+  const clockBooking = visibleBookings.find(b => b.id === clockBookingId) as AnyBooking | undefined;
 
   async function pickAndUpload(source: "camera" | "library") {
     if (!selectedBookingId) return;
@@ -270,7 +282,7 @@ export default function BookingsScreen() {
 
       {isLoading ? (
         <ActivityIndicator color={colors.primary} style={{ marginTop: 40 }} />
-      ) : !data || data.length === 0 ? (
+      ) : visibleBookings.length === 0 ? (
         <EmptyState
           icon="calendar"
           title="No jobs booked"
@@ -278,7 +290,7 @@ export default function BookingsScreen() {
         />
       ) : (
         <FlatList
-          data={data}
+          data={visibleBookings}
           keyExtractor={(b) => String(b.id)}
           refreshing={isRefetching}
           onRefresh={refetch}

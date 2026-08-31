@@ -1,4 +1,5 @@
-import { useListQuotes } from "@workspace/api-client-react";
+import { getListQuotesQueryKey, useListQuotes } from "@workspace/api-client-react";
+import { useUser } from "@clerk/expo";
 import { router } from "expo-router";
 import React from "react";
 import {
@@ -19,11 +20,20 @@ import {
   formatAUD,
 } from "@/components/ui";
 import { useColors } from "@/hooks/useColors";
+import { useProfileAccess, visibleToProfile } from "@/lib/access";
 
 export default function QuotesScreen() {
   const colors = useColors();
+  const { user } = useUser();
+  const access = useProfileAccess();
   const insets = useSafeAreaInsets();
-  const { data, isLoading, refetch, isRefetching } = useListQuotes();
+  const { data, isLoading, refetch, isRefetching } = useListQuotes({
+    query: { enabled: !access.isSubcontractor, queryKey: getListQuotesQueryKey() },
+  });
+  const visibleQuotes = visibleToProfile(data, {
+    ...access,
+    identity: { userId: user?.id, email: user?.primaryEmailAddress?.emailAddress },
+  });
   const topPad =
     Platform.OS === "web" ? Math.max(insets.top, 67) : insets.top;
 
@@ -64,16 +74,16 @@ export default function QuotesScreen() {
 
       {isLoading ? (
         <ActivityIndicator color={colors.primary} style={{ marginTop: 40 }} />
-      ) : !data || data.length === 0 ? (
+      ) : visibleQuotes.length === 0 ? (
         <EmptyState
           icon="file-text"
           title="No quotes yet"
           body="Open the Calc tab to size a job and save it as a quote."
-          action={{ label: "New quote", onPress: () => router.push("/calculator") }}
+          action={access.isSubcontractor ? undefined : { label: "New quote", onPress: () => router.push("/calculator") }}
         />
       ) : (
         <FlatList
-          data={data}
+           data={visibleQuotes}
           keyExtractor={(item) => String(item.id)}
           refreshing={isRefetching}
           onRefresh={refetch}

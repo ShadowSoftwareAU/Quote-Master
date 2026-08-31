@@ -8,7 +8,7 @@ import {
   useGetQuote,
   useSetQuoteStatus,
 } from "@workspace/api-client-react";
-import { router, useLocalSearchParams } from "expo-router";
+import { Redirect, router, useLocalSearchParams } from "expo-router";
 import React from "react";
 import {
   ActivityIndicator,
@@ -26,10 +26,17 @@ import {
   formatAUD,
 } from "@/components/ui";
 import { useColors } from "@/hooks/useColors";
+import { useProfileAccess } from "@/lib/access";
 
 const STATUSES = ["draft", "sent", "accepted", "rejected"];
 
-export default function QuoteDetail() {
+export default function QuoteDetailRoute() {
+  const { isSubcontractor } = useProfileAccess();
+  if (isSubcontractor) return <Redirect href="/quotes" />;
+  return <QuoteDetail />;
+}
+
+function QuoteDetail() {
   const colors = useColors();
   const params = useLocalSearchParams<{ id: string }>();
   const id = Number(params.id);

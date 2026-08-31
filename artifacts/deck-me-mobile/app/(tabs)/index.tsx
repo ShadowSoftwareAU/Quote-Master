@@ -12,6 +12,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { StripedBar } from "@/components/ui";
 import { useColors } from "@/hooks/useColors";
+import { useProfileAccess } from "@/lib/access";
 
 // ─── Types ────────────────────────────────────────────────────────────────
 
@@ -180,6 +181,7 @@ function PrivacyTile({
 
 export default function HomeScreen() {
   const colors = useColors();
+  const { isSubcontractor } = useProfileAccess();
   const insets = useSafeAreaInsets();
   const topPad = Platform.OS === "web" ? Math.max(insets.top, 67) : insets.top;
 
@@ -191,6 +193,12 @@ export default function HomeScreen() {
   const handleTile = useCallback((route: string) => {
     router.push(route as any);
   }, []);
+
+  useEffect(() => {
+    if (isSubcontractor) router.replace("/quotes");
+  }, [isSubcontractor, router]);
+
+  if (isSubcontractor) return null;
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.background }}>

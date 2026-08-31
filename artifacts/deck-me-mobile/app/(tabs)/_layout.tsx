@@ -5,10 +5,12 @@ import React from "react";
 import { Platform, StyleSheet, View } from "react-native";
 
 import { useColors } from "@/hooks/useColors";
+import { useProfileAccess } from "@/lib/access";
 
 export default function TabLayout() {
   const { isSignedIn } = useAuth();
   const colors = useColors();
+  const { isSubcontractor } = useProfileAccess();
   const isWeb = Platform.OS === "web";
 
   if (!isSignedIn) {
@@ -56,6 +58,7 @@ export default function TabLayout() {
       <Tabs.Screen
         name="calculator"
         options={{
+          href: isSubcontractor ? null : "/calculator",
           title: "CALC",
           tabBarIcon: ({ color }) => (
             <Feather name="grid" size={22} color={color} />
@@ -87,6 +90,7 @@ export default function TabLayout() {
       <Tabs.Screen
         name="customers"
         options={{
+          href: isSubcontractor ? null : "/customers",
           title: "CLIENTS",
           tabBarIcon: ({ color }) => (
             <Feather name="users" size={22} color={color} />

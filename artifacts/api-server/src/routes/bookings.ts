@@ -18,8 +18,10 @@ import {
   RemoveBookingPhotoParams,
 } from "@workspace/api-zod";
 import { isPrivateObjectPathOwnedByUser } from "../lib/objectStorage";
+import { requireBusinessRole } from "../middlewares/businessRoleAuth";
 
 const router: IRouter = Router();
+const requireBookingManager = requireBusinessRole("Owner", "Employee");
 
 function toJson(row: typeof bookingsTable.$inferSelect & { customerName: string | null }) {
   return {
@@ -66,7 +68,7 @@ router.get("/bookings", async (req, res): Promise<void> => {
   res.json(rows.map((r) => toJson({ ...r.b, customerName: r.customerName })));
 });
 
-router.post("/bookings", async (req, res): Promise<void> => {
+router.post("/bookings", requireBookingManager, async (req, res): Promise<void> => {
   const userId = getAuth(req).userId;
   if (!userId) { res.status(401).json({ error: "Unauthorized" }); return; }
   const parsed = CreateBookingBody.safeParse(req.body);
@@ -107,7 +109,7 @@ router.post("/bookings", async (req, res): Promise<void> => {
   res.status(201).json(json);
 });
 
-router.patch("/bookings/:id", async (req, res): Promise<void> => {
+router.patch("/bookings/:id", requireBookingManager, async (req, res): Promise<void> => {
   const userId = getAuth(req).userId;
   if (!userId) { res.status(401).json({ error: "Unauthorized" }); return; }
   const params = UpdateBookingParams.safeParse(req.params);
@@ -155,7 +157,7 @@ router.patch("/bookings/:id", async (req, res): Promise<void> => {
   res.json(json);
 });
 
-router.post("/bookings/:id/photos", async (req, res): Promise<void> => {
+router.post("/bookings/:id/photos", requireBookingManager, async (req, res): Promise<void> => {
   const userId = getAuth(req).userId;
   if (!userId) { res.status(401).json({ error: "Unauthorized" }); return; }
   const params = AddBookingPhotoParams.safeParse(req.params);
@@ -193,7 +195,7 @@ router.post("/bookings/:id/photos", async (req, res): Promise<void> => {
   res.json(json);
 });
 
-router.delete("/bookings/:id/photos", async (req, res): Promise<void> => {
+router.delete("/bookings/:id/photos", requireBookingManager, async (req, res): Promise<void> => {
   const userId = getAuth(req).userId;
   if (!userId) { res.status(401).json({ error: "Unauthorized" }); return; }
   const params = RemoveBookingPhotoParams.safeParse(req.params);
@@ -231,7 +233,7 @@ router.delete("/bookings/:id/photos", async (req, res): Promise<void> => {
   res.json(json);
 });
 
-router.delete("/bookings/:id", async (req, res): Promise<void> => {
+router.delete("/bookings/:id", requireBookingManager, async (req, res): Promise<void> => {
   const userId = getAuth(req).userId;
   if (!userId) { res.status(401).json({ error: "Unauthorized" }); return; }
   const params = DeleteBookingParams.safeParse(req.params);

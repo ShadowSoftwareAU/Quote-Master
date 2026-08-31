@@ -36,6 +36,7 @@ import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { API_BASE_URL } from "@/constants/api";
 import { Button, LabeledInput } from "@/components/ui";
 import { useColors } from "@/hooks/useColors";
+import { ProfileAccessProvider } from "@/lib/access";
 
 SplashScreen.preventAutoHideAsync();
 
@@ -138,6 +139,7 @@ function RootStack() {
 
 function RootLayoutNav() {
   const { isLoaded, isSignedIn, userId } = useAuth();
+  const { user } = useUser();
   const router = useRouter();
   const segments = useSegments();
   const colors = useColors();
@@ -188,24 +190,38 @@ function RootLayoutNav() {
     );
   }
 
-  if (!redirectTarget) return <RootStack />;
+  if (!redirectTarget) {
+    return (
+      <ProfileAccessProvider
+        profile={profile ?? null}
+        identity={{ userId, email: user?.primaryEmailAddress?.emailAddress }}
+      >
+        <RootStack />
+      </ProfileAccessProvider>
+    );
+  }
 
   return (
-    <View style={{ flex: 1, backgroundColor: colors.background }}>
-      <RootStack />
-      <View
-        accessibilityLabel="Loading"
-        style={{
-          ...StyleSheet.absoluteFillObject,
-          alignItems: "center",
-          backgroundColor: colors.background,
-          justifyContent: "center",
-          zIndex: 10,
-        }}
-      >
-        <ActivityIndicator size="large" color={colors.primary} />
+    <ProfileAccessProvider
+      profile={profile ?? null}
+      identity={{ userId, email: user?.primaryEmailAddress?.emailAddress }}
+    >
+      <View style={{ flex: 1, backgroundColor: colors.background }}>
+        <RootStack />
+        <View
+          accessibilityLabel="Loading"
+          style={{
+            ...StyleSheet.absoluteFillObject,
+            alignItems: "center",
+            backgroundColor: colors.background,
+            justifyContent: "center",
+            zIndex: 10,
+          }}
+        >
+          <ActivityIndicator size="large" color={colors.primary} />
+        </View>
       </View>
-    </View>
+    </ProfileAccessProvider>
   );
 }
 

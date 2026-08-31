@@ -20,6 +20,7 @@ import {
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { Redirect } from "expo-router";
 
 import {
   Button,
@@ -30,8 +31,15 @@ import {
   TextInputStyled,
 } from "@/components/ui";
 import { useColors } from "@/hooks/useColors";
+import { useProfileAccess } from "@/lib/access";
 
-export default function CustomersScreen() {
+export default function CustomersRoute() {
+  const { isSubcontractor } = useProfileAccess();
+  if (isSubcontractor) return <Redirect href="/quotes" />;
+  return <CustomersScreen />;
+}
+
+function CustomersScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const qc = useQueryClient();

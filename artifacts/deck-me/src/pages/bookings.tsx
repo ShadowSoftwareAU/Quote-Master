@@ -6,6 +6,7 @@ import {
   useAddBookingPhoto,
   useRemoveBookingPhoto,
   getListBookingsQueryKey,
+  getListCustomersQueryKey,
   useListCustomers,
   customFetch,
 } from "@workspace/api-client-react";
@@ -23,10 +24,22 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import type { Booking } from "@workspace/api-client-react";
 import { ObjectUploader } from "@workspace/object-storage-web";
+import { useUser } from "@clerk/react";
+import { useProfileAccess, visibleToProfile } from "@/lib/access";
 
 export default function Bookings() {
-  const { data: bookings, isLoading } = useListBookings();
-  const { data: customers } = useListCustomers();
+  const { user } = useUser();
+  const access = useProfileAccess();
+  const { data: bookings, isLoading } = useListBookings({
+    query: { enabled: !access.isSubcontractor, queryKey: getListBookingsQueryKey() },
+  });
+  const visibleBookings = visibleToProfile(bookings, {
+    ...access,
+    identity: { userId: user?.id, email: user?.primaryEmailAddress?.emailAddress },
+  });
+  const { data: customers } = useListCustomers({
+    query: { enabled: !access.isSubcontractor, queryKey: getListCustomersQueryKey() },
+  });
   const createBooking = useCreateBooking();
   const updateBooking = useUpdateBooking();
   const deleteBooking = useDeleteBooking();
@@ -124,8 +137,24 @@ export default function Bookings() {
     });
   };
 
-  const photosBooking = bookings?.find(b => b.id === photosBookingId);
+  const photosBooking = visibleBookings.find(b => b.id === photosBookingId);
   const photos: string[] = (photosBooking as any)?.photos ?? [];
+
+  if (access.isSubcontractor) {
+    return (
+      <div className="max-w-5xl mx-auto space-y-6">
+        <div>
+          <h1 className="text-3xl font-black uppercase tracking-tight">Bookings</h1>
+          <p className="text-muted-foreground font-medium">Jobs assigned to you.</p>
+        </div>
+        <div className="text-center py-20 border-2 border-dashed rounded-lg">
+          <CalIcon className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
+          <h2 className="text-xl font-bold uppercase mb-2">No assigned jobs</h2>
+          <p className="text-muted-foreground">An Owner will assign jobs from Team Management.</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-5xl mx-auto space-y-6">
@@ -195,14 +224,14 @@ export default function Bookings() {
       <div className="space-y-4">
         {isLoading ? (
           [1, 2, 3].map(i => <div key={i} className="h-24 bg-muted animate-pulse rounded-lg" />)
-        ) : bookings?.length === 0 ? (
+        ) : visibleBookings.length === 0 ? (
           <div className="text-center py-20 border-2 border-dashed rounded-lg">
             <CalIcon className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
             <h2 className="text-xl font-bold uppercase mb-2">No Jobs Scheduled</h2>
             <Button onClick={handleOpenCreate} className="font-bold uppercase"><Plus className="w-4 h-4 mr-2" /> Book a Job</Button>
           </div>
         ) : (
-          bookings?.map(b => {
+          visibleBookings.map(b => {
             const bPhotos: string[] = (b as any).photos ?? [];
             return (
               <Card key={b.id} className="border-2 shadow-sm overflow-hidden group">

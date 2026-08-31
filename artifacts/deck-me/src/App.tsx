@@ -26,6 +26,7 @@ import Projects from "@/pages/projects";
 import Onboarding from "@/pages/onboarding";
 import ProfileSettings from "@/pages/settings-profile";
 import { useGetProfileSettings, getGetProfileSettingsQueryKey } from "@workspace/api-client-react";
+import { ProfileAccessProvider, useProfileAccess } from "@/lib/access";
 
 const queryClient = new QueryClient();
 const basePath = import.meta.env.BASE_URL.replace(/\/$/, "");
@@ -143,22 +144,40 @@ function ProtectedWorkspace() {
   }
 
   return (
+    <ProfileAccessProvider profile={profile ?? null}>
+      <WorkspaceRoutes />
+    </ProfileAccessProvider>
+  );
+}
+
+function RestrictedPage({ title }: { title: string }) {
+  return (
+    <div className="mx-auto flex min-h-[50vh] max-w-lg flex-col items-center justify-center gap-3 text-center">
+      <h1 className="text-2xl font-black uppercase">{title} unavailable</h1>
+      <p className="text-muted-foreground">Your current business role does not include access to this area.</p>
+    </div>
+  );
+}
+
+function WorkspaceRoutes() {
+  const { canManageTeam, canViewFinancials, canViewDashboard, canViewGeneralWorkspace, isSubcontractor } = useProfileAccess();
+  return (
     <Layout>
       <Switch>
-        <Route path="/" component={Dashboard} />
-        <Route path="/calculator" component={Calculator} />
+        <Route path="/" component={canViewDashboard ? Dashboard : () => <RestrictedPage title="Dashboard" />} />
+        <Route path="/calculator" component={canViewGeneralWorkspace ? Calculator : () => <RestrictedPage title="Calculator" />} />
         <Route path="/quotes" component={Quotes} />
-        <Route path="/quotes/:id" component={QuoteDetail} />
-        <Route path="/customers" component={Customers} />
-        <Route path="/materials" component={Materials} />
+        <Route path="/quotes/:id" component={isSubcontractor ? () => <RestrictedPage title="Quote" /> : QuoteDetail} />
+        <Route path="/customers" component={canViewGeneralWorkspace ? Customers : () => <RestrictedPage title="Customers" />} />
+        <Route path="/materials" component={canViewGeneralWorkspace ? Materials : () => <RestrictedPage title="Materials" />} />
         <Route path="/bookings" component={Bookings} />
-        <Route path="/team" component={TeamPage} />
-        <Route path="/planner" component={PlannerPage} />
-        <Route path="/portfolio" component={PortfolioPage} />
-        <Route path="/referrals" component={ReferralsPage} />
-        <Route path="/finance" component={FinancePage} />
-        <Route path="/projects" component={Projects} />
-        <Route path="/projects/:id" component={Projects} />
+        <Route path="/team" component={canManageTeam ? TeamPage : () => <RestrictedPage title="Team management" />} />
+        <Route path="/planner" component={canManageTeam ? PlannerPage : () => <RestrictedPage title="Planner" />} />
+        <Route path="/portfolio" component={canViewGeneralWorkspace ? PortfolioPage : () => <RestrictedPage title="Gallery" />} />
+        <Route path="/referrals" component={canViewGeneralWorkspace ? ReferralsPage : () => <RestrictedPage title="Referrals" />} />
+        <Route path="/finance" component={canViewFinancials ? FinancePage : () => <RestrictedPage title="Financials" />} />
+        <Route path="/projects" component={canManageTeam ? Projects : () => <RestrictedPage title="Projects" />} />
+        <Route path="/projects/:id" component={canManageTeam ? Projects : () => <RestrictedPage title="Projects" />} />
         <Route path="/settings/profile" component={ProfileSettings} />
         <Route component={NotFound} />
       </Switch>

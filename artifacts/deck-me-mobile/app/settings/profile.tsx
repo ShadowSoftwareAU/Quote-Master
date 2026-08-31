@@ -113,7 +113,7 @@ export default function ProfileSettingsScreen() {
     );
   }
 
-  const isDirty = role !== profile?.role || tradeType !== profile?.tradeType || licenseNumber !== (profile?.licenseNumber || "");
+  const isDirty = tradeType !== profile?.tradeType || licenseNumber !== (profile?.licenseNumber || "");
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.background }}>
@@ -140,7 +140,7 @@ export default function ProfileSettingsScreen() {
               {["Owner", "Employee", "Subcontractor"].map((r) => (
                 <Pressable
                   key={r}
-                  onPress={() => { setRole(r as BusinessRole); setErrors(prev => ({...prev, role: ""})) }}
+                  disabled
                   style={{
                     flex: 1,
                     minWidth: 100,
@@ -150,6 +150,7 @@ export default function ProfileSettingsScreen() {
                     borderRadius: colors.radius,
                     paddingVertical: 12,
                     alignItems: "center"
+                    , opacity: role === r ? 1 : 0.55
                   }}
                 >
                   <Text style={{ fontFamily: "Inter_700Bold", fontSize: 12, color: role === r ? "#fff" : colors.foreground }}>
@@ -159,6 +160,9 @@ export default function ProfileSettingsScreen() {
               ))}
             </View>
             {errors.role ? <Text style={{ color: colors.destructive, fontSize: 12, fontFamily: "Inter_500Medium" }}>{errors.role}</Text> : null}
+            <Text style={{ color: colors.mutedForeground, fontSize: 11, fontFamily: "Inter_500Medium" }}>
+              An Owner manages role changes from Team Management.
+            </Text>
           </View>
 
           <View style={{ gap: 6 }}>

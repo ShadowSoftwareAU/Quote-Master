@@ -4,3 +4,4 @@
 - [Clerk profile metadata consistency](clerk-profile-metadata-consistency.md) — sync business roles through an atomic versioned outbox, preserving access roles and retrying failures.
 - [Profile-gated navigation](profile-gated-navigation.md) — key profile state by Clerk user and keep Expo's root navigator mounted while guarded redirects settle.
 - [Quote compliance snapshots](quote-compliance-snapshots.md) — snapshot profile compliance on new quotes, while null legacy fields deliberately fall back to the current profile.
+- [Assignment identity](assignment-identity.md) — fail closed until authenticated users have an explicit link to team-member assignments.

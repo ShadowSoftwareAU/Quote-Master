@@ -5,7 +5,7 @@ import {
   useCreateQuote,
   useListCustomers,
 } from "@workspace/api-client-react";
-import { router, useLocalSearchParams } from "expo-router";
+import { Redirect, router, useLocalSearchParams } from "expo-router";
 import React, { useMemo, useState } from "react";
 import {
   Alert,
@@ -22,8 +22,15 @@ import {
   TextInputStyled,
 } from "@/components/ui";
 import { useColors } from "@/hooks/useColors";
+import { useProfileAccess } from "@/lib/access";
 
-export default function NewQuoteScreen() {
+export default function NewQuoteRoute() {
+  const { isSubcontractor } = useProfileAccess();
+  if (isSubcontractor) return <Redirect href="/quotes" />;
+  return <NewQuoteScreen />;
+}
+
+function NewQuoteScreen() {
   const colors = useColors();
   const params = useLocalSearchParams<{
     spec?: string;

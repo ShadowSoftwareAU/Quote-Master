@@ -5,7 +5,7 @@ import {
   type QuoteEstimate,
 } from "@workspace/api-client-react";
 import { Feather } from "@expo/vector-icons";
-import { router } from "expo-router";
+import { Redirect, router } from "expo-router";
 import React, { useEffect, useMemo, useState } from "react";
 import {
   Platform,
@@ -26,6 +26,7 @@ import {
   formatAUD,
 } from "@/components/ui";
 import { useColors } from "@/hooks/useColors";
+import { useProfileAccess } from "@/lib/access";
 
 // ─── Types ────────────────────────────────────────────────────────────────
 
@@ -269,7 +270,13 @@ function BomLineItem({ line, colors }: { line: EnrichedLine; colors: ReturnType<
 
 // ─── Main screen ──────────────────────────────────────────────────────────
 
-export default function CalculatorScreen() {
+export default function CalculatorRoute() {
+  const { isSubcontractor } = useProfileAccess();
+  if (isSubcontractor) return <Redirect href="/quotes" />;
+  return <CalculatorScreen />;
+}
+
+function CalculatorScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const topPad = Platform.OS === "web" ? Math.max(insets.top, 67) : insets.top;

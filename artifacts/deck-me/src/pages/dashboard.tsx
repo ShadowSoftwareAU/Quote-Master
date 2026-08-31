@@ -4,9 +4,11 @@ import { formatCurrency } from "@/lib/format";
 import { Hammer, FileText, CheckCircle, Calendar, TrendingUp, UserCog } from "lucide-react";
 import { Link } from "wouter";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useProfileAccess } from "@/lib/access";
 
 export default function Dashboard() {
   const { data, isLoading } = useGetDashboardSummary();
+  const { canViewFinancials } = useProfileAccess();
 
   if (isLoading || !data) {
     return (
@@ -45,7 +47,7 @@ export default function Dashboard() {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        <Card className="border-2 border-primary/20 shadow-sm bg-card">
+        {canViewFinancials && <Card className="border-2 border-primary/20 shadow-sm bg-card">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-sm font-bold uppercase text-muted-foreground">Total Pipeline</CardTitle>
             <FileText className="w-5 h-5 text-primary" />
@@ -53,7 +55,7 @@ export default function Dashboard() {
           <CardContent>
             <div className="text-3xl font-black text-foreground">{formatCurrency(data.totalQuoteValue)}</div>
           </CardContent>
-        </Card>
+        </Card>}
         
         <Card className="shadow-sm">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
@@ -86,7 +88,7 @@ export default function Dashboard() {
         </Card>
       </div>
 
-      {(grossProfit > 0 || totalTradeCost > 0) && (
+      {canViewFinancials && (grossProfit > 0 || totalTradeCost > 0) && (
         <Card className="border-2 border-emerald-500/30 bg-emerald-500/5 shadow-sm">
           <CardHeader className="pb-3">
             <CardTitle className="font-display font-black uppercase text-lg flex items-center gap-2">
