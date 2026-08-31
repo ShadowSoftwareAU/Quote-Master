@@ -28,12 +28,12 @@ const queryClient = new QueryClient();
 const basePath = import.meta.env.BASE_URL.replace(/\/$/, "");
 const clerkPubKey = publishableKeyFromHost(
   window.location.hostname,
-  import.meta.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY,
+  import.meta.env.VITE_CLERK_PUBLISHABLE_KEY,
 );
-const clerkProxyUrl = import.meta.env.VITE_CLERK_PROXY_URL ?? "";
+const clerkProxyUrl = import.meta.env.VITE_CLERK_PROXY_URL;
 
 if (!clerkPubKey) {
-  throw new Error("Missing NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY");
+  throw new Error("Missing VITE_CLERK_PUBLISHABLE_KEY");
 }
 
 function SignInPage() {
