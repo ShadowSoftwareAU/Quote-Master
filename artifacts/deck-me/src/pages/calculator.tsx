@@ -4,8 +4,13 @@ import {
   useCreateQuote,
   useListCustomers,
   useListMaterials,
+  useGetProfileSettings,
+  useListTradeTemplates,
+  getGetProfileSettingsQueryKey,
+  type TradeTemplate,
   type Material,
 } from "@workspace/api-client-react";
+import { useAuth } from "@clerk/react";
 import { useLocation } from "wouter";
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -79,16 +84,69 @@ interface CustomLineItemDraft {
   id: number;
   description: string;
   quantity: number;
+  unit: string;
+  unitType: string;
   unitCost: number;
   markupPercentage: number;
+  wastagePercentage: number;
+  isBulkItem: boolean;
 }
 
 let nextLineItemId = 1;
 
 function customLineTotal(item: CustomLineItemDraft) {
+  const effectiveQuantity = calculateRequiredQuantity(
+    item.quantity,
+    item.wastagePercentage,
+    item.isBulkItem,
+  );
   return Math.round(
-    item.quantity * item.unitCost * (1 + item.markupPercentage / 100) * 100,
+    effectiveQuantity * item.unitCost * (1 + item.markupPercentage / 100) * 100,
   ) / 100;
+}
+
+function calculateRequiredQuantity(
+  quantity: number,
+  wastagePercentage: number,
+  isBulkItem: boolean,
+) {
+  const withWastage = quantity * (1 + wastagePercentage / 100);
+  if (isBulkItem) return Math.ceil(withWastage);
+  return Math.round((withWastage + Number.EPSILON) * 1000) / 1000;
+}
+
+function customLineCost(item: CustomLineItemDraft) {
+  return Math.round(
+    calculateRequiredQuantity(item.quantity, item.wastagePercentage, item.isBulkItem)
+      * item.unitCost * 100,
+  ) / 100;
+}
+
+const UNIT_TYPES = [
+  { value: "item", label: "Item" },
+  { value: "lm", label: "Linear metre" },
+  { value: "sqm", label: "Square metre" },
+  { value: "m3", label: "Cubic metre" },
+  { value: "box", label: "Box / full pack" },
+] as const;
+
+const UNITS = ["each", "metre", "linear metre", "square metre", "cubic metre", "pack", "box", "bag", "sheet"];
+
+function unitOptions(currentUnit: string) {
+  return Array.from(new Set([...UNITS, currentUnit].filter(Boolean)));
+}
+
+function validTemplate(template: TradeTemplate) {
+  return Array.isArray(template?.defaultLineItems) && template.defaultLineItems.length > 0 && template.defaultLineItems.every((item) =>
+    typeof item?.description === "string" && item.description.trim().length > 0
+    && Number.isFinite(item.quantity) && item.quantity > 0
+    && typeof item.unit === "string" && item.unit.trim().length > 0
+    && Number.isFinite(item.unitCost) && item.unitCost >= 0
+    && Number.isFinite(item.markupPercentage) && item.markupPercentage >= 0 && item.markupPercentage <= 1000
+    && Number.isFinite(item.wastagePercentage) && item.wastagePercentage >= 0 && item.wastagePercentage <= 100
+    && UNIT_TYPES.some((unitType) => unitType.value === item.unitType)
+    && typeof item.isBulkItem === "boolean"
+  );
 }
 
 const DEFAULT_SPEC = {
@@ -127,6 +185,7 @@ const DEFAULT_SPEC = {
 export default function Calculator() {
   const [, setLocation] = useLocation();
   const { toast } = useToast();
+  const { userId, isLoaded, isSignedIn } = useAuth();
   const [spec, setSpec] = useState(DEFAULT_SPEC);
   const [advancedOpen, setAdvancedOpen] = useState(false);
 
@@ -134,11 +193,34 @@ export default function Calculator() {
   const createQuote = useCreateQuote();
   const { data: customers } = useListCustomers();
   const { data: materials } = useListMaterials();
+  const {
+    data: profile,
+    isLoading: profileLoading,
+    error: profileError,
+  } = useGetProfileSettings({
+    query: {
+      retry: false,
+      enabled: isLoaded && isSignedIn,
+      queryKey: [...getGetProfileSettingsQueryKey(), userId],
+    },
+  });
+  const {
+    data: templates,
+    isLoading: templatesLoading,
+    error: templatesError,
+  } = useListTradeTemplates({
+    query: {
+      retry: false,
+      enabled: isLoaded && isSignedIn,
+      queryKey: ["trade-templates"],
+    },
+  });
 
   const [quoteTitle, setQuoteTitle] = useState("New Deck Quote");
   const [customerId, setCustomerId] = useState("");
   const [dialogOpen, setDialogOpen] = useState(false);
   const [lineItems, setLineItems] = useState<CustomLineItemDraft[]>([]);
+  const [selectedTemplateId, setSelectedTemplateId] = useState("custom");
 
   const councilWarning = spec.heightM >= COUNCIL_HEIGHT_M;
 
@@ -234,6 +316,14 @@ export default function Calculator() {
     () => lineItems.reduce((sum, item) => sum + customLineTotal(item), 0),
     [lineItems],
   );
+  const customCostSubtotal = useMemo(
+    () => lineItems.reduce((sum, item) => sum + customLineCost(item), 0),
+    [lineItems],
+  );
+  const customMargin = Math.round((customSubtotal - customCostSubtotal) * 100) / 100;
+  const customMarginPercentage = customSubtotal > 0
+    ? Math.round((customMargin / customSubtotal) * 1000) / 10
+    : 0;
   const quoteSubtotal = (estData?.materialsSubtotal ?? 0)
     + (estData?.labourCost ?? 0)
     + customSubtotal;
@@ -247,8 +337,12 @@ export default function Calculator() {
         id: nextLineItemId++,
         description: "",
         quantity: 1,
+        unit: "each",
+        unitType: "item",
         unitCost: 0,
         markupPercentage: 0,
+        wastagePercentage: 0,
+        isBulkItem: false,
       },
     ]);
   };
@@ -256,16 +350,54 @@ export default function Calculator() {
   const updateLineItem = (
     id: number,
     field: keyof Omit<CustomLineItemDraft, "id">,
-    value: string,
+    value: string | boolean,
   ) => {
     setLineItems((items) => items.map((item) => item.id === id
       ? {
           ...item,
-          [field]: field === "description"
+          [field]: typeof value === "boolean" || field === "description" || field === "unit" || field === "unitType"
             ? value
             : Math.max(0, Number(value) || 0),
         }
       : item));
+  };
+
+  const matchingTemplates = useMemo(
+    () => (templates ?? []).filter((template) =>
+      profile?.tradeType
+      && template.tradeType.trim().toLowerCase() === profile.tradeType.trim().toLowerCase(),
+    ),
+    [profile?.tradeType, templates],
+  );
+
+  const applyTemplate = (templateId: string) => {
+    setSelectedTemplateId(templateId);
+    if (templateId === "custom") {
+      setLineItems([]);
+      return;
+    }
+    const template = matchingTemplates.find((entry) => String(entry.id) === templateId);
+    if (!template || !validTemplate(template)) {
+      toast({
+        title: "Template unavailable",
+        description: "This template has invalid line data. Start with custom lines instead.",
+        variant: "destructive",
+      });
+      setSelectedTemplateId("custom");
+      setLineItems([]);
+      return;
+    }
+    setLineItems(template.defaultLineItems.map((item) => ({
+      id: nextLineItemId++,
+      description: item.description,
+      quantity: item.quantity,
+      unit: item.unit,
+      unitType: item.unitType,
+      unitCost: item.unitCost,
+      markupPercentage: item.markupPercentage,
+      wastagePercentage: item.wastagePercentage,
+      isBulkItem: item.isBulkItem,
+    })));
   };
 
   const moveLineItem = (index: number, direction: -1 | 1) => {
@@ -297,12 +429,16 @@ export default function Calculator() {
           ...spec,
           title: quoteTitle,
           customerId: parseInt(customerId),
-          lineItems: lineItems.map(({ description, quantity, unitCost, markupPercentage }) => ({
-            description: description.trim(),
-            quantity,
-            unitCost,
-            markupPercentage,
-            unit: "each",
+          tradeType: profile?.tradeType,
+          lineItems: lineItems.map((item) => ({
+            description: item.description.trim(),
+            quantity: item.quantity,
+            unitCost: item.unitCost,
+            markupPercentage: item.markupPercentage,
+            unit: item.unit,
+            unitType: item.unitType as "sqm" | "lm" | "m3" | "item" | "box",
+            wastagePercentage: item.wastagePercentage,
+            isBulkItem: item.isBulkItem,
           })),
         },
       },
@@ -728,7 +864,7 @@ export default function Calculator() {
               <div>
                 <CardTitle className="font-black uppercase text-lg">Additional line items</CardTitle>
                 <p className="text-sm text-muted-foreground mt-1">
-                  Add labour, hire, disposal, permits, or other job costs.
+                  Start from a trade template or add labour, hire, disposal, permits, and other costs.
                 </p>
               </div>
               <Button type="button" size="sm" onClick={addLineItem}>
@@ -736,9 +872,55 @@ export default function Calculator() {
               </Button>
             </CardHeader>
             <CardContent className="space-y-3">
+              <div className="rounded-sm border bg-muted/20 p-3 space-y-2">
+                <Label htmlFor="quote-template" className="font-bold uppercase text-xs">
+                  Saved trade template
+                </Label>
+                <Select
+                  value={selectedTemplateId}
+                  onValueChange={applyTemplate}
+                  disabled={profileLoading || templatesLoading || !!profileError || !!templatesError}
+                >
+                  <SelectTrigger id="quote-template">
+                    <SelectValue
+                      placeholder={
+                        profileLoading || templatesLoading
+                          ? "Loading templates…"
+                          : "Choose a template"
+                      }
+                    />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="custom">Custom lines (start blank)</SelectItem>
+                    {matchingTemplates.map((template) => (
+                      <SelectItem
+                        key={template.id}
+                        value={String(template.id)}
+                        disabled={!validTemplate(template)}
+                      >
+                        {template.name}
+                        {!validTemplate(template) ? " (unavailable)" : ""}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {profileError || templatesError ? (
+                  <p className="text-xs text-amber-700 dark:text-amber-300">
+                    Saved templates are unavailable right now. You can continue with custom lines.
+                  </p>
+                ) : !profileLoading && !templatesLoading && matchingTemplates.length === 0 ? (
+                  <p className="text-xs text-muted-foreground">
+                    No saved templates match your primary trade ({profile?.tradeType || "not set"}). Custom lines are ready below.
+                  </p>
+                ) : (
+                  <p className="text-xs text-muted-foreground">
+                    Selecting a template replaces the current additional lines.
+                  </p>
+                )}
+              </div>
               {lineItems.length === 0 ? (
                 <div className="rounded-sm border border-dashed p-5 text-sm text-center text-muted-foreground">
-                  No additional items added.
+                  No additional items added. Choose a template or add a custom item.
                 </div>
               ) : lineItems.map((item, index) => (
                 <div key={item.id} className="rounded-sm border p-3 space-y-3">
@@ -779,10 +961,47 @@ export default function Calculator() {
                       <Label htmlFor={`line-markup-${item.id}`}>Mark-up %</Label>
                       <Input id={`line-markup-${item.id}`} type="number" min="0" max="1000" step="0.01" value={item.markupPercentage} onChange={(event) => updateLineItem(item.id, "markupPercentage", event.target.value)} />
                     </div>
+                    <div className="space-y-1">
+                      <Label htmlFor={`line-unit-${item.id}`}>Unit</Label>
+                      <Select value={item.unit} onValueChange={(value) => updateLineItem(item.id, "unit", value)}>
+                        <SelectTrigger id={`line-unit-${item.id}`}><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          {unitOptions(item.unit).map((unit) => <SelectItem key={unit} value={unit}>{unit}</SelectItem>)}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-1">
+                      <Label htmlFor={`line-unit-type-${item.id}`}>Unit type</Label>
+                      <Select value={item.unitType} onValueChange={(value) => updateLineItem(item.id, "unitType", value)}>
+                        <SelectTrigger id={`line-unit-type-${item.id}`}><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          {UNIT_TYPES.map((unitType) => <SelectItem key={unitType.value} value={unitType.value}>{unitType.label}</SelectItem>)}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-1">
+                      <Label htmlFor={`line-wastage-${item.id}`}>Wastage %</Label>
+                      <Input id={`line-wastage-${item.id}`} type="number" min="0" max="100" step="0.01" value={item.wastagePercentage} onChange={(event) => updateLineItem(item.id, "wastagePercentage", event.target.value)} />
+                    </div>
+                    <div className="flex items-end pb-1">
+                      <label htmlFor={`line-bulk-${item.id}`} className="flex items-center gap-2 text-sm font-bold cursor-pointer">
+                        <Checkbox
+                          id={`line-bulk-${item.id}`}
+                          checked={item.isBulkItem}
+                          onCheckedChange={(checked) => updateLineItem(item.id, "isBulkItem", checked === true)}
+                        />
+                        Full boxes / bulk units
+                      </label>
+                    </div>
+                  </div>
+                  <div className="flex flex-wrap gap-x-4 gap-y-1 border-t pt-2 text-xs text-muted-foreground">
+                    <span>Effective quantity: <strong className="text-foreground">{calculateRequiredQuantity(item.quantity, item.wastagePercentage, item.isBulkItem).toFixed(3)}</strong> {item.unit}</span>
+                    <span>Cost: <strong className="text-foreground">{formatCurrency(customLineCost(item))}</strong></span>
+                    <span>Margin: <strong className="text-foreground">{formatCurrency(customLineTotal(item) - customLineCost(item))}</strong></span>
                   </div>
                 </div>
               ))}
-              <div className="rounded-sm bg-muted/40 p-4 grid grid-cols-3 gap-3 text-right">
+              <div className="rounded-sm bg-muted/40 p-4 grid grid-cols-2 sm:grid-cols-4 gap-3 text-right">
                 <div>
                   <div className="text-xs uppercase text-muted-foreground">Subtotal</div>
                   <div className="font-mono font-bold">{formatCurrency(quoteSubtotal)}</div>
@@ -794,6 +1013,10 @@ export default function Calculator() {
                 <div>
                   <div className="text-xs uppercase text-muted-foreground">Total price</div>
                   <div className="font-mono font-black text-primary">{formatCurrency(quoteTotal)}</div>
+                </div>
+                <div>
+                  <div className="text-xs uppercase text-muted-foreground">Additional margin</div>
+                  <div className="font-mono font-bold">{formatCurrency(customMargin)} ({customMarginPercentage.toFixed(1)}%)</div>
                 </div>
               </div>
             </CardContent>

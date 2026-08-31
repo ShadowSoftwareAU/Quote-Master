@@ -1,9 +1,15 @@
 import { useQueryClient } from "@tanstack/react-query";
+import { useAuth } from "@clerk/expo";
 import {
   getListQuotesQueryKey,
   getGetDashboardSummaryQueryKey,
+  getGetProfileSettingsQueryKey,
+  getListTradeTemplatesQueryKey,
   useCreateQuote,
   useListCustomers,
+  useGetProfileSettings,
+  useListTradeTemplates,
+  type TradeTemplate,
 } from "@workspace/api-client-react";
 import { Redirect, router, useLocalSearchParams } from "expo-router";
 import React, { useMemo, useState } from "react";
@@ -12,6 +18,7 @@ import {
   FlatList,
   Platform,
   Pressable,
+  ScrollView,
   Text,
   View,
 } from "react-native";
@@ -31,17 +38,60 @@ type LineItemDraft = {
   id: number;
   description: string;
   quantity: string;
+  unit: string;
+  unitType: string;
   unitCost: string;
   markupPercentage: string;
+  wastagePercentage: string;
+  isBulkItem: boolean;
 };
 
 let nextLineItemId = 1;
 
 function lineTotal(item: LineItemDraft) {
-  const quantity = Number(item.quantity) || 0;
+  const quantity = effectiveQuantity(item);
   const unitCost = Number(item.unitCost) || 0;
   const markup = Number(item.markupPercentage) || 0;
   return Math.round(quantity * unitCost * (1 + markup / 100) * 100) / 100;
+}
+
+function effectiveQuantity(item: LineItemDraft) {
+  const quantity = Number(item.quantity) || 0;
+  const wastage = Number(item.wastagePercentage) || 0;
+  const withWastage = quantity * (1 + wastage / 100);
+  if (item.isBulkItem) return Math.ceil(withWastage);
+  return Math.round((withWastage + Number.EPSILON) * 1000) / 1000;
+}
+
+function lineCost(item: LineItemDraft) {
+  return Math.round(effectiveQuantity(item) * (Number(item.unitCost) || 0) * 100) / 100;
+}
+
+const UNIT_TYPES = [
+  { value: "item", label: "Item" },
+  { value: "lm", label: "Linear metre" },
+  { value: "sqm", label: "Square metre" },
+  { value: "m3", label: "Cubic metre" },
+  { value: "box", label: "Box" },
+] as const;
+
+const UNITS = ["each", "metre", "linear metre", "square metre", "cubic metre", "pack", "box", "bag", "sheet"];
+
+function unitOptions(currentUnit: string) {
+  return Array.from(new Set([...UNITS, currentUnit].filter(Boolean)));
+}
+
+function validTemplate(template: TradeTemplate) {
+  return Array.isArray(template?.defaultLineItems) && template.defaultLineItems.length > 0 && template.defaultLineItems.every((item) =>
+    typeof item?.description === "string" && item.description.trim().length > 0
+    && Number.isFinite(item.quantity) && item.quantity > 0
+    && typeof item.unit === "string" && item.unit.trim().length > 0
+    && Number.isFinite(item.unitCost) && item.unitCost >= 0
+    && Number.isFinite(item.markupPercentage) && item.markupPercentage >= 0 && item.markupPercentage <= 1000
+    && Number.isFinite(item.wastagePercentage) && item.wastagePercentage >= 0 && item.wastagePercentage <= 100
+    && UNIT_TYPES.some((unitType) => unitType.value === item.unitType)
+    && typeof item.isBulkItem === "boolean"
+  );
 }
 
 function currency(value: number) {
@@ -60,6 +110,7 @@ export default function NewQuoteRoute() {
 function NewQuoteScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
+  const { userId, isLoaded, isSignedIn } = useAuth();
   const params = useLocalSearchParams<{
     spec?: string;
     labourHours?: string;
@@ -67,6 +118,28 @@ function NewQuoteScreen() {
   }>();
   const qc = useQueryClient();
   const { data: customers } = useListCustomers();
+  const {
+    data: profile,
+    isLoading: profileLoading,
+    error: profileError,
+  } = useGetProfileSettings({
+    query: {
+      retry: false,
+      enabled: isLoaded && isSignedIn,
+      queryKey: [...getGetProfileSettingsQueryKey(), userId],
+    },
+  });
+  const {
+    data: templates,
+    isLoading: templatesLoading,
+    error: templatesError,
+  } = useListTradeTemplates({
+    query: {
+      retry: false,
+      queryKey: getListTradeTemplatesQueryKey(),
+      enabled: isLoaded && isSignedIn,
+    },
+  });
   const createMut = useCreateQuote();
 
   const spec = useMemo(() => {
@@ -81,6 +154,7 @@ function NewQuoteScreen() {
   const [customerId, setCustomerId] = useState<number | null>(null);
   const [siteAddress, setSiteAddress] = useState("");
   const [lineItems, setLineItems] = useState<LineItemDraft[]>([]);
+  const [selectedTemplateId, setSelectedTemplateId] = useState("custom");
 
   const additionalSubtotal = useMemo(
     () => lineItems.reduce((sum, item) => sum + lineTotal(item), 0),
@@ -96,16 +170,58 @@ function NewQuoteScreen() {
         id: nextLineItemId++,
         description: "",
         quantity: "1",
+        unit: "each",
+        unitType: "item",
         unitCost: "0",
         markupPercentage: "0",
+        wastagePercentage: "0",
+        isBulkItem: false,
       },
     ]);
   }
 
-  function updateLineItem(id: number, field: Exclude<keyof LineItemDraft, "id">, value: string) {
+  function updateLineItem(
+    id: number,
+    field: Exclude<keyof LineItemDraft, "id">,
+    value: string | boolean,
+  ) {
     setLineItems((items) => items.map((item) =>
       item.id === id ? { ...item, [field]: value } : item,
     ));
+  }
+
+  const matchingTemplates = useMemo(
+    () => (templates ?? []).filter((template) =>
+      profile?.tradeType
+      && template.tradeType.trim().toLowerCase() === profile.tradeType.trim().toLowerCase(),
+    ),
+    [profile?.tradeType, templates],
+  );
+
+  function applyTemplate(templateId: string) {
+    setSelectedTemplateId(templateId);
+    if (templateId === "custom") {
+      setLineItems([]);
+      return;
+    }
+    const template = matchingTemplates.find((entry) => String(entry.id) === templateId);
+    if (!template || !validTemplate(template)) {
+      Alert.alert("Template unavailable", "This template has invalid line data. Start with custom lines instead.");
+      setSelectedTemplateId("custom");
+      setLineItems([]);
+      return;
+    }
+    setLineItems(template.defaultLineItems.map((item) => ({
+      id: nextLineItemId++,
+      description: item.description,
+      quantity: String(item.quantity),
+      unit: item.unit,
+      unitType: item.unitType,
+      unitCost: String(item.unitCost),
+      markupPercentage: String(item.markupPercentage),
+      wastagePercentage: String(item.wastagePercentage),
+      isBulkItem: item.isBulkItem,
+    })));
   }
 
   function save() {
@@ -134,6 +250,7 @@ function NewQuoteScreen() {
         data: {
           title,
           customerId,
+           tradeType: profile?.tradeType,
           siteAddress: siteAddress || undefined,
           lengthM: spec.lengthM,
           widthM: spec.widthM,
@@ -150,7 +267,10 @@ function NewQuoteScreen() {
             quantity: Number(item.quantity),
             unitCost: Number(item.unitCost),
             markupPercentage: Number(item.markupPercentage),
-            unit: "each",
+            unit: item.unit,
+            unitType: item.unitType as "sqm" | "lm" | "m3" | "item" | "box",
+            wastagePercentage: Number(item.wastagePercentage),
+            isBulkItem: item.isBulkItem,
           })),
         },
       },
@@ -289,6 +409,74 @@ function NewQuoteScreen() {
           )}
         </View>
       </View>
+      <View style={{ gap: 8 }}>
+        <Text style={{ fontFamily: "Inter_700Bold", fontSize: 10, letterSpacing: 1.2, color: colors.mutedForeground }}>
+          SAVED TRADE TEMPLATE
+        </Text>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }}>
+          <Pressable
+            accessibilityRole="radio"
+            accessibilityState={{ selected: selectedTemplateId === "custom" }}
+            onPress={() => applyTemplate("custom")}
+            style={{
+              borderWidth: 1,
+              borderColor: selectedTemplateId === "custom" ? colors.primary : colors.border,
+              backgroundColor: selectedTemplateId === "custom" ? colors.primary : colors.card,
+              borderRadius: colors.radius,
+              paddingHorizontal: 14,
+              paddingVertical: 11,
+            }}
+          >
+            <Text style={{ color: selectedTemplateId === "custom" ? "#fff" : colors.foreground, fontFamily: "Inter_700Bold", fontSize: 12 }}>
+              CUSTOM LINES
+            </Text>
+          </Pressable>
+          {matchingTemplates.map((template) => {
+            const valid = validTemplate(template);
+            const selected = selectedTemplateId === String(template.id);
+            return (
+              <Pressable
+                key={template.id}
+                accessibilityRole="radio"
+                accessibilityLabel={`${template.name}${valid ? "" : ", unavailable"}`}
+                accessibilityState={{ selected, disabled: !valid }}
+                disabled={!valid}
+                onPress={() => applyTemplate(String(template.id))}
+                style={{
+                  borderWidth: 1,
+                  borderColor: selected ? colors.primary : colors.border,
+                  backgroundColor: selected ? colors.primary : colors.card,
+                  borderRadius: colors.radius,
+                  paddingHorizontal: 14,
+                  paddingVertical: 11,
+                  opacity: valid ? 1 : 0.45,
+                }}
+              >
+                <Text style={{ color: selected ? "#fff" : colors.foreground, fontFamily: "Inter_700Bold", fontSize: 12 }}>
+                  {template.name.toUpperCase()}{valid ? "" : " (UNAVAILABLE)"}
+                </Text>
+              </Pressable>
+            );
+          })}
+        </ScrollView>
+        {profileError || templatesError ? (
+          <Text style={{ color: "#b45309", fontFamily: "Inter_500Medium", fontSize: 12 }}>
+            Saved templates are unavailable. You can continue with custom lines.
+          </Text>
+        ) : profileLoading || templatesLoading ? (
+          <Text style={{ color: colors.mutedForeground, fontFamily: "Inter_500Medium", fontSize: 12 }}>
+            Loading templates for {profile?.tradeType || "your trade"}…
+          </Text>
+        ) : matchingTemplates.length === 0 ? (
+          <Text style={{ color: colors.mutedForeground, fontFamily: "Inter_500Medium", fontSize: 12 }}>
+            No saved templates match {profile?.tradeType || "your primary trade"}. Custom lines are ready.
+          </Text>
+        ) : (
+          <Text style={{ color: colors.mutedForeground, fontFamily: "Inter_500Medium", fontSize: 12 }}>
+            Choosing a template replaces the current additional lines.
+          </Text>
+        )}
+      </View>
           <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
             <View style={{ flex: 1 }}>
               <Text style={{ fontFamily: "Chivo_700Bold", fontSize: 18, color: colors.foreground }}>
@@ -371,6 +559,105 @@ function NewQuoteScreen() {
                 </Text>
               </View>
             </View>
+            <View style={{ gap: 10 }}>
+              <Text style={{ fontFamily: "Inter_700Bold", fontSize: 10, letterSpacing: 1.2, color: colors.mutedForeground }}>
+                UNIT
+              </Text>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }}>
+                {unitOptions(item.unit).map((unit) => {
+                  const active = item.unit === unit;
+                  return (
+                    <Pressable
+                      key={unit}
+                      accessibilityRole="radio"
+                      accessibilityState={{ selected: active }}
+                      onPress={() => updateLineItem(item.id, "unit", unit)}
+                      style={{
+                        borderWidth: 1,
+                        borderColor: active ? colors.primary : colors.border,
+                        backgroundColor: active ? colors.primary : colors.card,
+                        borderRadius: colors.radius,
+                        paddingHorizontal: 11,
+                        paddingVertical: 9,
+                      }}
+                    >
+                      <Text style={{ color: active ? "#fff" : colors.foreground, fontFamily: "Inter_500Medium", fontSize: 12 }}>
+                        {unit}
+                      </Text>
+                    </Pressable>
+                  );
+                })}
+              </ScrollView>
+            </View>
+            <View style={{ gap: 10 }}>
+              <Text style={{ fontFamily: "Inter_700Bold", fontSize: 10, letterSpacing: 1.2, color: colors.mutedForeground }}>
+                UNIT TYPE
+              </Text>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }}>
+                {UNIT_TYPES.map((unitType) => {
+                  const active = item.unitType === unitType.value;
+                  return (
+                    <Pressable
+                      key={unitType.value}
+                      accessibilityRole="radio"
+                      accessibilityState={{ selected: active }}
+                      onPress={() => updateLineItem(item.id, "unitType", unitType.value)}
+                      style={{
+                        borderWidth: 1,
+                        borderColor: active ? colors.primary : colors.border,
+                        backgroundColor: active ? colors.primary : colors.card,
+                        borderRadius: colors.radius,
+                        paddingHorizontal: 11,
+                        paddingVertical: 9,
+                      }}
+                    >
+                      <Text style={{ color: active ? "#fff" : colors.foreground, fontFamily: "Inter_500Medium", fontSize: 12 }}>
+                        {unitType.label}
+                      </Text>
+                    </Pressable>
+                  );
+                })}
+              </ScrollView>
+            </View>
+            <View style={{ flexDirection: "row", gap: 10 }}>
+              <View style={{ flex: 1 }}>
+                <LabeledInput label="Wastage %">
+                  <TextInputStyled
+                    value={item.wastagePercentage}
+                    onChangeText={(value) => updateLineItem(item.id, "wastagePercentage", value)}
+                    keyboardType="decimal-pad"
+                  />
+                </LabeledInput>
+              </View>
+              <Pressable
+                accessibilityRole="switch"
+                accessibilityLabel="Round up to full boxes or bulk units"
+                accessibilityState={{ checked: item.isBulkItem }}
+                onPress={() => updateLineItem(item.id, "isBulkItem", !item.isBulkItem)}
+                style={{
+                  flex: 1,
+                  minHeight: 52,
+                  borderWidth: 1,
+                  borderColor: item.isBulkItem ? colors.primary : colors.border,
+                  backgroundColor: item.isBulkItem ? colors.primary : colors.card,
+                  borderRadius: colors.radius,
+                  paddingHorizontal: 12,
+                  justifyContent: "center",
+                }}
+              >
+                <Text style={{ color: item.isBulkItem ? "#fff" : colors.foreground, fontFamily: "Inter_700Bold", fontSize: 11 }}>
+                  {item.isBulkItem ? "FULL BOX ROUNDING ON" : "ROUND TO 3 DECIMALS"}
+                </Text>
+              </Pressable>
+            </View>
+            <View style={{ gap: 4, borderTopWidth: 1, borderTopColor: colors.border, paddingTop: 10 }}>
+              <Text style={{ color: colors.mutedForeground, fontFamily: "Inter_500Medium", fontSize: 12 }}>
+                Effective quantity: <Text style={{ color: colors.foreground, fontFamily: "Inter_700Bold" }}>{effectiveQuantity(item).toFixed(3)} {item.unit}</Text>
+              </Text>
+              <Text style={{ color: colors.mutedForeground, fontFamily: "Inter_500Medium", fontSize: 12 }}>
+                Cost {currency(lineCost(item))} · Margin <Text style={{ color: colors.foreground, fontFamily: "Inter_700Bold" }}>{currency(lineTotal(item) - lineCost(item))}</Text>
+              </Text>
+            </View>
           </View>
           </Card>
         )}
@@ -380,8 +667,20 @@ function NewQuoteScreen() {
           <Card>
             <View style={{ gap: 10 }}>
               <View style={{ flexDirection: "row", justifyContent: "space-between" }}>
+                <Text style={{ color: colors.mutedForeground, fontFamily: "Inter_500Medium" }}>Effective cost</Text>
+                <Text style={{ color: colors.foreground, fontFamily: "Inter_700Bold" }}>
+                  {currency(lineItems.reduce((sum, item) => sum + lineCost(item), 0))}
+                </Text>
+              </View>
+              <View style={{ flexDirection: "row", justifyContent: "space-between" }}>
                 <Text style={{ color: colors.mutedForeground, fontFamily: "Inter_500Medium" }}>Additional subtotal</Text>
                 <Text style={{ color: colors.foreground, fontFamily: "Inter_700Bold" }}>{currency(additionalSubtotal)}</Text>
+              </View>
+              <View style={{ flexDirection: "row", justifyContent: "space-between" }}>
+                <Text style={{ color: colors.mutedForeground, fontFamily: "Inter_500Medium" }}>Margin</Text>
+                <Text style={{ color: colors.foreground, fontFamily: "Inter_700Bold" }}>
+                  {currency(additionalSubtotal - lineItems.reduce((sum, item) => sum + lineCost(item), 0))}
+                </Text>
               </View>
               <View style={{ flexDirection: "row", justifyContent: "space-between" }}>
                 <Text style={{ color: colors.mutedForeground, fontFamily: "Inter_500Medium" }}>GST (10%)</Text>
