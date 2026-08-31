@@ -331,6 +331,49 @@ paths:
                 type: array
                 items: { $ref: "#/components/schemas/TradeTemplate" }
 
+  /trade-template-presets:
+    get:
+      operationId: listTradeTemplatePresets
+      tags: [trade-templates]
+      summary: List the authenticated builder's presets for their primary trade
+      responses:
+        "200":
+          description: Personal quick-add presets for the builder's primary trade
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/TradeTemplatePreset" }
+        "401":
+          description: Authentication required
+        "403":
+          description: Owner or Employee role is required
+        "409":
+          description: Business onboarding must be completed
+    post:
+      operationId: saveTradeTemplatePreset
+      tags: [trade-templates]
+      summary: Save or update a personal preset for the authenticated builder's primary trade
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/TradeTemplatePresetInput" }
+      responses:
+        "201":
+          description: Personal preset saved
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/TradeTemplatePreset" }
+        "400":
+          description: Invalid preset
+        "401":
+          description: Authentication required
+        "403":
+          description: Owner or Employee role is required
+        "409":
+          description: Business onboarding must be completed
+
   /quotes:
     get:
       operationId: listQuotes
@@ -1585,6 +1628,42 @@ components:
         isBulkItem:
           type: boolean
           default: false
+        saveToMyPresets:
+          type: boolean
+          default: false
+
+    TradeTemplatePresetInput:
+      type: object
+      required: [description, quantity, unitCost, markupPercentage]
+      additionalProperties: false
+      properties:
+        description: { type: string, minLength: 1, maxLength: 200 }
+        quantity: { type: number, exclusiveMinimum: 0, maximum: 100000 }
+        unitCost: { type: number, minimum: 0, maximum: 9000 }
+        markupPercentage: { type: number, minimum: 0, maximum: 1000 }
+        unit: { type: string, minLength: 1, maxLength: 40, default: each }
+        unitType:
+          type: string
+          enum: [sqm, lm, m3, item, box]
+          default: item
+        wastagePercentage:
+          type: number
+          minimum: 0
+          maximum: 100
+          default: 0
+        isBulkItem:
+          type: boolean
+          default: false
+
+    TradeTemplatePreset:
+      allOf:
+        - $ref: "#/components/schemas/TradeTemplatePresetInput"
+        - type: object
+          required: [id, tradeType, category, unit, unitType, wastagePercentage, isBulkItem]
+          properties:
+            id: { type: integer }
+            tradeType: { type: string }
+            category: { type: string }
 
     QuoteEstimateLine:
       type: object

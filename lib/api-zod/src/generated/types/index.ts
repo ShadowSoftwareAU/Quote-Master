@@ -94,3 +94,6 @@ export * from './timeEntry';
 export * from './tradeTemplate';
 export * from './tradeTemplateLineItem';
 export * from './tradeTemplateLineItemUnitType';
+export * from './tradeTemplatePreset';
+export * from './tradeTemplatePresetInput';
+export * from './tradeTemplatePresetInputUnitType';

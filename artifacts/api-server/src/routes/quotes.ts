@@ -37,6 +37,7 @@ import {
   type DeckSpec,
 } from "../lib/estimator";
 import { recalculateMasterProjectTotals } from "../services/masterProjects";
+import { saveSelectedTradeTemplatePresets } from "../services/tradeTemplatePresets";
 import { complianceDisclaimerForTrade } from "../lib/quoteCompliance";
 import { getLinkedTeamMember } from "../lib/assignmentAccess";
 import {
@@ -57,6 +58,7 @@ type CustomQuoteLineItemInput = {
   unitType?: string;
   wastagePercentage?: number;
   isBulkItem?: boolean;
+  saveToMyPresets?: boolean;
 };
 
 function roundMoney(value: number): number {
@@ -703,6 +705,12 @@ router.post("/quotes", requireQuoteManager, async (req, res): Promise<void> => {
         })),
       );
     }
+    await saveSelectedTradeTemplatePresets(
+      userId,
+      profile.tradeType,
+      data.lineItems ?? [],
+      tx,
+    );
     return row;
   });
   if (!created) {

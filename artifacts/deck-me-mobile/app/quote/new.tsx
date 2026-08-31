@@ -4,11 +4,14 @@ import {
   getListQuotesQueryKey,
   getGetDashboardSummaryQueryKey,
   getGetProfileSettingsQueryKey,
+  getListTradeTemplatePresetsQueryKey,
   getListTradeTemplatesQueryKey,
   useCreateQuote,
   useListCustomers,
   useGetProfileSettings,
+  useListTradeTemplatePresets,
   useListTradeTemplates,
+  type TradeTemplatePreset,
   type TradeTemplate,
 } from "@workspace/api-client-react";
 import { Redirect, router, useLocalSearchParams } from "expo-router";
@@ -44,6 +47,7 @@ type LineItemDraft = {
   markupPercentage: string;
   wastagePercentage: string;
   isBulkItem: boolean;
+  saveToMyPresets: boolean;
 };
 
 let nextLineItemId = 1;
@@ -140,6 +144,14 @@ function NewQuoteScreen() {
       enabled: isLoaded && isSignedIn,
     },
   });
+  const { data: personalPresets, error: presetsError } =
+    useListTradeTemplatePresets({
+      query: {
+        retry: false,
+        queryKey: [...getListTradeTemplatePresetsQueryKey(), userId],
+        enabled: isLoaded && isSignedIn,
+      },
+    });
   const createMut = useCreateQuote();
 
   const spec = useMemo(() => {
@@ -176,6 +188,7 @@ function NewQuoteScreen() {
         markupPercentage: "0",
         wastagePercentage: "0",
         isBulkItem: false,
+        saveToMyPresets: false,
       },
     ]);
   }
@@ -221,7 +234,26 @@ function NewQuoteScreen() {
       markupPercentage: String(item.markupPercentage),
       wastagePercentage: String(item.wastagePercentage),
       isBulkItem: item.isBulkItem,
+      saveToMyPresets: false,
     })));
+  }
+
+  function addPresetItem(preset: TradeTemplatePreset) {
+    setLineItems((items) => [
+      ...items,
+      {
+        id: nextLineItemId++,
+        description: preset.description,
+        quantity: String(preset.quantity),
+        unit: preset.unit ?? "each",
+        unitType: preset.unitType ?? "item",
+        unitCost: String(preset.unitCost),
+        markupPercentage: String(preset.markupPercentage),
+        wastagePercentage: String(preset.wastagePercentage ?? 0),
+        isBulkItem: preset.isBulkItem ?? false,
+        saveToMyPresets: false,
+      },
+    ]);
   }
 
   function save() {
@@ -271,6 +303,7 @@ function NewQuoteScreen() {
             unitType: item.unitType as "sqm" | "lm" | "m3" | "item" | "box",
             wastagePercentage: Number(item.wastagePercentage),
             isBulkItem: item.isBulkItem,
+            saveToMyPresets: item.saveToMyPresets,
           })),
         },
       },
@@ -278,6 +311,9 @@ function NewQuoteScreen() {
         onSuccess: (q) => {
           qc.invalidateQueries({ queryKey: getListQuotesQueryKey() });
           qc.invalidateQueries({ queryKey: getGetDashboardSummaryQueryKey() });
+          qc.invalidateQueries({
+            queryKey: getListTradeTemplatePresetsQueryKey(),
+          });
           router.replace(`/quote/${q.id}`);
         },
         onError: (err: unknown) => {
@@ -477,6 +513,50 @@ function NewQuoteScreen() {
           </Text>
         )}
       </View>
+          {personalPresets?.length ? (
+            <View style={{ gap: 8 }}>
+              <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
+                <View style={{ flex: 1 }}>
+                  <Text style={{ fontFamily: "Inter_700Bold", fontSize: 10, letterSpacing: 1.2, color: colors.primary }}>
+                    MY QUICK-ADD PRESETS
+                  </Text>
+                  <Text style={{ fontFamily: "Inter_500Medium", fontSize: 12, color: colors.mutedForeground, marginTop: 3 }}>
+                    Saved for {profile?.tradeType || "your trade"}
+                  </Text>
+                </View>
+                <Text style={{ fontFamily: "Inter_700Bold", fontSize: 12, color: colors.mutedForeground }}>
+                  {personalPresets.length}
+                </Text>
+              </View>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }}>
+                {personalPresets.map((preset) => (
+                  <Pressable
+                    key={preset.id}
+                    accessibilityRole="button"
+                    accessibilityLabel={`Add ${preset.description}`}
+                    onPress={() => addPresetItem(preset)}
+                    style={({ pressed }) => ({
+                      borderWidth: 1,
+                      borderColor: colors.primary + "66",
+                      backgroundColor: colors.primary + "12",
+                      borderRadius: colors.radius,
+                      paddingHorizontal: 13,
+                      paddingVertical: 10,
+                      opacity: pressed ? 0.65 : 1,
+                    })}
+                  >
+                    <Text style={{ color: colors.foreground, fontFamily: "Inter_700Bold", fontSize: 12 }}>
+                      + {preset.description}
+                    </Text>
+                  </Pressable>
+                ))}
+              </ScrollView>
+            </View>
+          ) : presetsError ? (
+            <Text style={{ color: "#b45309", fontFamily: "Inter_500Medium", fontSize: 12 }}>
+              Your personal presets are unavailable. You can still add custom items.
+            </Text>
+          ) : null}
           <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
             <View style={{ flex: 1 }}>
               <Text style={{ fontFamily: "Chivo_700Bold", fontSize: 18, color: colors.foreground }}>
@@ -650,6 +730,28 @@ function NewQuoteScreen() {
                 </Text>
               </Pressable>
             </View>
+            <Pressable
+              accessibilityRole="switch"
+              accessibilityLabel="Save to My Presets"
+              accessibilityState={{ checked: item.saveToMyPresets }}
+              onPress={() => updateLineItem(item.id, "saveToMyPresets", !item.saveToMyPresets)}
+              style={{
+                minHeight: 52,
+                borderWidth: 1,
+                borderColor: item.saveToMyPresets ? colors.primary : colors.border,
+                backgroundColor: item.saveToMyPresets ? colors.primary + "18" : colors.card,
+                borderRadius: colors.radius,
+                paddingHorizontal: 12,
+                justifyContent: "center",
+              }}
+            >
+              <Text style={{ color: item.saveToMyPresets ? colors.primary : colors.foreground, fontFamily: "Inter_700Bold", fontSize: 11 }}>
+                {item.saveToMyPresets ? "SAVE TO MY PRESETS ON" : "SAVE TO MY PRESETS"}
+              </Text>
+              <Text style={{ color: colors.mutedForeground, fontFamily: "Inter_500Medium", fontSize: 11, marginTop: 3 }}>
+                Reuse this item on future {profile?.tradeType || "trade"} quotes.
+              </Text>
+            </Pressable>
             <View style={{ gap: 4, borderTopWidth: 1, borderTopColor: colors.border, paddingTop: 10 }}>
               <Text style={{ color: colors.mutedForeground, fontFamily: "Inter_500Medium", fontSize: 12 }}>
                 Effective quantity: <Text style={{ color: colors.foreground, fontFamily: "Inter_700Bold" }}>{effectiveQuantity(item).toFixed(3)} {item.unit}</Text>

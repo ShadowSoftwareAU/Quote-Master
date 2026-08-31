@@ -394,6 +394,83 @@ export const ListTradeTemplatesResponseItem = zod.object({
 export const ListTradeTemplatesResponse = zod.array(ListTradeTemplatesResponseItem)
 
 
+/**
+ * @summary List the authenticated builder's presets for their primary trade
+ */
+export const listTradeTemplatePresetsResponseOneDescriptionMax = 200;
+
+export const listTradeTemplatePresetsResponseOneQuantityExclusiveMin = 0;
+export const listTradeTemplatePresetsResponseOneQuantityMax = 100000;
+
+export const listTradeTemplatePresetsResponseOneUnitCostMin = 0;
+export const listTradeTemplatePresetsResponseOneUnitCostMax = 9000;
+
+export const listTradeTemplatePresetsResponseOneMarkupPercentageMin = 0;
+export const listTradeTemplatePresetsResponseOneMarkupPercentageMax = 1000;
+
+export const listTradeTemplatePresetsResponseOneUnitDefault = `each`;
+export const listTradeTemplatePresetsResponseOneUnitMax = 40;
+
+export const listTradeTemplatePresetsResponseOneUnitTypeDefault = `item`;
+export const listTradeTemplatePresetsResponseOneWastagePercentageDefault = 0;
+export const listTradeTemplatePresetsResponseOneWastagePercentageMin = 0;
+export const listTradeTemplatePresetsResponseOneWastagePercentageMax = 100;
+
+export const listTradeTemplatePresetsResponseOneIsBulkItemDefault = false;
+
+export const ListTradeTemplatePresetsResponseItem = zod.object({
+  "description": zod.string().min(1).max(listTradeTemplatePresetsResponseOneDescriptionMax),
+  "quantity": zod.number().gt(listTradeTemplatePresetsResponseOneQuantityExclusiveMin).max(listTradeTemplatePresetsResponseOneQuantityMax),
+  "unitCost": zod.number().min(listTradeTemplatePresetsResponseOneUnitCostMin).max(listTradeTemplatePresetsResponseOneUnitCostMax),
+  "markupPercentage": zod.number().min(listTradeTemplatePresetsResponseOneMarkupPercentageMin).max(listTradeTemplatePresetsResponseOneMarkupPercentageMax),
+  "unit": zod.string().min(1).max(listTradeTemplatePresetsResponseOneUnitMax).default(listTradeTemplatePresetsResponseOneUnitDefault),
+  "unitType": zod.enum(['sqm', 'lm', 'm3', 'item', 'box']).default(listTradeTemplatePresetsResponseOneUnitTypeDefault),
+  "wastagePercentage": zod.number().min(listTradeTemplatePresetsResponseOneWastagePercentageMin).max(listTradeTemplatePresetsResponseOneWastagePercentageMax).default(listTradeTemplatePresetsResponseOneWastagePercentageDefault),
+  "isBulkItem": zod.boolean().default(listTradeTemplatePresetsResponseOneIsBulkItemDefault)
+}).and(zod.object({
+  "id": zod.number(),
+  "tradeType": zod.string(),
+  "category": zod.string()
+}))
+export const ListTradeTemplatePresetsResponse = zod.array(ListTradeTemplatePresetsResponseItem)
+
+
+/**
+ * @summary Save or update a personal preset for the authenticated builder's primary trade
+ */
+export const saveTradeTemplatePresetBodyDescriptionMax = 200;
+
+export const saveTradeTemplatePresetBodyQuantityExclusiveMin = 0;
+export const saveTradeTemplatePresetBodyQuantityMax = 100000;
+
+export const saveTradeTemplatePresetBodyUnitCostMin = 0;
+export const saveTradeTemplatePresetBodyUnitCostMax = 9000;
+
+export const saveTradeTemplatePresetBodyMarkupPercentageMin = 0;
+export const saveTradeTemplatePresetBodyMarkupPercentageMax = 1000;
+
+export const saveTradeTemplatePresetBodyUnitDefault = `each`;
+export const saveTradeTemplatePresetBodyUnitMax = 40;
+
+export const saveTradeTemplatePresetBodyUnitTypeDefault = `item`;
+export const saveTradeTemplatePresetBodyWastagePercentageDefault = 0;
+export const saveTradeTemplatePresetBodyWastagePercentageMin = 0;
+export const saveTradeTemplatePresetBodyWastagePercentageMax = 100;
+
+export const saveTradeTemplatePresetBodyIsBulkItemDefault = false;
+
+export const SaveTradeTemplatePresetBody = zod.object({
+  "description": zod.string().min(1).max(saveTradeTemplatePresetBodyDescriptionMax),
+  "quantity": zod.number().gt(saveTradeTemplatePresetBodyQuantityExclusiveMin).max(saveTradeTemplatePresetBodyQuantityMax),
+  "unitCost": zod.number().min(saveTradeTemplatePresetBodyUnitCostMin).max(saveTradeTemplatePresetBodyUnitCostMax),
+  "markupPercentage": zod.number().min(saveTradeTemplatePresetBodyMarkupPercentageMin).max(saveTradeTemplatePresetBodyMarkupPercentageMax),
+  "unit": zod.string().min(1).max(saveTradeTemplatePresetBodyUnitMax).default(saveTradeTemplatePresetBodyUnitDefault),
+  "unitType": zod.enum(['sqm', 'lm', 'm3', 'item', 'box']).default(saveTradeTemplatePresetBodyUnitTypeDefault),
+  "wastagePercentage": zod.number().min(saveTradeTemplatePresetBodyWastagePercentageMin).max(saveTradeTemplatePresetBodyWastagePercentageMax).default(saveTradeTemplatePresetBodyWastagePercentageDefault),
+  "isBulkItem": zod.boolean().default(saveTradeTemplatePresetBodyIsBulkItemDefault)
+})
+
+
 export const ListQuotesResponseItem = zod.object({
   "id": zod.number(),
   "title": zod.string(),
@@ -433,6 +510,7 @@ export const createQuoteBodyLineItemsItemWastagePercentageMin = 0;
 export const createQuoteBodyLineItemsItemWastagePercentageMax = 100;
 
 export const createQuoteBodyLineItemsItemIsBulkItemDefault = false;
+export const createQuoteBodyLineItemsItemSaveToMyPresetsDefault = false;
 export const createQuoteBodyLineItemsMax = 200;
 
 
@@ -480,7 +558,8 @@ export const CreateQuoteBody = zod.object({
   "unit": zod.string().min(1).max(createQuoteBodyLineItemsItemUnitMax).default(createQuoteBodyLineItemsItemUnitDefault),
   "unitType": zod.enum(['sqm', 'lm', 'm3', 'item', 'box']).default(createQuoteBodyLineItemsItemUnitTypeDefault),
   "wastagePercentage": zod.number().min(createQuoteBodyLineItemsItemWastagePercentageMin).max(createQuoteBodyLineItemsItemWastagePercentageMax).default(createQuoteBodyLineItemsItemWastagePercentageDefault),
-  "isBulkItem": zod.boolean().default(createQuoteBodyLineItemsItemIsBulkItemDefault)
+  "isBulkItem": zod.boolean().default(createQuoteBodyLineItemsItemIsBulkItemDefault),
+  "saveToMyPresets": zod.boolean().default(createQuoteBodyLineItemsItemSaveToMyPresetsDefault)
 })).max(createQuoteBodyLineItemsMax).optional()
 })
 

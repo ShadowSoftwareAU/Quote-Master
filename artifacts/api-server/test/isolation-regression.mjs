@@ -26,6 +26,8 @@ const [
   time,
   portfolio,
   referrals,
+  tradeTemplates,
+  tradeTemplatePresetService,
   dashboard,
   pdf,
   masterProjects,
@@ -46,6 +48,8 @@ const [
   read("src/routes/time.ts"),
   read("src/routes/portfolio.ts"),
   read("src/routes/referrals.ts"),
+  read("src/routes/trade-templates.ts"),
+  read("src/services/tradeTemplatePresets.ts"),
   read("src/routes/dashboard.ts"),
   read("src/routes/pdf.ts"),
   read("src/routes/master-projects.ts"),
@@ -89,6 +93,7 @@ check(
     time,
     portfolio,
     referrals,
+    tradeTemplates,
     dashboard,
     pdf,
     masterProjects,
@@ -140,6 +145,11 @@ const rootScopes = [
   ["portfolio", portfolio, "portfolioEntriesTable.clerkUserId, userId"],
   ["referral sources", referrals, "referralSourcesTable.clerkUserId, clerkUserId"],
   ["referral leads", referrals, "signUpLeadsTable.clerkUserId, clerkUserId"],
+  [
+    "trade template presets",
+    tradeTemplatePresetService,
+    "tradeTemplatePresetsTable.clerkUserId, clerkUserId",
+  ],
 ];
 for (const [name, source, ownershipPredicate] of rootScopes) {
   check(
@@ -148,6 +158,32 @@ for (const [name, source, ownershipPredicate] of rootScopes) {
     `missing verified-user ownership predicate ${ownershipPredicate}`,
   );
 }
+
+check(
+  "trade preset trade isolation",
+  containsAll(tradeTemplatePresetService, [
+    "tradeTemplatePresetsTable.tradeType, tradeType",
+    "tradeTemplatePresetsTable.clerkUserId, clerkUserId",
+  ]),
+  "personal presets must be scoped by both verified Clerk identity and primary trade",
+);
+check(
+  "trade preset server-authoritative trade",
+  containsAll(tradeTemplates, [
+    "getAuth(req).userId",
+    "businessProfilesTable.tradeType",
+    "saveTradeTemplatePreset(",
+  ]) &&
+    !/req\.(?:body|query|params).*tradeType/.test(tradeTemplates),
+  "preset routes must derive trade type from the authenticated business profile",
+);
+check(
+  "trade preset quote transaction",
+  quotes.includes("await saveSelectedTradeTemplatePresets(") &&
+    quotes.indexOf("await saveSelectedTradeTemplatePresets(") >
+      quotes.indexOf("const created = await db.transaction"),
+  "checked presets must be saved inside the quote creation transaction",
+);
 
 // Nested records do not all carry clerkUserId, so they must be reached through
 // an already scoped parent. These assertions cover the historically dangerous

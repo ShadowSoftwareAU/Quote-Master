@@ -355,7 +355,60 @@ export interface QuoteLineItemInput {
      */
   wastagePercentage?: number;
   isBulkItem?: boolean;
+  saveToMyPresets?: boolean;
 }
+
+export type TradeTemplatePresetInputUnitType = typeof TradeTemplatePresetInputUnitType[keyof typeof TradeTemplatePresetInputUnitType];
+
+
+export const TradeTemplatePresetInputUnitType = {
+  sqm: 'sqm',
+  lm: 'lm',
+  m3: 'm3',
+  item: 'item',
+  box: 'box',
+} as const;
+
+export interface TradeTemplatePresetInput {
+  /**
+     * @minLength 1
+     * @maxLength 200
+     */
+  description: string;
+  /**
+     * @maximum 100000
+     * @exclusiveMinimum 0
+     */
+  quantity: number;
+  /**
+     * @minimum 0
+     * @maximum 9000
+     */
+  unitCost: number;
+  /**
+     * @minimum 0
+     * @maximum 1000
+     */
+  markupPercentage: number;
+  /**
+     * @minLength 1
+     * @maxLength 40
+     */
+  unit?: string;
+  unitType?: TradeTemplatePresetInputUnitType;
+  /**
+     * @minimum 0
+     * @maximum 100
+     */
+  wastagePercentage?: number;
+  isBulkItem?: boolean;
+}
+
+export type TradeTemplatePreset = TradeTemplatePresetInput & {
+  id: number;
+  tradeType: string;
+  category: string;
+};
 
 export interface QuoteEstimateLine {
   /** @nullable */

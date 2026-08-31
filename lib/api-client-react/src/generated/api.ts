@@ -86,7 +86,9 @@ import type {
   TeamMemberInput,
   TeamMemberUpdate,
   TimeEntry,
-  TradeTemplate
+  TradeTemplate,
+  TradeTemplatePreset,
+  TradeTemplatePresetInput
 } from './api.schemas';
 
 import { customFetch } from '../custom-fetch';
@@ -1457,6 +1459,154 @@ export function useListTradeTemplates<TData = Awaited<ReturnType<typeof listTrad
 
 
 
+
+export const getListTradeTemplatePresetsUrl = () => {
+
+
+
+
+  return `/api/trade-template-presets`
+}
+
+/**
+ * @summary List the authenticated builder's presets for their primary trade
+ */
+export const listTradeTemplatePresets = async ( options?: RequestInit): Promise<TradeTemplatePreset[]> => {
+
+  return customFetch<TradeTemplatePreset[]>(getListTradeTemplatePresetsUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListTradeTemplatePresetsQueryKey = () => {
+    return [
+    `/api/trade-template-presets`
+    ] as const;
+    }
+
+
+export const getListTradeTemplatePresetsQueryOptions = <TData = Awaited<ReturnType<typeof listTradeTemplatePresets>>, TError = ErrorType<void>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listTradeTemplatePresets>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListTradeTemplatePresetsQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listTradeTemplatePresets>>> = ({ signal }) => listTradeTemplatePresets({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listTradeTemplatePresets>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListTradeTemplatePresetsQueryResult = NonNullable<Awaited<ReturnType<typeof listTradeTemplatePresets>>>
+export type ListTradeTemplatePresetsQueryError = ErrorType<void>
+
+
+/**
+ * @summary List the authenticated builder's presets for their primary trade
+ */
+
+export function useListTradeTemplatePresets<TData = Awaited<ReturnType<typeof listTradeTemplatePresets>>, TError = ErrorType<void>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listTradeTemplatePresets>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListTradeTemplatePresetsQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
+
+export const getSaveTradeTemplatePresetUrl = () => {
+
+
+
+
+  return `/api/trade-template-presets`
+}
+
+/**
+ * @summary Save or update a personal preset for the authenticated builder's primary trade
+ */
+export const saveTradeTemplatePreset = async (tradeTemplatePresetInput: TradeTemplatePresetInput, options?: RequestInit): Promise<TradeTemplatePreset> => {
+
+  return customFetch<TradeTemplatePreset>(getSaveTradeTemplatePresetUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      tradeTemplatePresetInput,)
+  }
+);}
+
+
+
+
+export const getSaveTradeTemplatePresetMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof saveTradeTemplatePreset>>, TError,{data: BodyType<TradeTemplatePresetInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof saveTradeTemplatePreset>>, TError,{data: BodyType<TradeTemplatePresetInput>}, TContext> => {
+
+const mutationKey = ['saveTradeTemplatePreset'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof saveTradeTemplatePreset>>, {data: BodyType<TradeTemplatePresetInput>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  saveTradeTemplatePreset(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type SaveTradeTemplatePresetMutationResult = NonNullable<Awaited<ReturnType<typeof saveTradeTemplatePreset>>>
+    export type SaveTradeTemplatePresetMutationBody = BodyType<TradeTemplatePresetInput>
+    export type SaveTradeTemplatePresetMutationError = ErrorType<void>
+
+    /**
+ * @summary Save or update a personal preset for the authenticated builder's primary trade
+ */
+export const useSaveTradeTemplatePreset = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof saveTradeTemplatePreset>>, TError,{data: BodyType<TradeTemplatePresetInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof saveTradeTemplatePreset>>,
+        TError,
+        {data: BodyType<TradeTemplatePresetInput>},
+        TContext
+      > => {
+      return useMutation(getSaveTradeTemplatePresetMutationOptions(options));
+    }
 
 export const getListQuotesUrl = () => {
 

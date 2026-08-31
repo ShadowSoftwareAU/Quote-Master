@@ -1,13 +1,17 @@
 import { useState, useEffect, useMemo } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import {
+  getListTradeTemplatePresetsQueryKey,
   useEstimateDeck,
   useCreateQuote,
   useListCustomers,
   useListMaterials,
   useGetProfileSettings,
+  useListTradeTemplatePresets,
   useListTradeTemplates,
   getGetProfileSettingsQueryKey,
   type TradeTemplate,
+  type TradeTemplatePreset,
   type Material,
 } from "@workspace/api-client-react";
 import { useAuth } from "@clerk/react";
@@ -90,6 +94,7 @@ interface CustomLineItemDraft {
   markupPercentage: number;
   wastagePercentage: number;
   isBulkItem: boolean;
+  saveToMyPresets: boolean;
 }
 
 let nextLineItemId = 1;
@@ -186,6 +191,7 @@ export default function Calculator() {
   const [, setLocation] = useLocation();
   const { toast } = useToast();
   const { userId, isLoaded, isSignedIn } = useAuth();
+  const queryClient = useQueryClient();
   const [spec, setSpec] = useState(DEFAULT_SPEC);
   const [advancedOpen, setAdvancedOpen] = useState(false);
 
@@ -215,6 +221,14 @@ export default function Calculator() {
       queryKey: ["trade-templates"],
     },
   });
+  const { data: personalPresets, error: presetsError } =
+    useListTradeTemplatePresets({
+      query: {
+        retry: false,
+        enabled: isLoaded && isSignedIn,
+        queryKey: [...getListTradeTemplatePresetsQueryKey(), userId],
+      },
+    });
 
   const [quoteTitle, setQuoteTitle] = useState("New Deck Quote");
   const [customerId, setCustomerId] = useState("");
@@ -343,6 +357,7 @@ export default function Calculator() {
         markupPercentage: 0,
         wastagePercentage: 0,
         isBulkItem: false,
+        saveToMyPresets: false,
       },
     ]);
   };
@@ -397,7 +412,26 @@ export default function Calculator() {
       markupPercentage: item.markupPercentage,
       wastagePercentage: item.wastagePercentage,
       isBulkItem: item.isBulkItem,
+      saveToMyPresets: false,
     })));
+  };
+
+  const addPresetItem = (preset: TradeTemplatePreset) => {
+    setLineItems((items) => [
+      ...items,
+      {
+        id: nextLineItemId++,
+        description: preset.description,
+        quantity: preset.quantity,
+        unit: preset.unit ?? "each",
+        unitType: preset.unitType ?? "item",
+        unitCost: preset.unitCost,
+        markupPercentage: preset.markupPercentage,
+        wastagePercentage: preset.wastagePercentage ?? 0,
+        isBulkItem: preset.isBulkItem ?? false,
+        saveToMyPresets: false,
+      },
+    ]);
   };
 
   const moveLineItem = (index: number, direction: -1 | 1) => {
@@ -439,11 +473,15 @@ export default function Calculator() {
             unitType: item.unitType as "sqm" | "lm" | "m3" | "item" | "box",
             wastagePercentage: item.wastagePercentage,
             isBulkItem: item.isBulkItem,
+            saveToMyPresets: item.saveToMyPresets,
           })),
         },
       },
       {
         onSuccess: (data) => {
+          queryClient.invalidateQueries({
+            queryKey: getListTradeTemplatePresetsQueryKey(),
+          });
           toast({ title: "Quote saved!" });
           setDialogOpen(false);
           setLocation(`/quotes/${data.id}`);
@@ -918,6 +956,39 @@ export default function Calculator() {
                   </p>
                 )}
               </div>
+              {personalPresets?.length ? (
+                <div className="rounded-sm border border-primary/25 bg-primary/5 p-3">
+                  <div className="flex items-center justify-between gap-3">
+                    <div>
+                      <p className="text-xs font-black uppercase tracking-wide text-primary">
+                        My quick-add presets
+                      </p>
+                      <p className="mt-1 text-xs text-muted-foreground">
+                        Add an item you have saved for {profile?.tradeType || "your trade"}.
+                      </p>
+                    </div>
+                    <Badge variant="secondary">{personalPresets.length}</Badge>
+                  </div>
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    {personalPresets.map((preset) => (
+                      <Button
+                        key={preset.id}
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => addPresetItem(preset)}
+                      >
+                        <Plus className="mr-1.5 h-3.5 w-3.5" />
+                        {preset.description}
+                      </Button>
+                    ))}
+                  </div>
+                </div>
+              ) : presetsError ? (
+                <p className="text-xs text-amber-700 dark:text-amber-300">
+                  Your personal presets are unavailable right now. You can still add custom items.
+                </p>
+              ) : null}
               {lineItems.length === 0 ? (
                 <div className="rounded-sm border border-dashed p-5 text-sm text-center text-muted-foreground">
                   No additional items added. Choose a template or add a custom item.
@@ -991,6 +1062,16 @@ export default function Calculator() {
                           onCheckedChange={(checked) => updateLineItem(item.id, "isBulkItem", checked === true)}
                         />
                         Full boxes / bulk units
+                      </label>
+                    </div>
+                    <div className="flex items-end pb-1 sm:col-span-2">
+                      <label htmlFor={`line-preset-${item.id}`} className="flex items-center gap-2 text-sm font-bold cursor-pointer">
+                        <Checkbox
+                          id={`line-preset-${item.id}`}
+                          checked={item.saveToMyPresets}
+                          onCheckedChange={(checked) => updateLineItem(item.id, "saveToMyPresets", checked === true)}
+                        />
+                        Save to My Presets
                       </label>
                     </div>
                   </div>
