@@ -1220,4 +1220,3 @@ export interface AddPortfolioPhotoInput {
 export type ListMaterialsParams = {
 category?: string;
 };
-

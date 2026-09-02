@@ -2836,4 +2836,3 @@ export const CreateSignUpLeadBody = zod.object({
   "notes": zod.string().optional()
 })
 
-
