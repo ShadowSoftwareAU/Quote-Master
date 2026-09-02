@@ -144,7 +144,7 @@ export default function SignInScreen() {
           <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
             <Feather name="tool" size={22} color={colors.primary} />
             <Text style={{ fontFamily: "Inter_700Bold", color: colors.primary, fontSize: 12, letterSpacing: 1.5 }}>
-              DECK ME
+              QUOTE MASTER
             </Text>
           </View>
           <Text style={{ fontFamily: "Chivo_900Black", color: colors.primaryForeground, fontSize: 34, marginTop: 18 }}>
@@ -223,7 +223,7 @@ export default function SignInScreen() {
             {errors.fields.password ? <Text style={{ color: colors.destructive }}>{errors.fields.password.message}</Text> : null}
             <AuthButton label={busy ? "SIGNING IN…" : "SIGN IN"} disabled={!emailAddress || !password || busy} onPress={submit} />
             <View style={{ flexDirection: "row", justifyContent: "center", gap: 5, marginTop: 12 }}>
-              <Text style={{ color: colors.mutedForeground, fontFamily: "Inter_400Regular" }}>New to Deck Me?</Text>
+              <Text style={{ color: colors.mutedForeground, fontFamily: "Inter_400Regular" }}>New to Quote Master?</Text>
               <Link href="/(auth)/sign-up" asChild>
                 <Pressable><Text style={{ color: colors.primary, fontFamily: "Inter_700Bold" }}>Create account</Text></Pressable>
               </Link>

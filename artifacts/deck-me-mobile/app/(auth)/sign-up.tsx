@@ -64,14 +64,14 @@ export default function SignUpScreen() {
           <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
             <Feather name="tool" size={22} color={colors.primary} />
             <Text style={{ fontFamily: "Inter_700Bold", color: colors.primary, fontSize: 12, letterSpacing: 1.5 }}>
-              DECK ME
+              QUOTE MASTER
             </Text>
           </View>
           <Text style={{ fontFamily: "Chivo_900Black", color: colors.primaryForeground, fontSize: 34, marginTop: 18 }}>
             {needsCode ? "VERIFY YOUR EMAIL" : "JOIN THE CREW"}
           </Text>
           <Text style={{ fontFamily: "Inter_400Regular", color: colors.mutedForeground, fontSize: 14, marginTop: 8 }}>
-            {needsCode ? "Enter the code Clerk sent to your inbox." : "Create a secure account for your Deck Me workspace."}
+            {needsCode ? "Enter the code Clerk sent to your inbox." : "Create a secure account for your Quote Master workspace."}
           </Text>
         </View>
         <StripedBar height={6} />

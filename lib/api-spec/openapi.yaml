@@ -3,7 +3,7 @@ info:
   # Do not change the title, if the title changes, the import paths will be broken
   title: Api
   version: 0.1.0
-  description: Deck Me API — decking quotes, materials, customers, and bookings.
+  description: Quote Master API — decking quotes, materials, customers, and bookings.
 servers:
   - url: /api
     description: Base API path

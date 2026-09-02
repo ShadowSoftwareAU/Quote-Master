@@ -1,6 +1,6 @@
-# Deck Me
+# Quote Master
 
-A full-stack business management app for Australian decking tradies — calculate deck quotes, manage jobs, track team time, and run financial reports. Hi-vis orange (#ff7a00) + dark steel aesthetic throughout.
+A full-stack business management app for Australian decking tradies, calculate deck quotes, manage jobs, track team time, and run financial reports. Hi-vis orange (#ff7a00) + dark steel aesthetic throughout.
 
 ## Run & Operate
 

@@ -24,7 +24,7 @@ import { complianceDisclaimerForTrade } from "../lib/quoteCompliance";
 
 const router: IRouter = Router();
 const DEMO_SEED_MARKER =
-  "Deck Me presentation demo data — temporary development seed";
+  "Quote Master presentation demo data — temporary development seed";
 
 function developmentOnly(
   _req: Request,

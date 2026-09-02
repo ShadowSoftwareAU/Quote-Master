@@ -134,7 +134,7 @@ export default function OnboardingScreen() {
           <TextInputStyled
             value={draft.businessName}
             onChangeText={(text) => updateDraft("businessName", text)}
-            placeholder="Deck Me Pty Ltd"
+              placeholder="Quote Master Pty Ltd"
           />
           {errors.businessName ? <Text style={{ color: colors.destructive, fontSize: 12, fontFamily: "Inter_500Medium" }}>{errors.businessName}</Text> : null}
         </View>

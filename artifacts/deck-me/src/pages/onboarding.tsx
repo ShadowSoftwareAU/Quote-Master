@@ -114,7 +114,7 @@ export default function Onboarding() {
                     <FormItem>
                       <FormLabel className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Business Name</FormLabel>
                       <FormControl>
-                        <Input placeholder="Deck Me Pty Ltd" className="font-medium bg-card h-12" {...field} />
+                        <Input placeholder="Quote Master Pty Ltd" className="font-medium bg-card h-12" {...field} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
