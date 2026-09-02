@@ -1,8 +1,21 @@
 uploads = []
-outputs = []
 
 [[generated]]
 id = "QgQWJ9KOH_L6m5RDCEAhI"
 uri = "file://artifacts/deck-me-mobile/assets/images/icon.png"
 type = "image"
 title = "generated_image"
+
+[[outputs]]
+id = "OEGwSGjwK51fGaD0dIoe2"
+uri = "file://docs/quote-master-feature-outline.md"
+type = "text"
+title = "Quote Master Feature Outline"
+description = "A concise downloadable outline of Quote Master's purpose, users, current features, safeguards, business outcomes, and future direction."
+logical_id = "367c8c7a-43a9-4cd1-859a-eb329fe5e856"
+content_hash = "sha256:8ab79eb73cd0df88499eb56bdd6e9f5d5a172cf8d670717a9fa7b268885c59ec"
+size = 8211
+mtime_ms = 1788393483307
+storage_uri = "gcs://replit-rams-assets-picard/rams/assets/repl:0cebc818-8818-4d56-a1d4-5fb8a131e22d/367c8c7a-43a9-4cd1-859a-eb329fe5e856/27b85b1e-8a98-425e-b124-efd7ca7f3ee3"
+storage_version_token = "1788393500839820"
+content_type = "text/markdown"
