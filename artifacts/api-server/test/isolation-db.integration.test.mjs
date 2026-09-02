@@ -45,6 +45,58 @@ async function api(userId, method, pathname, body) {
   return { response, json };
 }
 
+function roundMoney(value) {
+  return Math.round((value + Number.EPSILON) * 100) / 100;
+}
+
+function expectedCustomLine(item) {
+  const wastagePercentage = roundMoney(item.wastagePercentage ?? 0);
+  const quantityWithWastage = item.quantity * (1 + wastagePercentage / 100);
+  const quantity = item.isBulkItem
+    ? Math.ceil(quantityWithWastage)
+    : Math.round((quantityWithWastage + Number.EPSILON) * 1000) / 1000;
+  const unitCost = roundMoney(item.unitCost);
+  const markupPercentage = roundMoney(item.markupPercentage);
+  const lineTotal = roundMoney(
+    quantity * unitCost * (1 + markupPercentage / 100),
+  );
+  return {
+    description: item.description,
+    quantity,
+    unit: item.unit,
+    unitType: item.unitType,
+    unitCost,
+    markupPercentage,
+    wastagePercentage,
+    isBulkItem: item.isBulkItem,
+    unitPrice: roundMoney(lineTotal / quantity),
+    lineTotal,
+  };
+}
+
+function quotePersistenceSnapshot(quote) {
+  return {
+    materialsSubtotal: quote.materialsSubtotal,
+    labourCost: quote.labourCost,
+    gst: quote.gst,
+    total: quote.total,
+    lineItems: quote.lineItems
+      .filter((line) => line.category === "custom")
+      .map((line) => ({
+        description: line.description,
+        quantity: line.quantity,
+        unit: line.unit,
+        unitType: line.unitType,
+        unitCost: line.unitCost,
+        markupPercentage: line.markupPercentage,
+        wastagePercentage: line.wastagePercentage,
+        isBulkItem: line.isBulkItem,
+        unitPrice: line.unitPrice,
+        lineTotal: line.lineTotal,
+      })),
+  };
+}
+
 before(async () => {
   if (!hasDatabase) return;
   tempDir = await mkdtemp(path.join(os.tmpdir(), "api-router-isolation-"));
@@ -719,6 +771,121 @@ test("database-backed customer and nested route isolation", { skip: !hasDatabase
     })).response.status,
     409,
   );
+
+  const seededTemplates = await api(userA, "GET", "/trade-templates");
+  assert.equal(seededTemplates.response.status, 200);
+  const seededTemplate = seededTemplates.json.find(
+    (template) =>
+      template.defaultLineItems.some((line) => line.isBulkItem)
+      && template.defaultLineItems.some((line) => line.quantity % 1 !== 0),
+  );
+  assert.ok(seededTemplate, "a seeded template with precise and bulk lines is required");
+
+  const editedTemplateLines = seededTemplate.defaultLineItems.map((line) => ({ ...line }));
+  editedTemplateLines[0] = {
+    ...editedTemplateLines[0],
+    description: "Edited template timber",
+    quantity: 1.234,
+    unit: "linear metre",
+    unitType: "lm",
+    unitCost: 12.345,
+    markupPercentage: 17.25,
+    wastagePercentage: 10.5,
+    isBulkItem: false,
+  };
+  editedTemplateLines.push({
+    description: "Custom disposal edit",
+    category: "other",
+    quantity: 2.375,
+    unit: "bag",
+    unitType: "item",
+    unitCost: 24.995,
+    markupPercentage: 15.125,
+    wastagePercentage: 12.4,
+    isBulkItem: false,
+  });
+
+  const createTemplateQuote = async (title, lineItems) => {
+    const createdTemplateQuote = await api(userA, "POST", "/quotes", {
+      title: `${fixture}-${title}`,
+      customerId: quoteCustomer.json.id,
+      tradeType: seededTemplate.tradeType,
+      lengthM: 3,
+      widthM: 2,
+      labourHours: 10,
+      labourRate: 100,
+      lineItems,
+    });
+    assert.equal(createdTemplateQuote.response.status, 201);
+    createdQuoteIds.push(createdTemplateQuote.json.id);
+
+    const expectedLines = lineItems.map(expectedCustomLine);
+    const savedLines = createdTemplateQuote.json.lineItems
+      .filter((line) => line.category === "custom");
+    assert.deepEqual(
+      savedLines.map((line) => ({
+        description: line.description,
+        quantity: line.quantity,
+        unit: line.unit,
+        unitType: line.unitType,
+        unitCost: line.unitCost,
+        markupPercentage: line.markupPercentage,
+        wastagePercentage: line.wastagePercentage,
+        isBulkItem: line.isBulkItem,
+        unitPrice: line.unitPrice,
+        lineTotal: line.lineTotal,
+      })),
+      expectedLines,
+    );
+    assert.equal(
+      createdTemplateQuote.json.materialsSubtotal,
+      roundMoney(createdTemplateQuote.json.lineItems.reduce(
+        (sum, line) => sum + line.lineTotal,
+        0,
+      )),
+    );
+    assert.equal(
+      createdTemplateQuote.json.gst,
+      roundMoney(
+        (createdTemplateQuote.json.materialsSubtotal
+          + createdTemplateQuote.json.labourCost) * 0.1,
+      ),
+    );
+    assert.equal(
+      createdTemplateQuote.json.total,
+      roundMoney(
+        createdTemplateQuote.json.materialsSubtotal
+          + createdTemplateQuote.json.labourCost
+          + createdTemplateQuote.json.gst,
+      ),
+    );
+
+    const reopened = await api(
+      userA,
+      "GET",
+      `/quotes/${createdTemplateQuote.json.id}`,
+    );
+    assert.equal(reopened.response.status, 200);
+    assert.deepEqual(
+      quotePersistenceSnapshot(reopened.json),
+      quotePersistenceSnapshot(createdTemplateQuote.json),
+    );
+    return { created: createdTemplateQuote.json, reopened: reopened.json };
+  };
+
+  // The web form submits numeric draft values directly.
+  await createTemplateQuote("web-template-rounding", editedTemplateLines);
+
+  // The mobile form keeps text inputs locally, then converts each value before
+  // submitting the same API contract.
+  const mobileTemplateLines = editedTemplateLines.map((line) => ({
+    ...line,
+    quantity: Number(String(line.quantity)),
+    unitCost: Number(String(line.unitCost)),
+    markupPercentage: Number(String(line.markupPercentage)),
+    wastagePercentage: Number(String(line.wastagePercentage)),
+  }));
+  await createTemplateQuote("mobile-template-rounding", mobileTemplateLines);
 
   for (const invalidLineItem of [
     { description: "", quantity: 1, unitCost: 10, markupPercentage: 0 },
