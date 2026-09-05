@@ -10,3 +10,4 @@
 - [Line-item wastage](line-item-wastage.md) — persist effective quantities after wastage and bulk rounding, then never apply wastage again when copying stored lines.
 - [Dashboard analytics semantics](dashboard-analytics-semantics.md) — keep pipeline, YTD revenue, and win-rate definitions stable across owner dashboards.
 - [Personal trade presets](personal-trade-presets.md) — keep learned quote items user-owned, primary-trade scoped, idempotent, and atomic with quote creation.
+- [Three.js CAD rotations](threejs-cad-rotations.md) — validate compliance bounds against Three.js itself before changing XYZ Euler transform maths.
