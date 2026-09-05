@@ -461,7 +461,7 @@ paths:
           schema: { type: integer, minimum: 1 }
       responses:
         "200":
-          description: Latest CAD layout
+          description: Latest persisted CAD layout and its deterministic compliance evaluation
           content:
             application/json:
               schema: { $ref: "#/components/schemas/CadGeneratedLayout" }
@@ -489,7 +489,7 @@ paths:
             schema: { $ref: "#/components/schemas/CadLayoutPromptInput" }
       responses:
         "201":
-          description: CAD layout generated and stored
+          description: CAD layout generated, evaluated for compliance, and stored
           content:
             application/json:
               schema: { $ref: "#/components/schemas/CadGeneratedLayout" }
@@ -2418,17 +2418,65 @@ components:
           type: string
           minLength: 1
           maxLength: 2000
+    CadComplianceStandard:
+      type: string
+      enum: [NCC 2022, AS 1684, AS/NZS 3000, AS/NZS 3500]
+    CadComplianceSeverity:
+      type: string
+      enum: [warning, block]
+    CadComplianceStatus:
+      type: string
+      enum: [pass, warning, block]
+    CadComplianceFinding:
+      type: object
+      additionalProperties: false
+      required: [code, standard, severity, title, message, componentIds]
+      properties:
+        code: { type: string, minLength: 1, maxLength: 100 }
+        standard: { $ref: "#/components/schemas/CadComplianceStandard" }
+        severity: { $ref: "#/components/schemas/CadComplianceSeverity" }
+        title: { type: string, minLength: 1, maxLength: 200 }
+        message: { type: string, minLength: 1, maxLength: 1000 }
+        componentIds:
+          type: array
+          items: { type: string, minLength: 1, maxLength: 100 }
+    CadComplianceEvaluation:
+      type: object
+      additionalProperties: false
+      required: [version, status, evaluatedStandards, findings]
+      properties:
+        version: { type: integer, const: 1 }
+        status: { $ref: "#/components/schemas/CadComplianceStatus" }
+        evaluatedStandards:
+          type: array
+          minItems: 4
+          maxItems: 4
+          items: { $ref: "#/components/schemas/CadComplianceStandard" }
+        findings:
+          type: array
+          maxItems: 100
+          items: { $ref: "#/components/schemas/CadComplianceFinding" }
     CadGeneratedLayout:
       type: object
       additionalProperties: false
       required:
-        [id, quoteId, prompt, tradeCategory, layout, createdAt, updatedAt]
+        [
+          id,
+          quoteId,
+          prompt,
+          tradeCategory,
+          layout,
+          compliance,
+          createdAt,
+          updatedAt,
+        ]
       properties:
         id: { type: integer }
         quoteId: { type: integer }
         prompt: { type: string }
         tradeCategory: { $ref: "#/components/schemas/CadTradeCategory" }
         layout: { $ref: "#/components/schemas/CadLayoutPayload" }
+        compliance: { $ref: "#/components/schemas/CadComplianceEvaluation" }
         createdAt: { type: string, format: date-time }
         updatedAt: { type: string, format: date-time }
     QuoteSummary:

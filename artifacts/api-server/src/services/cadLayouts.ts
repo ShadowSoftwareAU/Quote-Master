@@ -2,6 +2,7 @@ import { and, desc, eq } from "drizzle-orm";
 import { cadGeneratedLayoutsTable, db, quotesTable } from "@workspace/db";
 import { CadLayoutPayloadSchema } from "@workspace/api-zod";
 import { simulateCadFromText } from "./cadFromText";
+import { evaluateCadLayoutCompliance } from "./cadCompliance";
 
 interface CreateCadLayoutInput {
   quoteId: number;
@@ -10,12 +11,14 @@ interface CreateCadLayoutInput {
 }
 
 function formatCadLayout(layout: typeof cadGeneratedLayoutsTable.$inferSelect) {
+  const validatedLayout = CadLayoutPayloadSchema.parse(layout.layoutJson);
   return {
     id: layout.id,
     quoteId: layout.quoteId,
     prompt: layout.prompt,
     tradeCategory: layout.tradeCategory,
-    layout: CadLayoutPayloadSchema.parse(layout.layoutJson),
+    layout: validatedLayout,
+    compliance: evaluateCadLayoutCompliance(validatedLayout),
     createdAt: layout.createdAt.toISOString(),
     updatedAt: layout.updatedAt.toISOString(),
   };

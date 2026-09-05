@@ -9,21 +9,22 @@ export interface HealthStatus {
   status: string;
 }
 
-export type BusinessRole = (typeof BusinessRole)[keyof typeof BusinessRole];
+export type BusinessRole = typeof BusinessRole[keyof typeof BusinessRole];
+
 
 export const BusinessRole = {
-  Owner: "Owner",
-  Employee: "Employee",
-  Subcontractor: "Subcontractor",
+  Owner: 'Owner',
+  Employee: 'Employee',
+  Subcontractor: 'Subcontractor',
 } as const;
 
-export type BusinessProfileMetadataSyncStatus =
-  (typeof BusinessProfileMetadataSyncStatus)[keyof typeof BusinessProfileMetadataSyncStatus];
+export type BusinessProfileMetadataSyncStatus = typeof BusinessProfileMetadataSyncStatus[keyof typeof BusinessProfileMetadataSyncStatus];
+
 
 export const BusinessProfileMetadataSyncStatus = {
-  pending: "pending",
-  synced: "synced",
-  failed: "failed",
+  pending: 'pending',
+  synced: 'synced',
+  failed: 'failed',
 } as const;
 
 export interface BusinessProfile {
@@ -42,43 +43,43 @@ export interface BusinessProfile {
 
 export interface OnboardingProfileInput {
   /**
-   * @minLength 2
-   * @maxLength 120
-   */
+     * @minLength 2
+     * @maxLength 120
+     */
   businessName: string;
   /**
-   * @minLength 8
-   * @maxLength 20
-   * @pattern ^\+?[0-9 ()-]+$
-   */
+     * @minLength 8
+     * @maxLength 20
+     * @pattern ^\+?[0-9 ()-]+$
+     */
   phoneNumber: string;
   /**
-   * @minLength 2
-   * @maxLength 80
-   */
+     * @minLength 2
+     * @maxLength 80
+     */
   tradeType: string;
   /**
-   * @minLength 2
-   * @maxLength 50
-   * @nullable
-   * @pattern ^[A-Za-z0-9 ./-]+$
-   */
+     * @minLength 2
+     * @maxLength 50
+     * @nullable
+     * @pattern ^[A-Za-z0-9 ./-]+$
+     */
   licenseNumber?: string | null;
   role: BusinessRole;
 }
 
 export interface ProfileSettingsInput {
   /**
-   * @minLength 2
-   * @maxLength 80
-   */
+     * @minLength 2
+     * @maxLength 80
+     */
   tradeType: string;
   /**
-   * @minLength 2
-   * @maxLength 50
-   * @nullable
-   * @pattern ^[A-Za-z0-9 ./-]+$
-   */
+     * @minLength 2
+     * @maxLength 50
+     * @nullable
+     * @pattern ^[A-Za-z0-9 ./-]+$
+     */
   licenseNumber?: string | null;
   role: BusinessRole;
 }
@@ -87,9 +88,7 @@ export interface MasterBuilderFlagInput {
   isMasterBuilder: boolean;
 }
 
-export interface SeedDemoDataInput {
-  [key: string]: unknown;
-}
+export interface SeedDemoDataInput { [key: string]: unknown }
 
 export type SeedDemoDataResponseCounts = {
   customers: 5;
@@ -178,14 +177,14 @@ export interface Material {
   /** @nullable */
   sku?: string | null;
   /**
-   * Canonical vendor name, ready for live supplier integrations
-   * @nullable
-   */
+     * Canonical vendor name, ready for live supplier integrations
+     * @nullable
+     */
   vendorName?: string | null;
   /**
-   * Vendor-specific product SKU
-   * @nullable
-   */
+     * Vendor-specific product SKU
+     * @nullable
+     */
   vendorSku?: string | null;
   /** decking | joist | bearer | post | stump | screw | nail | bracket | sealant | other */
   category: string;
@@ -194,14 +193,14 @@ export interface Material {
   /** Retail price per unit (AUD) — shown on client quotes */
   unitPrice: number;
   /**
-   * Your trade/buy price — never shown to clients
-   * @nullable
-   */
+     * Your trade/buy price — never shown to clients
+     * @nullable
+     */
   tradeCost?: number | null;
   /**
-   * Items per pack, if unit=pack
-   * @nullable
-   */
+     * Items per pack, if unit=pack
+     * @nullable
+     */
   packSize?: number | null;
   /** bunnings | mitre10 | local | other */
   supplier: string;
@@ -327,95 +326,95 @@ export interface PublicQuoteLineItem {
   lineTotal: number;
 }
 
-export type QuoteLineItemInputUnitType =
-  (typeof QuoteLineItemInputUnitType)[keyof typeof QuoteLineItemInputUnitType];
+export type QuoteLineItemInputUnitType = typeof QuoteLineItemInputUnitType[keyof typeof QuoteLineItemInputUnitType];
+
 
 export const QuoteLineItemInputUnitType = {
-  sqm: "sqm",
-  lm: "lm",
-  m3: "m3",
-  item: "item",
-  box: "box",
+  sqm: 'sqm',
+  lm: 'lm',
+  m3: 'm3',
+  item: 'item',
+  box: 'box',
 } as const;
 
 export interface QuoteLineItemInput {
   /**
-   * @minLength 1
-   * @maxLength 200
-   */
+     * @minLength 1
+     * @maxLength 200
+     */
   description: string;
   /**
-   * @maximum 100000
-   * @exclusiveMinimum 0
-   */
+     * @maximum 100000
+     * @exclusiveMinimum 0
+     */
   quantity: number;
   /**
-   * @minimum 0
-   * @maximum 9000
-   */
+     * @minimum 0
+     * @maximum 9000
+     */
   unitCost: number;
   /**
-   * @minimum 0
-   * @maximum 1000
-   */
+     * @minimum 0
+     * @maximum 1000
+     */
   markupPercentage: number;
   /**
-   * @minLength 1
-   * @maxLength 40
-   */
+     * @minLength 1
+     * @maxLength 40
+     */
   unit?: string;
   unitType?: QuoteLineItemInputUnitType;
   /**
-   * @minimum 0
-   * @maximum 100
-   */
+     * @minimum 0
+     * @maximum 100
+     */
   wastagePercentage?: number;
   isBulkItem?: boolean;
   saveToMyPresets?: boolean;
 }
 
-export type TradeTemplatePresetInputUnitType =
-  (typeof TradeTemplatePresetInputUnitType)[keyof typeof TradeTemplatePresetInputUnitType];
+export type TradeTemplatePresetInputUnitType = typeof TradeTemplatePresetInputUnitType[keyof typeof TradeTemplatePresetInputUnitType];
+
 
 export const TradeTemplatePresetInputUnitType = {
-  sqm: "sqm",
-  lm: "lm",
-  m3: "m3",
-  item: "item",
-  box: "box",
+  sqm: 'sqm',
+  lm: 'lm',
+  m3: 'm3',
+  item: 'item',
+  box: 'box',
 } as const;
 
 export interface TradeTemplatePresetInput {
   /**
-   * @minLength 1
-   * @maxLength 200
-   */
+     * @minLength 1
+     * @maxLength 200
+     */
   description: string;
   /**
-   * @maximum 100000
-   * @exclusiveMinimum 0
-   */
+     * @maximum 100000
+     * @exclusiveMinimum 0
+     */
   quantity: number;
   /**
-   * @minimum 0
-   * @maximum 9000
-   */
+     * @minimum 0
+     * @maximum 9000
+     */
   unitCost: number;
   /**
-   * @minimum 0
-   * @maximum 1000
-   */
+     * @minimum 0
+     * @maximum 1000
+     */
   markupPercentage: number;
   /**
-   * @minLength 1
-   * @maxLength 40
-   */
+     * @minLength 1
+     * @maxLength 40
+     */
   unit?: string;
   unitType?: TradeTemplatePresetInputUnitType;
   /**
-   * @minimum 0
-   * @maximum 100
-   */
+     * @minimum 0
+     * @maximum 100
+     */
   wastagePercentage?: number;
   isBulkItem?: boolean;
 }
@@ -440,15 +439,15 @@ export interface QuoteEstimateLine {
   lineTotal: number;
 }
 
-export type TradeTemplateLineItemUnitType =
-  (typeof TradeTemplateLineItemUnitType)[keyof typeof TradeTemplateLineItemUnitType];
+export type TradeTemplateLineItemUnitType = typeof TradeTemplateLineItemUnitType[keyof typeof TradeTemplateLineItemUnitType];
+
 
 export const TradeTemplateLineItemUnitType = {
-  sqm: "sqm",
-  lm: "lm",
-  m3: "m3",
-  item: "item",
-  box: "box",
+  sqm: 'sqm',
+  lm: 'lm',
+  m3: 'm3',
+  item: 'item',
+  box: 'box',
 } as const;
 
 export interface TradeTemplateLineItem {
@@ -471,11 +470,11 @@ export interface TradeTemplate {
   defaultLineItems: TradeTemplateLineItem[];
 }
 
-export type ComplianceWarningSeverity =
-  (typeof ComplianceWarningSeverity)[keyof typeof ComplianceWarningSeverity];
+export type ComplianceWarningSeverity = typeof ComplianceWarningSeverity[keyof typeof ComplianceWarningSeverity];
+
 
 export const ComplianceWarningSeverity = {
-  warning: "warning",
+  warning: 'warning',
 } as const;
 
 export interface ComplianceWarning {
@@ -628,17 +627,16 @@ export interface MasterProjectPortalToken {
 export const MasterProjectPortalRevocationValue = {
   revoked: true,
 } as const;
-export type MasterProjectPortalRevocation =
-  typeof MasterProjectPortalRevocationValue;
+export type MasterProjectPortalRevocation = typeof MasterProjectPortalRevocationValue;
 
 export interface MasterProjectInput {
   /** @minLength 1 */
   title: string;
   customerId: number;
   /**
-   * @minimum 0
-   * @maximum 99.99
-   */
+     * @minimum 0
+     * @maximum 99.99
+     */
   builderMarginPct?: number;
   notes?: string;
 }
@@ -648,9 +646,9 @@ export interface MasterProjectUpdate {
   title?: string;
   status?: string;
   /**
-   * @minimum 0
-   * @maximum 99.99
-   */
+     * @minimum 0
+     * @maximum 99.99
+     */
   builderMarginPct?: number;
   /** @nullable */
   notes?: string | null;
@@ -702,13 +700,13 @@ export interface Quote {
   updatedAt: string;
 }
 
-export type CadTradeCategory =
-  (typeof CadTradeCategory)[keyof typeof CadTradeCategory];
+export type CadTradeCategory = typeof CadTradeCategory[keyof typeof CadTradeCategory];
+
 
 export const CadTradeCategory = {
-  carpentry: "carpentry",
-  electrical: "electrical",
-  plumbing: "plumbing",
+  carpentry: 'carpentry',
+  electrical: 'electrical',
+  plumbing: 'plumbing',
 } as const;
 
 export interface CadVector3 {
@@ -726,53 +724,53 @@ export interface CadDimensions {
   z: number;
 }
 
-export type CadStructuralComponentType =
-  (typeof CadStructuralComponentType)[keyof typeof CadStructuralComponentType];
+export type CadStructuralComponentType = typeof CadStructuralComponentType[keyof typeof CadStructuralComponentType];
+
 
 export const CadStructuralComponentType = {
-  beam: "beam",
-  post: "post",
-  joist: "joist",
-  wall: "wall",
-  "decking-board": "decking-board",
-  handrail: "handrail",
-  conduit: "conduit",
-  cable: "cable",
-  outlet: "outlet",
-  "junction-box": "junction-box",
-  pipe: "pipe",
-  fitting: "fitting",
-  fixture: "fixture",
+  beam: 'beam',
+  post: 'post',
+  joist: 'joist',
+  wall: 'wall',
+  'decking-board': 'decking-board',
+  handrail: 'handrail',
+  conduit: 'conduit',
+  cable: 'cable',
+  outlet: 'outlet',
+  'junction-box': 'junction-box',
+  pipe: 'pipe',
+  fitting: 'fitting',
+  fixture: 'fixture',
 } as const;
 
 export interface CadStructuralComponent {
   /**
-   * @minLength 1
-   * @maxLength 100
-   */
+     * @minLength 1
+     * @maxLength 100
+     */
   id: string;
   /**
-   * @minLength 1
-   * @maxLength 200
-   */
+     * @minLength 1
+     * @maxLength 200
+     */
   name: string;
   type: CadStructuralComponentType;
   tradeCategory: CadTradeCategory;
   /**
-   * @minLength 1
-   * @maxLength 200
-   */
+     * @minLength 1
+     * @maxLength 200
+     */
   material: string;
   /**
-   * @minLength 1
-   * @maxLength 100
-   * @nullable
-   */
+     * @minLength 1
+     * @maxLength 100
+     * @nullable
+     */
   materialSku: string | null;
   /**
-   * @minLength 1
-   * @maxLength 100
-   */
+     * @minLength 1
+     * @maxLength 100
+     */
   geometryId: string;
   dimensions: CadDimensions;
   position: CadVector3;
@@ -781,25 +779,85 @@ export interface CadStructuralComponent {
 
 export interface CadLayoutPayload {
   version: 1;
-  units: "metres";
-  coordinateSystem: "right-handed-y-up";
-  rotationUnit: "radians";
+  units: 'metres';
+  coordinateSystem: 'right-handed-y-up';
+  rotationUnit: 'radians';
   tradeCategory: CadTradeCategory;
   dimensions: CadDimensions;
   origin: CadVector3;
   /**
-   * @minItems 1
-   * @maxItems 500
-   */
+     * @minItems 1
+     * @maxItems 500
+     */
   structuralComponents: CadStructuralComponent[];
 }
 
 export interface CadLayoutPromptInput {
   /**
-   * @minLength 1
-   * @maxLength 2000
-   */
+     * @minLength 1
+     * @maxLength 2000
+     */
   prompt: string;
+}
+
+export type CadComplianceStandard = typeof CadComplianceStandard[keyof typeof CadComplianceStandard];
+
+
+export const CadComplianceStandard = {
+  NCC_2022: 'NCC 2022',
+  AS_1684: 'AS 1684',
+  'AS/NZS_3000': 'AS/NZS 3000',
+  'AS/NZS_3500': 'AS/NZS 3500',
+} as const;
+
+export type CadComplianceSeverity = typeof CadComplianceSeverity[keyof typeof CadComplianceSeverity];
+
+
+export const CadComplianceSeverity = {
+  warning: 'warning',
+  block: 'block',
+} as const;
+
+export type CadComplianceStatus = typeof CadComplianceStatus[keyof typeof CadComplianceStatus];
+
+
+export const CadComplianceStatus = {
+  pass: 'pass',
+  warning: 'warning',
+  block: 'block',
+} as const;
+
+export interface CadComplianceFinding {
+  /**
+     * @minLength 1
+     * @maxLength 100
+     */
+  code: string;
+  standard: CadComplianceStandard;
+  severity: CadComplianceSeverity;
+  /**
+     * @minLength 1
+     * @maxLength 200
+     */
+  title: string;
+  /**
+     * @minLength 1
+     * @maxLength 1000
+     */
+  message: string;
+  componentIds: string[];
+}
+
+export interface CadComplianceEvaluation {
+  version: 1;
+  status: CadComplianceStatus;
+  /**
+     * @minItems 4
+     * @maxItems 4
+     */
+  evaluatedStandards: CadComplianceStandard[];
+  /** @maxItems 100 */
+  findings: CadComplianceFinding[];
 }
 
 export interface CadGeneratedLayout {
@@ -808,6 +866,7 @@ export interface CadGeneratedLayout {
   prompt: string;
   tradeCategory: CadTradeCategory;
   layout: CadLayoutPayload;
+  compliance: CadComplianceEvaluation;
   createdAt: string;
   updatedAt: string;
 }
@@ -1015,9 +1074,9 @@ export interface RemoveBookingPhotoInput {
 
 export interface QuoteVariationInput {
   /**
-   * Title for the variation quote
-   * @minLength 1
-   */
+     * Title for the variation quote
+     * @minLength 1
+     */
   title: string;
   /** Description of what's different in this variation */
   notes?: string;
@@ -1121,9 +1180,9 @@ export interface AssignmentAccess {
   /** @nullable */
   teamMemberId?: number | null;
   /**
-   * employee | subcontractor
-   * @nullable
-   */
+     * employee | subcontractor
+     * @nullable
+     */
   role?: string | null;
 }
 
@@ -1142,9 +1201,9 @@ export interface TeamMemberUpdate {
   /** @minLength 1 */
   name?: string;
   /**
-   * @nullable
-   * @pattern ^user_[A-Za-z0-9]+$
-   */
+     * @nullable
+     * @pattern ^user_[A-Za-z0-9]+$
+     */
   linkedClerkUserId?: string | null;
   email?: string;
   phone?: string;
@@ -1155,9 +1214,9 @@ export interface TeamMemberUpdate {
 
 export interface TeamMemberAccountLinkInput {
   /**
-   * Clerk user ID for the authenticated worker account
-   * @minLength 1
-   */
+     * Clerk user ID for the authenticated worker account
+     * @minLength 1
+     */
   accountUserId: string;
 }
 
@@ -1239,9 +1298,9 @@ export interface PortfolioEntryInput {
   testimonial?: string;
   customerName?: string;
   /**
-   * @minimum 1
-   * @maximum 5
-   */
+     * @minimum 1
+     * @maximum 5
+     */
   rating?: number;
   isPublic?: boolean;
   completedAt?: string;
@@ -1330,5 +1389,5 @@ export interface AddPortfolioPhotoInput {
 }
 
 export type ListMaterialsParams = {
-  category?: string;
+category?: string;
 };

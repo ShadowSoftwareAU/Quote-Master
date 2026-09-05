@@ -61,4 +61,36 @@ export const CadLayoutPayloadSchema = z
   })
   .strict();
 
+export const CadComplianceStandardSchema = z.enum([
+  "NCC 2022",
+  "AS 1684",
+  "AS/NZS 3000",
+  "AS/NZS 3500",
+]);
+export const CadComplianceSeveritySchema = z.enum(["warning", "block"]);
+
+export const CadComplianceFindingSchema = z
+  .object({
+    code: z.string().min(1).max(100),
+    standard: CadComplianceStandardSchema,
+    severity: CadComplianceSeveritySchema,
+    title: z.string().min(1).max(200),
+    message: z.string().min(1).max(1000),
+    componentIds: z.array(z.string().min(1).max(100)),
+  })
+  .strict();
+
+export const CadComplianceEvaluationSchema = z
+  .object({
+    version: z.literal(1),
+    status: z.enum(["pass", "warning", "block"]),
+    evaluatedStandards: z.array(CadComplianceStandardSchema).length(4),
+    findings: z.array(CadComplianceFindingSchema).max(100),
+  })
+  .strict();
+
 export type ValidatedCadLayoutPayload = z.infer<typeof CadLayoutPayloadSchema>;
+
+export type ValidatedCadComplianceEvaluation = z.infer<
+  typeof CadComplianceEvaluationSchema
+>;

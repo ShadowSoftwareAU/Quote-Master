@@ -5,6 +5,7 @@
  * Quote Master API — decking quotes, materials, customers, and bookings.
  * OpenAPI spec version: 0.1.0
  */
+import type { CadComplianceEvaluation } from './cadComplianceEvaluation';
 import type { CadLayoutPayload } from './cadLayoutPayload';
 import type { CadTradeCategory } from './cadTradeCategory';
 
@@ -14,6 +15,7 @@ export interface CadGeneratedLayout {
   prompt: string;
   tradeCategory: CadTradeCategory;
   layout: CadLayoutPayload;
+  compliance: CadComplianceEvaluation;
   createdAt: Date;
   updatedAt: Date;
 }

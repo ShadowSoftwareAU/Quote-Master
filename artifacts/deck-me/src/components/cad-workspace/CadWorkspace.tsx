@@ -1,16 +1,30 @@
 import {
   useGetLatestCadLayout,
+  useCreateCadLayout,
   getGetLatestCadLayoutQueryKey,
 } from "@workspace/api-client-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { CadCanvas } from "./CadCanvas";
 import { CadCompliancePanel } from "./CadCompliancePanel";
-import { useMemo } from "react";
+import { useMemo, useState, type FormEvent } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { validateCadLayoutCompliance } from "@/lib/cad-compliance";
-import { BoxSelect, Info, AlertTriangle, Layers } from "lucide-react";
+import {
+  BoxSelect,
+  Info,
+  AlertTriangle,
+  Layers,
+  Loader2,
+} from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
 
 export function CadWorkspace({ quoteId }: { quoteId: number }) {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+  const [prompt, setPrompt] = useState("");
   const {
     data: layoutWrapper,
     isLoading,
@@ -22,6 +36,7 @@ export function CadWorkspace({ quoteId }: { quoteId: number }) {
       retry: false,
     },
   });
+  const createLayout = useCreateCadLayout();
 
   const is404 =
     error &&
@@ -29,12 +44,78 @@ export function CadWorkspace({ quoteId }: { quoteId: number }) {
     "status" in error &&
     error.status === 404;
 
-  const complianceResult = useMemo(() => {
+  const spatialCompliance = useMemo(() => {
     if (layoutWrapper?.layout) {
       return validateCadLayoutCompliance(layoutWrapper.layout);
     }
     return null;
   }, [layoutWrapper?.layout]);
+
+  const canvasCompliance = useMemo(() => {
+    if (!spatialCompliance || !layoutWrapper?.compliance) return null;
+
+    return {
+      ...spatialCompliance,
+      warningComponentIds: new Set([
+        ...spatialCompliance.warningComponentIds,
+        ...layoutWrapper.compliance.findings.flatMap(
+          ({ componentIds }) => componentIds,
+        ),
+      ]),
+    };
+  }, [layoutWrapper?.compliance, spatialCompliance]);
+
+  function handleGenerate(event: FormEvent) {
+    event.preventDefault();
+    const trimmedPrompt = prompt.trim();
+    if (!trimmedPrompt) return;
+
+    createLayout.mutate(
+      { quoteId, data: { prompt: trimmedPrompt } },
+      {
+        onSuccess: (created) => {
+          queryClient.setQueryData(
+            getGetLatestCadLayoutQueryKey(quoteId),
+            created,
+          );
+          setPrompt("");
+        },
+        onError: () => {
+          toast({
+            title: "Could not generate layout",
+            description: "Check the layout description and try again.",
+            variant: "destructive",
+          });
+        },
+      },
+    );
+  }
+
+  const generationForm = (
+    <form
+      onSubmit={handleGenerate}
+      className="flex w-full flex-col gap-2 sm:flex-row"
+    >
+      <Input
+        value={prompt}
+        onChange={(event) => setPrompt(event.target.value)}
+        placeholder="e.g. 6x4m timber deck with electrical conduit"
+        aria-label="Trade layout description"
+        maxLength={2000}
+        disabled={createLayout.isPending}
+      />
+      <Button
+        type="submit"
+        disabled={!prompt.trim() || createLayout.isPending}
+        className="sm:min-w-28"
+      >
+        {createLayout.isPending && (
+          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+        )}
+        {layoutWrapper ? "Update" : "Generate"}
+      </Button>
+    </form>
+  );
 
   if (isLoading) {
     return (
@@ -67,15 +148,16 @@ export function CadWorkspace({ quoteId }: { quoteId: number }) {
             No 3D Layout Generated
           </h3>
           <p className="max-w-md mx-auto text-sm">
-            A structural layout has not been generated for this quote yet. The
-            CAD workspace becomes available once a layout is produced.
+            Describe the carpentry, electrical, or plumbing layout to create a
+            deterministic CAD v1 workspace for this quote.
           </p>
+          <div className="mt-6 w-full max-w-2xl">{generationForm}</div>
         </CardContent>
       </Card>
     );
   }
 
-  if (error || !layoutWrapper || !complianceResult) {
+  if (error || !layoutWrapper || !spatialCompliance || !canvasCompliance) {
     return (
       <Card
         className="border-2 shadow-sm border-destructive/50 bg-destructive/5"
@@ -114,6 +196,8 @@ export function CadWorkspace({ quoteId }: { quoteId: number }) {
         </CardTitle>
       </CardHeader>
 
+      <div className="border-b bg-muted/10 p-3">{generationForm}</div>
+
       <div className="flex flex-col lg:flex-row h-[600px] lg:h-[500px]">
         {/* Canvas Area */}
         <div
@@ -122,7 +206,7 @@ export function CadWorkspace({ quoteId }: { quoteId: number }) {
         >
           <CadCanvas
             layout={layoutWrapper.layout}
-            complianceResult={complianceResult}
+            complianceResult={canvasCompliance}
           />
 
           <div className="absolute bottom-4 left-4 right-4 pointer-events-none flex justify-between items-end">
@@ -153,7 +237,10 @@ export function CadWorkspace({ quoteId }: { quoteId: number }) {
 
         {/* Compliance Panel */}
         <div className="w-full lg:w-80 flex flex-col bg-background h-[300px] lg:h-auto overflow-hidden">
-          <CadCompliancePanel complianceResult={complianceResult} />
+          <CadCompliancePanel
+            compliance={layoutWrapper.compliance}
+            spatialCompliance={spatialCompliance}
+          />
         </div>
       </div>
     </Card>

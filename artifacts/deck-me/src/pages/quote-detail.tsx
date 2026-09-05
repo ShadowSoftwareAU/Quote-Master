@@ -311,7 +311,7 @@ export default function QuoteDetail() {
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <div className="md:col-span-2 space-y-6">
-          <CadWorkspace quoteId={quoteId} />
+          {access.isOwner && <CadWorkspace quoteId={quoteId} />}
 
           <Card className="border-2 shadow-sm">
             <CardHeader className="bg-muted/30 border-b pb-4">
