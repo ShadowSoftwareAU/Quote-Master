@@ -700,6 +700,114 @@ export interface Quote {
   updatedAt: string;
 }
 
+export type CadTradeCategory = typeof CadTradeCategory[keyof typeof CadTradeCategory];
+
+
+export const CadTradeCategory = {
+  carpentry: 'carpentry',
+  electrical: 'electrical',
+  plumbing: 'plumbing',
+} as const;
+
+export interface CadVector3 {
+  x: number;
+  y: number;
+  z: number;
+}
+
+export interface CadDimensions {
+  /** @exclusiveMinimum 0 */
+  x: number;
+  /** @exclusiveMinimum 0 */
+  y: number;
+  /** @exclusiveMinimum 0 */
+  z: number;
+}
+
+export type CadStructuralComponentType = typeof CadStructuralComponentType[keyof typeof CadStructuralComponentType];
+
+
+export const CadStructuralComponentType = {
+  beam: 'beam',
+  post: 'post',
+  joist: 'joist',
+  'decking-board': 'decking-board',
+  handrail: 'handrail',
+  conduit: 'conduit',
+  cable: 'cable',
+  'junction-box': 'junction-box',
+  pipe: 'pipe',
+  fitting: 'fitting',
+  fixture: 'fixture',
+} as const;
+
+export interface CadStructuralComponent {
+  /**
+     * @minLength 1
+     * @maxLength 100
+     */
+  id: string;
+  /**
+     * @minLength 1
+     * @maxLength 200
+     */
+  name: string;
+  type: CadStructuralComponentType;
+  tradeCategory: CadTradeCategory;
+  /**
+     * @minLength 1
+     * @maxLength 200
+     */
+  material: string;
+  /**
+     * @minLength 1
+     * @maxLength 100
+     * @nullable
+     */
+  materialSku: string | null;
+  /**
+     * @minLength 1
+     * @maxLength 100
+     */
+  geometryId: string;
+  dimensions: CadDimensions;
+  position: CadVector3;
+  rotation: CadVector3;
+}
+
+export interface CadLayoutPayload {
+  version: 1;
+  units: 'metres';
+  coordinateSystem: 'right-handed-y-up';
+  rotationUnit: 'radians';
+  tradeCategory: CadTradeCategory;
+  dimensions: CadDimensions;
+  origin: CadVector3;
+  /**
+     * @minItems 1
+     * @maxItems 500
+     */
+  structuralComponents: CadStructuralComponent[];
+}
+
+export interface CadLayoutPromptInput {
+  /**
+     * @minLength 1
+     * @maxLength 2000
+     */
+  prompt: string;
+}
+
+export interface CadGeneratedLayout {
+  id: number;
+  quoteId: number;
+  prompt: string;
+  tradeCategory: CadTradeCategory;
+  layout: CadLayoutPayload;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface QuoteSummary {
   id: number;
   title: string;

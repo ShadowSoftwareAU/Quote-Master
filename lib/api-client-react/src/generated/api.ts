@@ -29,6 +29,8 @@ import type {
   BookingInput,
   BookingUpdate,
   BusinessProfile,
+  CadGeneratedLayout,
+  CadLayoutPromptInput,
   ClockOffInput,
   ClockOnInput,
   Customer,
@@ -1943,6 +1945,78 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
         TContext
       > => {
       return useMutation(getDeleteQuoteMutationOptions(options));
+    }
+
+export const getCreateCadLayoutUrl = (quoteId: number,) => {
+
+
+
+
+  return `/api/quotes/${quoteId}/cad-layouts`
+}
+
+/**
+ * @summary Generate and store a validated CAD layout from natural language
+ */
+export const createCadLayout = async (quoteId: number,
+    cadLayoutPromptInput: CadLayoutPromptInput, options?: RequestInit): Promise<CadGeneratedLayout> => {
+
+  return customFetch<CadGeneratedLayout>(getCreateCadLayoutUrl(quoteId),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      cadLayoutPromptInput,)
+  }
+);}
+
+
+
+
+export const getCreateCadLayoutMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createCadLayout>>, TError,{quoteId: number;data: BodyType<CadLayoutPromptInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createCadLayout>>, TError,{quoteId: number;data: BodyType<CadLayoutPromptInput>}, TContext> => {
+
+const mutationKey = ['createCadLayout'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createCadLayout>>, {quoteId: number;data: BodyType<CadLayoutPromptInput>}> = (props) => {
+          const {quoteId,data} = props ?? {};
+
+          return  createCadLayout(quoteId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreateCadLayoutMutationResult = NonNullable<Awaited<ReturnType<typeof createCadLayout>>>
+    export type CreateCadLayoutMutationBody = BodyType<CadLayoutPromptInput>
+    export type CreateCadLayoutMutationError = ErrorType<void>
+
+    /**
+ * @summary Generate and store a validated CAD layout from natural language
+ */
+export const useCreateCadLayout = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createCadLayout>>, TError,{quoteId: number;data: BodyType<CadLayoutPromptInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof createCadLayout>>,
+        TError,
+        {quoteId: number;data: BodyType<CadLayoutPromptInput>},
+        TContext
+      > => {
+      return useMutation(getCreateCadLayoutMutationOptions(options));
     }
 
 export const getSetQuoteStatusUrl = (id: number,) => {

@@ -15,6 +15,7 @@ import masterProjectsRouter from "./master-projects";
 import profilesRouter from "./profiles";
 import tradeTemplatesRouter from "./trade-templates";
 import demoSeedRouter from "./demo-seed";
+import cadLayoutsRouter from "./cad-layouts";
 
 const router: IRouter = Router();
 
@@ -34,5 +35,6 @@ router.use(masterProjectsRouter);
 router.use(profilesRouter);
 router.use(tradeTemplatesRouter);
 router.use(demoSeedRouter);
+router.use(cadLayoutsRouter);
 
 export default router;

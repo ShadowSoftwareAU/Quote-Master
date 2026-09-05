@@ -22,6 +22,7 @@ tags:
   - name: profile
   - name: master-projects
   - name: trade-templates
+  - name: cad-layouts
 paths:
   /healthz:
     get:
@@ -448,6 +449,37 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/DeletionSuccessWithId" }
+  /quotes/{quoteId}/cad-layouts:
+    post:
+      operationId: createCadLayout
+      tags: [cad-layouts]
+      summary: Generate and store a validated CAD layout from natural language
+      parameters:
+        - in: path
+          name: quoteId
+          required: true
+          schema: { type: integer, minimum: 1 }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/CadLayoutPromptInput" }
+      responses:
+        "201":
+          description: CAD layout generated and stored
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/CadGeneratedLayout" }
+        "400":
+          description: Invalid prompt or quote identifier
+        "401":
+          description: Authentication required
+        "404":
+          description: Quote not found
+        "422":
+          description: Prompt could not be converted into a valid CAD layout
+        "500":
+          description: CAD layout generation or persistence failed
   /quotes/{id}/status:
     patch:
       operationId: setQuoteStatus
@@ -1977,6 +2009,80 @@ components:
         lineItems:
           type: array
           items: { $ref: "#/components/schemas/QuoteLineItem" }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+    CadTradeCategory:
+      type: string
+      enum: [carpentry, electrical, plumbing]
+    CadVector3:
+      type: object
+      additionalProperties: false
+      required: [x, y, z]
+      properties:
+        x: { type: number }
+        y: { type: number }
+        z: { type: number }
+    CadDimensions:
+      type: object
+      additionalProperties: false
+      required: [x, y, z]
+      properties:
+        x: { type: number, exclusiveMinimum: 0 }
+        y: { type: number, exclusiveMinimum: 0 }
+        z: { type: number, exclusiveMinimum: 0 }
+    CadStructuralComponent:
+      type: object
+      additionalProperties: false
+      required: [id, name, type, tradeCategory, material, materialSku, geometryId, dimensions, position, rotation]
+      properties:
+        id: { type: string, minLength: 1, maxLength: 100 }
+        name: { type: string, minLength: 1, maxLength: 200 }
+        type:
+          type: string
+          enum: [beam, post, joist, decking-board, handrail, conduit, cable, junction-box, pipe, fitting, fixture]
+        tradeCategory: { $ref: "#/components/schemas/CadTradeCategory" }
+        material: { type: string, minLength: 1, maxLength: 200 }
+        materialSku: { type: ["string", "null"], minLength: 1, maxLength: 100 }
+        geometryId: { type: string, minLength: 1, maxLength: 100 }
+        dimensions: { $ref: "#/components/schemas/CadDimensions" }
+        position: { $ref: "#/components/schemas/CadVector3" }
+        rotation: { $ref: "#/components/schemas/CadVector3" }
+    CadLayoutPayload:
+      type: object
+      additionalProperties: false
+      required: [version, units, coordinateSystem, rotationUnit, tradeCategory, dimensions, origin, structuralComponents]
+      properties:
+        version: { type: integer, const: 1 }
+        units: { type: string, const: metres }
+        coordinateSystem: { type: string, const: right-handed-y-up }
+        rotationUnit: { type: string, const: radians }
+        tradeCategory: { $ref: "#/components/schemas/CadTradeCategory" }
+        dimensions: { $ref: "#/components/schemas/CadDimensions" }
+        origin: { $ref: "#/components/schemas/CadVector3" }
+        structuralComponents:
+          type: array
+          minItems: 1
+          maxItems: 500
+          items: { $ref: "#/components/schemas/CadStructuralComponent" }
+    CadLayoutPromptInput:
+      type: object
+      additionalProperties: false
+      required: [prompt]
+      properties:
+        prompt:
+          type: string
+          minLength: 1
+          maxLength: 2000
+    CadGeneratedLayout:
+      type: object
+      additionalProperties: false
+      required: [id, quoteId, prompt, tradeCategory, layout, createdAt, updatedAt]
+      properties:
+        id: { type: integer }
+        quoteId: { type: integer }
+        prompt: { type: string }
+        tradeCategory: { $ref: "#/components/schemas/CadTradeCategory" }
+        layout: { $ref: "#/components/schemas/CadLayoutPayload" }
         createdAt: { type: string, format: date-time }
         updatedAt: { type: string, format: date-time }
     QuoteSummary:

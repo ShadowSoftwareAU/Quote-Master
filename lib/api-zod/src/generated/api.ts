@@ -853,6 +853,25 @@ export const DeleteQuoteResponse = zod.object({
 })
 
 
+/**
+ * @summary Generate and store a validated CAD layout from natural language
+ */
+
+
+
+export const CreateCadLayoutParams = zod.object({
+  "quoteId": zod.coerce.number().min(1)
+})
+
+export const createCadLayoutBodyPromptMax = 2000;
+
+
+
+export const CreateCadLayoutBody = zod.object({
+  "prompt": zod.string().min(1).max(createCadLayoutBodyPromptMax)
+})
+
+
 export const SetQuoteStatusParams = zod.object({
   "id": zod.coerce.number()
 })
