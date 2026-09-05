@@ -1,0 +1,19 @@
+We are executing a major feature expansion for Quote Master to build an enterprise-grade MVP suitable for stakeholder presentations (specifically targeting a Bunnings Supply Chain integration). 
+
+We need to integrate the 3D viewport, BOM generation, and export capabilities (GLTF, OBJ, DXF) from our existing "Energy Builder" project, and upgrade them into a multi-trade, compliance-driven AR/CAD platform.
+
+Here is the architectural roadmap for this build:
+
+1. NLP to 3D Pipeline (CAD-from-Text): Build an LLM parser that takes natural language prompts (e.g., "3x4m timber deck with handrails") and outputs a standardized JSON payload detailing dimensions, coordinates, and materials.
+2. Multi-Trade 3D Viewport & Compliance Engine: Port the 3D engine from Energy Builder into Quote Master. Expand parametric models beyond decking to include plumbing, electrical, and structural framing. Integrate a background rules engine that validates generated models against the National Construction Code (NCC 2022), AS 1684 (Timber), and AS/NZS 3000/3500.
+3. Mobile AR Integration: Enable the Expo mobile app to render the generated GLTF 3D models in augmented reality via ARKit/ARCore for on-site customer walkthroughs.
+4. Bunnings Mock API Workflow: Connect the generated Bill of Materials (BOM) to a mock supply chain endpoint to simulate automated material procurement and substitution.
+
+Please acknowledge this complete roadmap. Once acknowledged, immediately begin Phase 1:
+
+PHASE 1 SPRINT INSTRUCTIONS:
+1. Define the Zod schema for the "CAD-from-text" JSON payload. It must strictly type parameters for dimensions (X, Y, Z), trade category (carpentry, electrical, plumbing), structural components, and spatial coordinates.
+2. Create the backend API route that will receive the natural language text prompt, simulate the LLM parsing (we will inject the actual LLM call later), and return this validated Zod schema.
+3. Update the database schema (using Drizzle) to store these generated 3D layout configurations against a specific Quote ID.
+
+Review the existing schema and run the initial setup for Phase 1. Let me know when the Zod schema and API route are drafted.
