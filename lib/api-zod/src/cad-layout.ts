@@ -27,10 +27,12 @@ export const CadStructuralComponentSchema = z
       "beam",
       "post",
       "joist",
+      "wall",
       "decking-board",
       "handrail",
       "conduit",
       "cable",
+      "outlet",
       "junction-box",
       "pipe",
       "fitting",
@@ -55,13 +57,8 @@ export const CadLayoutPayloadSchema = z
     tradeCategory: CadTradeCategorySchema,
     dimensions: CadDimensionsSchema,
     origin: CadVector3Schema,
-    structuralComponents: z
-      .array(CadStructuralComponentSchema)
-      .min(1)
-      .max(500),
+    structuralComponents: z.array(CadStructuralComponentSchema).min(1).max(500),
   })
   .strict();
 
-export type ValidatedCadLayoutPayload = z.infer<
-  typeof CadLayoutPayloadSchema
->;
+export type ValidatedCadLayoutPayload = z.infer<typeof CadLayoutPayloadSchema>;

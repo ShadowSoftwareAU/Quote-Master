@@ -450,6 +450,29 @@ paths:
             application/json:
               schema: { $ref: "#/components/schemas/DeletionSuccessWithId" }
   /quotes/{quoteId}/cad-layouts:
+    get:
+      operationId: getLatestCadLayout
+      tags: [cad-layouts]
+      summary: Get the latest validated CAD layout for an owned quote
+      parameters:
+        - in: path
+          name: quoteId
+          required: true
+          schema: { type: integer, minimum: 1 }
+      responses:
+        "200":
+          description: Latest CAD layout
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/CadGeneratedLayout" }
+        "400":
+          description: Invalid quote identifier
+        "401":
+          description: Authentication required
+        "404":
+          description: Quote or generated layout not found
+        "500":
+          description: CAD layout retrieval failed
     post:
       operationId: createCadLayout
       tags: [cad-layouts]
@@ -769,7 +792,8 @@ paths:
           description: Token revoked
           content:
             application/json:
-              schema: { $ref: "#/components/schemas/MasterProjectPortalRevocation" }
+              schema:
+                { $ref: "#/components/schemas/MasterProjectPortalRevocation" }
 
   /master-project/{token}:
     get:
@@ -952,7 +976,6 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/Quote" }
-
 
   # ── Team Members ───────────────────────────────────────────────────────
   /assignment-access:
@@ -1369,7 +1392,6 @@ paths:
             application/json:
               schema: { $ref: "#/components/schemas/SignUpLead" }
 
-
 components:
   schemas:
     HealthStatus:
@@ -1383,7 +1405,18 @@ components:
       enum: [Owner, Employee, Subcontractor]
     BusinessProfile:
       type: object
-      required: [id, businessName, phoneNumber, tradeType, role, isMasterBuilder, metadataSyncStatus, createdAt, updatedAt]
+      required:
+        [
+          id,
+          businessName,
+          phoneNumber,
+          tradeType,
+          role,
+          isMasterBuilder,
+          metadataSyncStatus,
+          createdAt,
+          updatedAt,
+        ]
       properties:
         id: { type: integer }
         businessName: { type: string }
@@ -1413,7 +1446,7 @@ components:
           type: [string, "null"]
           minLength: 2
           maxLength: 50
-          pattern: '^[A-Za-z0-9 ./-]+$'
+          pattern: "^[A-Za-z0-9 ./-]+$"
         role: { $ref: "#/components/schemas/BusinessRole" }
     ProfileSettingsInput:
       type: object
@@ -1425,7 +1458,7 @@ components:
           type: [string, "null"]
           minLength: 2
           maxLength: 50
-          pattern: '^[A-Za-z0-9 ./-]+$'
+          pattern: "^[A-Za-z0-9 ./-]+$"
         role: { $ref: "#/components/schemas/BusinessRole" }
     MasterBuilderFlagInput:
       type: object
@@ -1440,7 +1473,8 @@ components:
 
     SeedDemoDataResponse:
       type: object
-      required: [seeded, counts, customerIds, materialIds, quoteIds, masterProjectId]
+      required:
+        [seeded, counts, customerIds, materialIds, quoteIds, masterProjectId]
       properties:
         seeded: { type: boolean, const: true }
         counts:
@@ -1533,17 +1567,37 @@ components:
         id: { type: integer }
         name: { type: string }
         sku: { type: ["string", "null"] }
-        vendorName: { type: ["string", "null"], description: "Canonical vendor name, ready for live supplier integrations" }
-        vendorSku: { type: ["string", "null"], description: "Vendor-specific product SKU" }
+        vendorName:
+          {
+            type: ["string", "null"],
+            description: "Canonical vendor name, ready for live supplier integrations",
+          }
+        vendorSku:
+          {
+            type: ["string", "null"],
+            description: "Vendor-specific product SKU",
+          }
         category:
           type: string
           description: "decking | joist | bearer | post | stump | screw | nail | bracket | sealant | other"
         unit:
           type: string
           description: "each | metre | pack | bag"
-        unitPrice: { type: number, description: "Retail price per unit (AUD) — shown on client quotes" }
-        tradeCost: { type: ["number", "null"], description: "Your trade/buy price — never shown to clients" }
-        packSize: { type: ["integer", "null"], description: "Items per pack, if unit=pack" }
+        unitPrice:
+          {
+            type: number,
+            description: "Retail price per unit (AUD) — shown on client quotes",
+          }
+        tradeCost:
+          {
+            type: ["number", "null"],
+            description: "Your trade/buy price — never shown to clients",
+          }
+        packSize:
+          {
+            type: ["integer", "null"],
+            description: "Items per pack, if unit=pack",
+          }
         supplier:
           type: string
           description: "bunnings | mitre10 | local | other"
@@ -1585,38 +1639,131 @@ components:
       properties:
         lengthM: { type: number, description: "Deck length in metres" }
         widthM: { type: number, description: "Deck width in metres" }
-        heightM: { type: number, description: "Sub-floor height in metres", default: 0.6 }
-        boardWidthMm: { type: integer, description: "Decking board width in mm", default: 90 }
-        gapSpacingMm: { type: integer, description: "Gap between boards in mm", default: 4 }
-        joistSpacingMm: { type: integer, description: "Joist centres in mm", default: 450 }
-        bearerSpacingMm: { type: integer, description: "Bearer centres in mm", default: 1800 }
-        postSpacingMm: { type: integer, description: "Post centres in mm", default: 1800 }
-        footingDepthMm: { type: integer, description: "Footing depth in mm for stump subframes", default: 450 }
-        wastageFactor: { type: number, description: "Multiplier for cuts and offcuts", default: 1.1 }
-        labourHours: { type: number, description: "Labour hours for the job", default: 0 }
-        labourRate: { type: number, description: "AUD per hour labour rate", default: 85 }
-        deckBoardType: { type: string, description: "hardwood | composite | treated_pine", default: "treated_pine" }
-        subframeType: { type: string, description: "stumps | concrete_slab | existing_structure", default: "stumps" }
-        fastenerType: { type: string, description: "screws | hidden_clips", default: "screws" }
-        fasciaType: { type: string, description: "none | timber | composite", default: "none" }
+        heightM:
+          {
+            type: number,
+            description: "Sub-floor height in metres",
+            default: 0.6,
+          }
+        boardWidthMm:
+          {
+            type: integer,
+            description: "Decking board width in mm",
+            default: 90,
+          }
+        gapSpacingMm:
+          { type: integer, description: "Gap between boards in mm", default: 4 }
+        joistSpacingMm:
+          { type: integer, description: "Joist centres in mm", default: 450 }
+        bearerSpacingMm:
+          { type: integer, description: "Bearer centres in mm", default: 1800 }
+        postSpacingMm:
+          { type: integer, description: "Post centres in mm", default: 1800 }
+        footingDepthMm:
+          {
+            type: integer,
+            description: "Footing depth in mm for stump subframes",
+            default: 450,
+          }
+        wastageFactor:
+          {
+            type: number,
+            description: "Multiplier for cuts and offcuts",
+            default: 1.1,
+          }
+        labourHours:
+          { type: number, description: "Labour hours for the job", default: 0 }
+        labourRate:
+          { type: number, description: "AUD per hour labour rate", default: 85 }
+        deckBoardType:
+          {
+            type: string,
+            description: "hardwood | composite | treated_pine",
+            default: "treated_pine",
+          }
+        subframeType:
+          {
+            type: string,
+            description: "stumps | concrete_slab | existing_structure",
+            default: "stumps",
+          }
+        fastenerType:
+          {
+            type: string,
+            description: "screws | hidden_clips",
+            default: "screws",
+          }
+        fasciaType:
+          {
+            type: string,
+            description: "none | timber | composite",
+            default: "none",
+          }
         includeHandrails: { type: boolean, default: false }
-        handrailHeightMm: { type: integer, description: "Handrail height in mm", default: 1000 }
-        balustradeType: { type: string, description: "timber | stainless_cable", default: "timber" }
-        timberGapMm: { type: integer, description: "Gap between timber pickets in mm", default: 15 }
-        wireSpacingMm: { type: integer, description: "Stainless cable wire spacing in mm", default: 100 }
+        handrailHeightMm:
+          { type: integer, description: "Handrail height in mm", default: 1000 }
+        balustradeType:
+          {
+            type: string,
+            description: "timber | stainless_cable",
+            default: "timber",
+          }
+        timberGapMm:
+          {
+            type: integer,
+            description: "Gap between timber pickets in mm",
+            default: 15,
+          }
+        wireSpacingMm:
+          {
+            type: integer,
+            description: "Stainless cable wire spacing in mm",
+            default: 100,
+          }
         includeStairs: { type: boolean, default: false }
-        stairFlights: { type: integer, description: "Number of stair flights", default: 1 }
+        stairFlights:
+          { type: integer, description: "Number of stair flights", default: 1 }
         includeFencing: { type: boolean, default: false }
-        fencingSides: { type: integer, description: "Number of sides with fencing", default: 1 }
-        fencingHeightM: { type: number, description: "Fence height in metres", default: 1.8 }
-        fencingWidthM: { type: number, description: "Fence bay/panel width in metres", default: 1.8 }
+        fencingSides:
+          {
+            type: integer,
+            description: "Number of sides with fencing",
+            default: 1,
+          }
+        fencingHeightM:
+          { type: number, description: "Fence height in metres", default: 1.8 }
+        fencingWidthM:
+          {
+            type: number,
+            description: "Fence bay/panel width in metres",
+            default: 1.8,
+          }
         includeAwning: { type: boolean, default: false }
-        awningWidthM: { type: number, description: "Awning width in metres (creates cutout in boards)", default: 3 }
-        awningLengthM: { type: number, description: "Awning length in metres", default: 3 }
+        awningWidthM:
+          {
+            type: number,
+            description: "Awning width in metres (creates cutout in boards)",
+            default: 3,
+          }
+        awningLengthM:
+          { type: number, description: "Awning length in metres", default: 3 }
 
     QuoteLineItem:
       type: object
-      required: [id, quoteId, description, category, quantity, unit, unitType, unitPrice, wastagePercentage, isBulkItem, lineTotal]
+      required:
+        [
+          id,
+          quoteId,
+          description,
+          category,
+          quantity,
+          unit,
+          unitType,
+          unitPrice,
+          wastagePercentage,
+          isBulkItem,
+          lineTotal,
+        ]
       properties:
         id: { type: integer }
         quoteId: { type: integer }
@@ -1635,7 +1782,8 @@ components:
 
     PublicQuoteLineItem:
       type: object
-      required: [description, category, quantity, unit, unitType, unitPrice, lineTotal]
+      required:
+        [description, category, quantity, unit, unitType, unitPrice, lineTotal]
       properties:
         description: { type: string }
         category: { type: string }
@@ -1698,7 +1846,16 @@ components:
       allOf:
         - $ref: "#/components/schemas/TradeTemplatePresetInput"
         - type: object
-          required: [id, tradeType, category, unit, unitType, wastagePercentage, isBulkItem]
+          required:
+            [
+              id,
+              tradeType,
+              category,
+              unit,
+              unitType,
+              wastagePercentage,
+              isBulkItem,
+            ]
           properties:
             id: { type: integer }
             tradeType: { type: string }
@@ -1706,7 +1863,18 @@ components:
 
     QuoteEstimateLine:
       type: object
-      required: [description, category, quantity, unit, unitType, unitPrice, wastagePercentage, isBulkItem, lineTotal]
+      required:
+        [
+          description,
+          category,
+          quantity,
+          unit,
+          unitType,
+          unitPrice,
+          wastagePercentage,
+          isBulkItem,
+          lineTotal,
+        ]
       properties:
         materialId: { type: ["integer", "null"] }
         description: { type: string }
@@ -1721,7 +1889,18 @@ components:
 
     TradeTemplateLineItem:
       type: object
-      required: [description, category, quantity, unit, unitType, unitCost, markupPercentage, wastagePercentage, isBulkItem]
+      required:
+        [
+          description,
+          category,
+          quantity,
+          unit,
+          unitType,
+          unitCost,
+          markupPercentage,
+          wastagePercentage,
+          isBulkItem,
+        ]
       properties:
         description: { type: string }
         category: { type: string }
@@ -1749,7 +1928,16 @@ components:
 
     QuoteEstimate:
       type: object
-      required: [spec, lines, materialsSubtotal, labourCost, gst, total, complianceWarnings]
+      required:
+        [
+          spec,
+          lines,
+          materialsSubtotal,
+          labourCost,
+          gst,
+          total,
+          complianceWarnings,
+        ]
       properties:
         spec: { $ref: "#/components/schemas/DeckSpecInput" }
         deckAreaM2: { type: number }
@@ -1766,7 +1954,17 @@ components:
 
     ComplianceWarning:
       type: object
-      required: [code, severity, standard, title, message, actual, limit, recommendation]
+      required:
+        [
+          code,
+          severity,
+          standard,
+          title,
+          message,
+          actual,
+          limit,
+          recommendation,
+        ]
       properties:
         code: { type: string }
         severity: { type: string, enum: [warning] }
@@ -1779,7 +1977,21 @@ components:
 
     MasterProjectSummary:
       type: object
-      required: [id, title, status, customerId, builderMarginPct, materialsSubtotal, labourSubtotal, marginAmount, gst, total, quoteCount, createdAt]
+      required:
+        [
+          id,
+          title,
+          status,
+          customerId,
+          builderMarginPct,
+          materialsSubtotal,
+          labourSubtotal,
+          marginAmount,
+          gst,
+          total,
+          quoteCount,
+          createdAt,
+        ]
       properties:
         id: { type: integer }
         title: { type: string }
@@ -1798,7 +2010,20 @@ components:
 
     MasterProjectQuote:
       type: object
-      required: [id, title, status, customerId, tradeType, materialsSubtotal, labourCost, gst, total, lineItems, createdAt]
+      required:
+        [
+          id,
+          title,
+          status,
+          customerId,
+          tradeType,
+          materialsSubtotal,
+          labourCost,
+          gst,
+          total,
+          lineItems,
+          createdAt,
+        ]
       properties:
         id: { type: integer }
         title: { type: string }
@@ -1816,7 +2041,19 @@ components:
 
     MasterProjectPortalQuote:
       type: object
-      required: [id, title, status, tradeType, materialsSubtotal, labourCost, gst, total, lineItems, createdAt]
+      required:
+        [
+          id,
+          title,
+          status,
+          tradeType,
+          materialsSubtotal,
+          labourCost,
+          gst,
+          total,
+          lineItems,
+          createdAt,
+        ]
       properties:
         id: { type: integer }
         title: { type: string }
@@ -1853,7 +2090,16 @@ components:
 
     MasterBillOfMaterialsLine:
       type: object
-      required: [description, category, quantity, unit, unitPrice, lineTotal, quoteCount]
+      required:
+        [
+          description,
+          category,
+          quantity,
+          unit,
+          unitPrice,
+          lineTotal,
+          quoteCount,
+        ]
       properties:
         materialId: { type: ["integer", "null"] }
         description: { type: string }
@@ -1866,7 +2112,27 @@ components:
 
     MasterProject:
       type: object
-      required: [id, title, status, customerId, builderMarginPct, materialsSubtotal, labourSubtotal, marginAmount, gst, total, hasActivePortalLink, complianceDisclaimer, quotes, tradeGroups, billOfMaterials, acceptanceHistory, createdAt, updatedAt]
+      required:
+        [
+          id,
+          title,
+          status,
+          customerId,
+          builderMarginPct,
+          materialsSubtotal,
+          labourSubtotal,
+          marginAmount,
+          gst,
+          total,
+          hasActivePortalLink,
+          complianceDisclaimer,
+          quotes,
+          tradeGroups,
+          billOfMaterials,
+          acceptanceHistory,
+          createdAt,
+          updatedAt,
+        ]
       properties:
         id: { type: integer }
         title: { type: string }
@@ -1921,7 +2187,25 @@ components:
 
     MasterProjectPortal:
       type: object
-      required: [id, title, status, notes, builderMarginPct, materialsSubtotal, labourSubtotal, marginAmount, gst, total, complianceDisclaimer, quotes, tradeGroups, billOfMaterials, createdAt, updatedAt]
+      required:
+        [
+          id,
+          title,
+          status,
+          notes,
+          builderMarginPct,
+          materialsSubtotal,
+          labourSubtotal,
+          marginAmount,
+          gst,
+          total,
+          complianceDisclaimer,
+          quotes,
+          tradeGroups,
+          billOfMaterials,
+          createdAt,
+          updatedAt,
+        ]
       properties:
         id: { type: integer }
         title: { type: string }
@@ -1952,7 +2236,8 @@ components:
       properties:
         title: { type: string, minLength: 1 }
         customerId: { type: integer }
-        builderMarginPct: { type: number, minimum: 0, maximum: 99.99, default: 0 }
+        builderMarginPct:
+          { type: number, minimum: 0, maximum: 99.99, default: 0 }
         notes: { type: string }
 
     MasterProjectUpdate:
@@ -1974,7 +2259,30 @@ components:
 
     Quote:
       type: object
-      required: [id, title, status, customerId, assignedTeamMemberId, masterProjectId, tradeType, portalToken, complianceDisclaimer, contractorLicenseNumber, lengthM, widthM, heightM, materialsSubtotal, labourCost, gst, total, lineItems, spec, createdAt, updatedAt]
+      required:
+        [
+          id,
+          title,
+          status,
+          customerId,
+          assignedTeamMemberId,
+          masterProjectId,
+          tradeType,
+          portalToken,
+          complianceDisclaimer,
+          contractorLicenseNumber,
+          lengthM,
+          widthM,
+          heightM,
+          materialsSubtotal,
+          labourCost,
+          gst,
+          total,
+          lineItems,
+          spec,
+          createdAt,
+          updatedAt,
+        ]
       properties:
         id: { type: integer }
         title: { type: string }
@@ -2033,13 +2341,40 @@ components:
     CadStructuralComponent:
       type: object
       additionalProperties: false
-      required: [id, name, type, tradeCategory, material, materialSku, geometryId, dimensions, position, rotation]
+      required:
+        [
+          id,
+          name,
+          type,
+          tradeCategory,
+          material,
+          materialSku,
+          geometryId,
+          dimensions,
+          position,
+          rotation,
+        ]
       properties:
         id: { type: string, minLength: 1, maxLength: 100 }
         name: { type: string, minLength: 1, maxLength: 200 }
         type:
           type: string
-          enum: [beam, post, joist, decking-board, handrail, conduit, cable, junction-box, pipe, fitting, fixture]
+          enum:
+            [
+              beam,
+              post,
+              joist,
+              wall,
+              decking-board,
+              handrail,
+              conduit,
+              cable,
+              outlet,
+              junction-box,
+              pipe,
+              fitting,
+              fixture,
+            ]
         tradeCategory: { $ref: "#/components/schemas/CadTradeCategory" }
         material: { type: string, minLength: 1, maxLength: 200 }
         materialSku: { type: ["string", "null"], minLength: 1, maxLength: 100 }
@@ -2050,7 +2385,17 @@ components:
     CadLayoutPayload:
       type: object
       additionalProperties: false
-      required: [version, units, coordinateSystem, rotationUnit, tradeCategory, dimensions, origin, structuralComponents]
+      required:
+        [
+          version,
+          units,
+          coordinateSystem,
+          rotationUnit,
+          tradeCategory,
+          dimensions,
+          origin,
+          structuralComponents,
+        ]
       properties:
         version: { type: integer, const: 1 }
         units: { type: string, const: metres }
@@ -2076,7 +2421,8 @@ components:
     CadGeneratedLayout:
       type: object
       additionalProperties: false
-      required: [id, quoteId, prompt, tradeCategory, layout, createdAt, updatedAt]
+      required:
+        [id, quoteId, prompt, tradeCategory, layout, createdAt, updatedAt]
       properties:
         id: { type: integer }
         quoteId: { type: integer }
@@ -2087,7 +2433,18 @@ components:
         updatedAt: { type: string, format: date-time }
     QuoteSummary:
       type: object
-      required: [id, title, status, customerId, assignedTeamMemberId, masterProjectId, tradeType, total, createdAt]
+      required:
+        [
+          id,
+          title,
+          status,
+          customerId,
+          assignedTeamMemberId,
+          masterProjectId,
+          tradeType,
+          total,
+          createdAt,
+        ]
       properties:
         id: { type: integer }
         title: { type: string }
@@ -2205,7 +2562,29 @@ components:
         revoked: { type: boolean, const: true }
     QuotePortal:
       type: object
-      required: [id, title, status, customerName, siteAddress, notes, complianceDisclaimer, contractorLicenseNumber, businessName, businessPhone, businessTradeType, businessLogoUrl, spec, lineItems, materialsSubtotal, labourCost, gst, total, createdAt, updatedAt]
+      required:
+        [
+          id,
+          title,
+          status,
+          customerName,
+          siteAddress,
+          notes,
+          complianceDisclaimer,
+          contractorLicenseNumber,
+          businessName,
+          businessPhone,
+          businessTradeType,
+          businessLogoUrl,
+          spec,
+          lineItems,
+          materialsSubtotal,
+          labourCost,
+          gst,
+          total,
+          createdAt,
+          updatedAt,
+        ]
       properties:
         id: { type: integer }
         title: { type: string }
@@ -2279,7 +2658,11 @@ components:
       type: object
       required: [objectPath]
       properties:
-        objectPath: { type: string, description: "Object path returned from storage upload" }
+        objectPath:
+          {
+            type: string,
+            description: "Object path returned from storage upload",
+          }
 
     RemoveBookingPhotoInput:
       type: object
@@ -2291,26 +2674,54 @@ components:
       type: object
       required: [title]
       properties:
-        title: { type: string, minLength: 1, description: "Title for the variation quote" }
-        notes: { type: string, description: "Description of what's different in this variation" }
+        title:
+          {
+            type: string,
+            minLength: 1,
+            description: "Title for the variation quote",
+          }
+        notes:
+          {
+            type: string,
+            description: "Description of what's different in this variation",
+          }
         lengthM: { type: number }
         widthM: { type: number }
         heightM: { type: number }
         labourHours: { type: number }
         labourRate: { type: number }
 
-
     PnLJobRow:
       type: object
-      required: [quoteId, title, customerName, status, createdAt, revenue, tradeCost, labourCost, grossProfit, marginPct]
+      required:
+        [
+          quoteId,
+          title,
+          customerName,
+          status,
+          createdAt,
+          revenue,
+          tradeCost,
+          labourCost,
+          grossProfit,
+          marginPct,
+        ]
       properties:
         quoteId: { type: integer }
         title: { type: string }
         customerName: { type: string }
         status: { type: string }
         createdAt: { type: string, format: date-time }
-        revenue: { type: number, description: "materialsSubtotal + labourCost (ex-GST)" }
-        tradeCost: { type: number, description: "Sum of material trade costs (estimated where trade cost unknown)" }
+        revenue:
+          {
+            type: number,
+            description: "materialsSubtotal + labourCost (ex-GST)",
+          }
+        tradeCost:
+          {
+            type: number,
+            description: "Sum of material trade costs (estimated where trade cost unknown)",
+          }
         labourCost: { type: number }
         grossProfit: { type: number }
         marginPct: { type: number, description: "grossProfit / revenue * 100" }
@@ -2318,7 +2729,16 @@ components:
 
     PnLMonthRow:
       type: object
-      required: [month, revenue, tradeCost, labourCost, grossProfit, marginPct, jobCount]
+      required:
+        [
+          month,
+          revenue,
+          tradeCost,
+          labourCost,
+          grossProfit,
+          marginPct,
+          jobCount,
+        ]
       properties:
         month: { type: string, description: "YYYY-MM" }
         revenue: { type: number }
@@ -2340,7 +2760,8 @@ components:
           items: { $ref: "#/components/schemas/PnLMonthRow" }
         totals:
           type: object
-          required: [revenue, tradeCost, labourCost, grossProfit, marginPct, jobCount]
+          required:
+            [revenue, tradeCost, labourCost, grossProfit, marginPct, jobCount]
           properties:
             revenue: { type: number }
             tradeCost: { type: number }
@@ -2352,13 +2773,33 @@ components:
     DashboardSummary:
       type: object
       description: Financial fields are returned only for authenticated Owners. Employees and Subcontractors receive the operational fields without financial values.
-      required: [activeQuoteCount, acceptedQuoteCount, upcomingBookingCount, customerCount, recentQuotes, upcomingBookings]
+      required:
+        [
+          activeQuoteCount,
+          acceptedQuoteCount,
+          upcomingBookingCount,
+          customerCount,
+          recentQuotes,
+          upcomingBookings,
+        ]
       properties:
         activeQuoteCount: { type: integer }
         acceptedQuoteCount: { type: integer }
-        totalQuoteValue: { type: number, description: "Owner-only total value across all quotes" }
-        grossProfit: { type: number, description: "Owner-only total retail quote value minus total trade cost across all accepted quotes" }
-        totalTradeCost: { type: number, description: "Owner-only sum of trade costs for all accepted quote materials" }
+        totalQuoteValue:
+          {
+            type: number,
+            description: "Owner-only total value across all quotes",
+          }
+        grossProfit:
+          {
+            type: number,
+            description: "Owner-only total retail quote value minus total trade cost across all accepted quotes",
+          }
+        totalTradeCost:
+          {
+            type: number,
+            description: "Owner-only sum of trade costs for all accepted quote materials",
+          }
         upcomingBookingCount: { type: integer }
         customerCount: { type: integer }
         recentQuotes:
@@ -2403,7 +2844,8 @@ components:
       properties:
         linked: { type: boolean }
         teamMemberId: { type: ["integer", "null"] }
-        role: { type: ["string", "null"], description: "employee | subcontractor" }
+        role:
+          { type: ["string", "null"], description: "employee | subcontractor" }
 
     TeamMemberInput:
       type: object
@@ -2420,7 +2862,8 @@ components:
       type: object
       properties:
         name: { type: string, minLength: 1 }
-        linkedClerkUserId: { type: ["string", "null"], pattern: "^user_[A-Za-z0-9]+$" }
+        linkedClerkUserId:
+          { type: ["string", "null"], pattern: "^user_[A-Za-z0-9]+$" }
         email: { type: string }
         phone: { type: string }
         role: { type: string }
@@ -2521,7 +2964,11 @@ components:
         id: { type: integer }
         code: { type: string }
         name: { type: string }
-        type: { type: string, description: "supplier | training | word_of_mouth | direct | other" }
+        type:
+          {
+            type: string,
+            description: "supplier | training | word_of_mouth | direct | other",
+          }
         description: { type: ["string", "null"] }
         leadCount: { type: integer }
         createdAt: { type: string, format: date-time }

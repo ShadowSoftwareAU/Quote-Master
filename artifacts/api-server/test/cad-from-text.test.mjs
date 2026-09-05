@@ -49,15 +49,12 @@ test("simulated CAD parsing is deterministic and recognises each trade", () => {
 
   assert.deepEqual(
     first,
-    cadModule.simulateCadFromText(
-      "3x4m timber deck with handrails",
-      fallback,
-    ),
+    cadModule.simulateCadFromText("3x4m timber deck with handrails", fallback),
   );
   assert.equal(first.tradeCategory, "carpentry");
   assert.equal(first.units, "metres");
   assert.equal(first.coordinateSystem, "right-handed-y-up");
-  assert.deepEqual(first.dimensions, { x: 3, y: 4, z: 0.6 });
+  assert.deepEqual(first.dimensions, { x: 3, y: 0.6, z: 4 });
   assert.equal(
     cadModule.simulateCadFromText("4x2m electrical conduit run", fallback)
       .tradeCategory,
@@ -68,6 +65,20 @@ test("simulated CAD parsing is deterministic and recognises each trade", () => {
       .tradeCategory,
     "plumbing",
   );
+});
+
+test("mixed service prompts retain components needed for separation checks", () => {
+  const layout = cadModule.simulateCadFromText(
+    "4x3m electrical outlet beside a plumbing water pipe",
+    { lengthM: 5, widthM: 6, heightM: 2.4 },
+  );
+
+  assert.deepEqual(
+    [...new Set(layout.structuralComponents.map((item) => item.tradeCategory))],
+    ["electrical", "plumbing"],
+  );
+  assert(layout.structuralComponents.some((item) => item.type === "outlet"));
+  assert(layout.structuralComponents.some((item) => item.type === "pipe"));
 });
 
 test("strict CAD schema rejects unknown fields and invalid dimensions", () => {

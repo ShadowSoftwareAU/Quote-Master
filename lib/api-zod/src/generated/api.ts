@@ -5,16 +5,14 @@
  * Quote Master API — decking quotes, materials, customers, and bookings.
  * OpenAPI spec version: 0.1.0
  */
-import * as zod from 'zod';
-
+import * as zod from "zod";
 
 /**
  * @summary Health check
  */
 export const HealthCheckResponse = zod.object({
-  "status": zod.string()
-})
-
+  status: zod.string(),
+});
 
 /**
  * @summary Create or safely retry the authenticated user's business profile
@@ -25,43 +23,57 @@ export const createOnboardingProfileBodyBusinessNameMax = 120;
 export const createOnboardingProfileBodyPhoneNumberMin = 8;
 export const createOnboardingProfileBodyPhoneNumberMax = 20;
 
-
-export const createOnboardingProfileBodyPhoneNumberRegExp = new RegExp('^\\+?[0-9 ()-]+$');
+export const createOnboardingProfileBodyPhoneNumberRegExp = new RegExp(
+  "^\\+?[0-9 ()-]+$",
+);
 export const createOnboardingProfileBodyTradeTypeMin = 2;
 export const createOnboardingProfileBodyTradeTypeMax = 80;
 
 export const createOnboardingProfileBodyLicenseNumberMin = 2;
 export const createOnboardingProfileBodyLicenseNumberMax = 50;
 
-
-export const createOnboardingProfileBodyLicenseNumberRegExp = new RegExp('^[A-Za-z0-9 .\/-]+$');
-
+export const createOnboardingProfileBodyLicenseNumberRegExp = new RegExp(
+  "^[A-Za-z0-9 .\/-]+$",
+);
 
 export const CreateOnboardingProfileBody = zod.object({
-  "businessName": zod.string().min(createOnboardingProfileBodyBusinessNameMin).max(createOnboardingProfileBodyBusinessNameMax),
-  "phoneNumber": zod.string().min(createOnboardingProfileBodyPhoneNumberMin).max(createOnboardingProfileBodyPhoneNumberMax).regex(createOnboardingProfileBodyPhoneNumberRegExp),
-  "tradeType": zod.string().min(createOnboardingProfileBodyTradeTypeMin).max(createOnboardingProfileBodyTradeTypeMax),
-  "licenseNumber": zod.string().min(createOnboardingProfileBodyLicenseNumberMin).max(createOnboardingProfileBodyLicenseNumberMax).regex(createOnboardingProfileBodyLicenseNumberRegExp).nullish(),
-  "role": zod.enum(['Owner', 'Employee', 'Subcontractor'])
-})
-
+  businessName: zod
+    .string()
+    .min(createOnboardingProfileBodyBusinessNameMin)
+    .max(createOnboardingProfileBodyBusinessNameMax),
+  phoneNumber: zod
+    .string()
+    .min(createOnboardingProfileBodyPhoneNumberMin)
+    .max(createOnboardingProfileBodyPhoneNumberMax)
+    .regex(createOnboardingProfileBodyPhoneNumberRegExp),
+  tradeType: zod
+    .string()
+    .min(createOnboardingProfileBodyTradeTypeMin)
+    .max(createOnboardingProfileBodyTradeTypeMax),
+  licenseNumber: zod
+    .string()
+    .min(createOnboardingProfileBodyLicenseNumberMin)
+    .max(createOnboardingProfileBodyLicenseNumberMax)
+    .regex(createOnboardingProfileBodyLicenseNumberRegExp)
+    .nullish(),
+  role: zod.enum(["Owner", "Employee", "Subcontractor"]),
+});
 
 /**
  * @summary Get the authenticated user's business profile
  */
 export const GetProfileSettingsResponse = zod.object({
-  "id": zod.number(),
-  "businessName": zod.string(),
-  "phoneNumber": zod.string(),
-  "tradeType": zod.string(),
-  "licenseNumber": zod.string().nullish(),
-  "role": zod.enum(['Owner', 'Employee', 'Subcontractor']),
-  "isMasterBuilder": zod.boolean(),
-  "metadataSyncStatus": zod.enum(['pending', 'synced', 'failed']),
-  "createdAt": zod.coerce.date(),
-  "updatedAt": zod.coerce.date()
-})
-
+  id: zod.number(),
+  businessName: zod.string(),
+  phoneNumber: zod.string(),
+  tradeType: zod.string(),
+  licenseNumber: zod.string().nullish(),
+  role: zod.enum(["Owner", "Employee", "Subcontractor"]),
+  isMasterBuilder: zod.boolean(),
+  metadataSyncStatus: zod.enum(["pending", "synced", "failed"]),
+  createdAt: zod.coerce.date(),
+  updatedAt: zod.coerce.date(),
+});
 
 /**
  * @summary Update the authenticated user's trade and role details
@@ -72,337 +84,383 @@ export const updateProfileSettingsBodyTradeTypeMax = 80;
 export const updateProfileSettingsBodyLicenseNumberMin = 2;
 export const updateProfileSettingsBodyLicenseNumberMax = 50;
 
-
-export const updateProfileSettingsBodyLicenseNumberRegExp = new RegExp('^[A-Za-z0-9 .\/-]+$');
-
+export const updateProfileSettingsBodyLicenseNumberRegExp = new RegExp(
+  "^[A-Za-z0-9 .\/-]+$",
+);
 
 export const UpdateProfileSettingsBody = zod.object({
-  "tradeType": zod.string().min(updateProfileSettingsBodyTradeTypeMin).max(updateProfileSettingsBodyTradeTypeMax),
-  "licenseNumber": zod.string().min(updateProfileSettingsBodyLicenseNumberMin).max(updateProfileSettingsBodyLicenseNumberMax).regex(updateProfileSettingsBodyLicenseNumberRegExp).nullish(),
-  "role": zod.enum(['Owner', 'Employee', 'Subcontractor'])
-})
+  tradeType: zod
+    .string()
+    .min(updateProfileSettingsBodyTradeTypeMin)
+    .max(updateProfileSettingsBodyTradeTypeMax),
+  licenseNumber: zod
+    .string()
+    .min(updateProfileSettingsBodyLicenseNumberMin)
+    .max(updateProfileSettingsBodyLicenseNumberMax)
+    .regex(updateProfileSettingsBodyLicenseNumberRegExp)
+    .nullish(),
+  role: zod.enum(["Owner", "Employee", "Subcontractor"]),
+});
 
 export const UpdateProfileSettingsResponse = zod.object({
-  "id": zod.number(),
-  "businessName": zod.string(),
-  "phoneNumber": zod.string(),
-  "tradeType": zod.string(),
-  "licenseNumber": zod.string().nullish(),
-  "role": zod.enum(['Owner', 'Employee', 'Subcontractor']),
-  "isMasterBuilder": zod.boolean(),
-  "metadataSyncStatus": zod.enum(['pending', 'synced', 'failed']),
-  "createdAt": zod.coerce.date(),
-  "updatedAt": zod.coerce.date()
-})
-
+  id: zod.number(),
+  businessName: zod.string(),
+  phoneNumber: zod.string(),
+  tradeType: zod.string(),
+  licenseNumber: zod.string().nullish(),
+  role: zod.enum(["Owner", "Employee", "Subcontractor"]),
+  isMasterBuilder: zod.boolean(),
+  metadataSyncStatus: zod.enum(["pending", "synced", "failed"]),
+  createdAt: zod.coerce.date(),
+  updatedAt: zod.coerce.date(),
+});
 
 /**
  * Development-only action that creates a scoped sample workspace. It is unavailable in production and can only be run once per workspace.
  * @summary Seed temporary presentation data for the authenticated Owner
  */
-export const SeedDemoDataBody = zod.object({
-
-})
-
+export const SeedDemoDataBody = zod.object({});
 
 /**
  * @summary Set the authenticated Owner's Master Builder test flag
  */
 export const SetMasterBuilderFlagBody = zod.object({
-  "isMasterBuilder": zod.boolean()
-})
+  isMasterBuilder: zod.boolean(),
+});
 
 export const SetMasterBuilderFlagResponse = zod.object({
-  "id": zod.number(),
-  "businessName": zod.string(),
-  "phoneNumber": zod.string(),
-  "tradeType": zod.string(),
-  "licenseNumber": zod.string().nullish(),
-  "role": zod.enum(['Owner', 'Employee', 'Subcontractor']),
-  "isMasterBuilder": zod.boolean(),
-  "metadataSyncStatus": zod.enum(['pending', 'synced', 'failed']),
-  "createdAt": zod.coerce.date(),
-  "updatedAt": zod.coerce.date()
-})
-
+  id: zod.number(),
+  businessName: zod.string(),
+  phoneNumber: zod.string(),
+  tradeType: zod.string(),
+  licenseNumber: zod.string().nullish(),
+  role: zod.enum(["Owner", "Employee", "Subcontractor"]),
+  isMasterBuilder: zod.boolean(),
+  metadataSyncStatus: zod.enum(["pending", "synced", "failed"]),
+  createdAt: zod.coerce.date(),
+  updatedAt: zod.coerce.date(),
+});
 
 /**
  * @summary Headline numbers for the home screen
  */
-export const GetDashboardSummaryResponse = zod.object({
-  "activeQuoteCount": zod.number(),
-  "acceptedQuoteCount": zod.number(),
-  "totalQuoteValue": zod.number().optional().describe('Owner-only total value across all quotes'),
-  "grossProfit": zod.number().optional().describe('Owner-only total retail quote value minus total trade cost across all accepted quotes'),
-  "totalTradeCost": zod.number().optional().describe('Owner-only sum of trade costs for all accepted quote materials'),
-  "upcomingBookingCount": zod.number(),
-  "customerCount": zod.number(),
-  "recentQuotes": zod.array(zod.object({
-  "id": zod.number(),
-  "title": zod.string(),
-  "status": zod.string(),
-  "customerId": zod.number(),
-  "assignedTeamMemberId": zod.number().nullable(),
-  "masterProjectId": zod.number().nullable(),
-  "tradeType": zod.string(),
-  "customerName": zod.string().nullish(),
-  "lengthM": zod.number().optional(),
-  "widthM": zod.number().optional(),
-  "total": zod.number(),
-  "createdAt": zod.coerce.date()
-})),
-  "upcomingBookings": zod.array(zod.object({
-  "id": zod.number(),
-  "title": zod.string(),
-  "customerId": zod.number().nullish(),
-  "customerName": zod.string().nullish(),
-  "quoteId": zod.number().nullish(),
-  "siteAddress": zod.string().nullish(),
-  "notes": zod.string().nullish(),
-  "startAt": zod.coerce.date(),
-  "endAt": zod.coerce.date(),
-  "status": zod.string().describe('scheduled | in_progress | completed | cancelled'),
-  "photos": zod.array(zod.string()).optional().describe('Object paths for site photos'),
-  "createdAt": zod.coerce.date()
-}))
-}).describe('Financial fields are returned only for authenticated Owners. Employees and Subcontractors receive the operational fields without financial values.')
-
+export const GetDashboardSummaryResponse = zod
+  .object({
+    activeQuoteCount: zod.number(),
+    acceptedQuoteCount: zod.number(),
+    totalQuoteValue: zod
+      .number()
+      .optional()
+      .describe("Owner-only total value across all quotes"),
+    grossProfit: zod
+      .number()
+      .optional()
+      .describe(
+        "Owner-only total retail quote value minus total trade cost across all accepted quotes",
+      ),
+    totalTradeCost: zod
+      .number()
+      .optional()
+      .describe(
+        "Owner-only sum of trade costs for all accepted quote materials",
+      ),
+    upcomingBookingCount: zod.number(),
+    customerCount: zod.number(),
+    recentQuotes: zod.array(
+      zod.object({
+        id: zod.number(),
+        title: zod.string(),
+        status: zod.string(),
+        customerId: zod.number(),
+        assignedTeamMemberId: zod.number().nullable(),
+        masterProjectId: zod.number().nullable(),
+        tradeType: zod.string(),
+        customerName: zod.string().nullish(),
+        lengthM: zod.number().optional(),
+        widthM: zod.number().optional(),
+        total: zod.number(),
+        createdAt: zod.coerce.date(),
+      }),
+    ),
+    upcomingBookings: zod.array(
+      zod.object({
+        id: zod.number(),
+        title: zod.string(),
+        customerId: zod.number().nullish(),
+        customerName: zod.string().nullish(),
+        quoteId: zod.number().nullish(),
+        siteAddress: zod.string().nullish(),
+        notes: zod.string().nullish(),
+        startAt: zod.coerce.date(),
+        endAt: zod.coerce.date(),
+        status: zod
+          .string()
+          .describe("scheduled | in_progress | completed | cancelled"),
+        photos: zod
+          .array(zod.string())
+          .optional()
+          .describe("Object paths for site photos"),
+        createdAt: zod.coerce.date(),
+      }),
+    ),
+  })
+  .describe(
+    "Financial fields are returned only for authenticated Owners. Employees and Subcontractors receive the operational fields without financial values.",
+  );
 
 /**
  * @summary Owner-only business overview metrics
  */
 export const GetAnalyticsOverviewResponse = zod.object({
-  "totalPipelineValue": zod.number().describe('Sum of Sent quote totals'),
-  "ytdRevenue": zod.number().describe('Sum of Accepted quote totals created in the current calendar year'),
-  "quoteWinRate": zod.number().describe('Accepted quotes as a percentage of Sent and Accepted quotes')
-})
-
+  totalPipelineValue: zod.number().describe("Sum of Sent quote totals"),
+  ytdRevenue: zod
+    .number()
+    .describe(
+      "Sum of Accepted quote totals created in the current calendar year",
+    ),
+  quoteWinRate: zod
+    .number()
+    .describe("Accepted quotes as a percentage of Sent and Accepted quotes"),
+});
 
 /**
  * @summary P&L breakdown per accepted quote and monthly rollup
  */
 export const GetPnlReportResponse = zod.object({
-  "jobs": zod.array(zod.object({
-  "quoteId": zod.number(),
-  "title": zod.string(),
-  "customerName": zod.string(),
-  "status": zod.string(),
-  "createdAt": zod.coerce.date(),
-  "revenue": zod.number().describe('materialsSubtotal + labourCost (ex-GST)'),
-  "tradeCost": zod.number().describe('Sum of material trade costs (estimated where trade cost unknown)'),
-  "labourCost": zod.number(),
-  "grossProfit": zod.number(),
-  "marginPct": zod.number().describe('grossProfit \/ revenue \* 100'),
-  "tradeCostIsEstimated": zod.boolean().optional()
-})),
-  "monthly": zod.array(zod.object({
-  "month": zod.string().describe('YYYY-MM'),
-  "revenue": zod.number(),
-  "tradeCost": zod.number(),
-  "labourCost": zod.number(),
-  "grossProfit": zod.number(),
-  "marginPct": zod.number(),
-  "jobCount": zod.number()
-})),
-  "totals": zod.object({
-  "revenue": zod.number(),
-  "tradeCost": zod.number(),
-  "labourCost": zod.number(),
-  "grossProfit": zod.number(),
-  "marginPct": zod.number(),
-  "jobCount": zod.number()
-})
-})
-
+  jobs: zod.array(
+    zod.object({
+      quoteId: zod.number(),
+      title: zod.string(),
+      customerName: zod.string(),
+      status: zod.string(),
+      createdAt: zod.coerce.date(),
+      revenue: zod.number().describe("materialsSubtotal + labourCost (ex-GST)"),
+      tradeCost: zod
+        .number()
+        .describe(
+          "Sum of material trade costs (estimated where trade cost unknown)",
+        ),
+      labourCost: zod.number(),
+      grossProfit: zod.number(),
+      marginPct: zod.number().describe("grossProfit \/ revenue \* 100"),
+      tradeCostIsEstimated: zod.boolean().optional(),
+    }),
+  ),
+  monthly: zod.array(
+    zod.object({
+      month: zod.string().describe("YYYY-MM"),
+      revenue: zod.number(),
+      tradeCost: zod.number(),
+      labourCost: zod.number(),
+      grossProfit: zod.number(),
+      marginPct: zod.number(),
+      jobCount: zod.number(),
+    }),
+  ),
+  totals: zod.object({
+    revenue: zod.number(),
+    tradeCost: zod.number(),
+    labourCost: zod.number(),
+    grossProfit: zod.number(),
+    marginPct: zod.number(),
+    jobCount: zod.number(),
+  }),
+});
 
 export const ListCustomersResponseItem = zod.object({
-  "id": zod.number(),
-  "name": zod.string(),
-  "company": zod.string().nullish(),
-  "email": zod.string().nullish(),
-  "phone": zod.string().nullish(),
-  "address": zod.string().nullish(),
-  "notes": zod.string().nullish(),
-  "createdAt": zod.coerce.date()
-})
-export const ListCustomersResponse = zod.array(ListCustomersResponseItem)
-
-
-
-
+  id: zod.number(),
+  name: zod.string(),
+  company: zod.string().nullish(),
+  email: zod.string().nullish(),
+  phone: zod.string().nullish(),
+  address: zod.string().nullish(),
+  notes: zod.string().nullish(),
+  createdAt: zod.coerce.date(),
+});
+export const ListCustomersResponse = zod.array(ListCustomersResponseItem);
 
 export const CreateCustomerBody = zod.object({
-  "name": zod.string().min(1),
-  "company": zod.string().optional(),
-  "email": zod.string().optional(),
-  "phone": zod.string().optional(),
-  "address": zod.string().optional(),
-  "notes": zod.string().optional()
-})
-
+  name: zod.string().min(1),
+  company: zod.string().optional(),
+  email: zod.string().optional(),
+  phone: zod.string().optional(),
+  address: zod.string().optional(),
+  notes: zod.string().optional(),
+});
 
 export const GetCustomerParams = zod.object({
-  "id": zod.coerce.number()
-})
+  id: zod.coerce.number(),
+});
 
 export const GetCustomerResponse = zod.object({
-  "id": zod.number(),
-  "name": zod.string(),
-  "company": zod.string().nullish(),
-  "email": zod.string().nullish(),
-  "phone": zod.string().nullish(),
-  "address": zod.string().nullish(),
-  "notes": zod.string().nullish(),
-  "createdAt": zod.coerce.date()
-})
-
+  id: zod.number(),
+  name: zod.string(),
+  company: zod.string().nullish(),
+  email: zod.string().nullish(),
+  phone: zod.string().nullish(),
+  address: zod.string().nullish(),
+  notes: zod.string().nullish(),
+  createdAt: zod.coerce.date(),
+});
 
 export const UpdateCustomerParams = zod.object({
-  "id": zod.coerce.number()
-})
-
-
-
+  id: zod.coerce.number(),
+});
 
 export const UpdateCustomerBody = zod.object({
-  "name": zod.string().min(1).optional(),
-  "company": zod.string().optional(),
-  "email": zod.string().optional(),
-  "phone": zod.string().optional(),
-  "address": zod.string().optional(),
-  "notes": zod.string().optional()
-})
+  name: zod.string().min(1).optional(),
+  company: zod.string().optional(),
+  email: zod.string().optional(),
+  phone: zod.string().optional(),
+  address: zod.string().optional(),
+  notes: zod.string().optional(),
+});
 
 export const UpdateCustomerResponse = zod.object({
-  "id": zod.number(),
-  "name": zod.string(),
-  "company": zod.string().nullish(),
-  "email": zod.string().nullish(),
-  "phone": zod.string().nullish(),
-  "address": zod.string().nullish(),
-  "notes": zod.string().nullish(),
-  "createdAt": zod.coerce.date()
-})
-
+  id: zod.number(),
+  name: zod.string(),
+  company: zod.string().nullish(),
+  email: zod.string().nullish(),
+  phone: zod.string().nullish(),
+  address: zod.string().nullish(),
+  notes: zod.string().nullish(),
+  createdAt: zod.coerce.date(),
+});
 
 export const DeleteCustomerParams = zod.object({
-  "id": zod.coerce.number()
-})
+  id: zod.coerce.number(),
+});
 
 export const DeleteCustomerResponse = zod.object({
-  "deleted": zod.boolean()
-})
-
+  deleted: zod.boolean(),
+});
 
 export const ListMaterialsQueryParams = zod.object({
-  "category": zod.coerce.string().optional()
-})
+  category: zod.coerce.string().optional(),
+});
 
 export const ListMaterialsResponseItem = zod.object({
-  "id": zod.number(),
-  "name": zod.string(),
-  "sku": zod.string().nullish(),
-  "vendorName": zod.string().nullish().describe('Canonical vendor name, ready for live supplier integrations'),
-  "vendorSku": zod.string().nullish().describe('Vendor-specific product SKU'),
-  "category": zod.string().describe('decking | joist | bearer | post | stump | screw | nail | bracket | sealant | other'),
-  "unit": zod.string().describe('each | metre | pack | bag'),
-  "unitPrice": zod.number().describe('Retail price per unit (AUD) — shown on client quotes'),
-  "tradeCost": zod.number().nullish().describe('Your trade\/buy price — never shown to clients'),
-  "packSize": zod.number().nullish().describe('Items per pack, if unit=pack'),
-  "supplier": zod.string().describe('bunnings | mitre10 | local | other'),
-  "notes": zod.string().nullish(),
-  "lastUpdated": zod.coerce.date()
-})
-export const ListMaterialsResponse = zod.array(ListMaterialsResponseItem)
-
-
-
-
+  id: zod.number(),
+  name: zod.string(),
+  sku: zod.string().nullish(),
+  vendorName: zod
+    .string()
+    .nullish()
+    .describe("Canonical vendor name, ready for live supplier integrations"),
+  vendorSku: zod.string().nullish().describe("Vendor-specific product SKU"),
+  category: zod
+    .string()
+    .describe(
+      "decking | joist | bearer | post | stump | screw | nail | bracket | sealant | other",
+    ),
+  unit: zod.string().describe("each | metre | pack | bag"),
+  unitPrice: zod
+    .number()
+    .describe("Retail price per unit (AUD) — shown on client quotes"),
+  tradeCost: zod
+    .number()
+    .nullish()
+    .describe("Your trade\/buy price — never shown to clients"),
+  packSize: zod.number().nullish().describe("Items per pack, if unit=pack"),
+  supplier: zod.string().describe("bunnings | mitre10 | local | other"),
+  notes: zod.string().nullish(),
+  lastUpdated: zod.coerce.date(),
+});
+export const ListMaterialsResponse = zod.array(ListMaterialsResponseItem);
 
 export const CreateMaterialBody = zod.object({
-  "name": zod.string().min(1),
-  "sku": zod.string().optional(),
-  "vendorName": zod.string().optional(),
-  "vendorSku": zod.string().optional(),
-  "category": zod.string(),
-  "unit": zod.string(),
-  "unitPrice": zod.number(),
-  "tradeCost": zod.number().optional(),
-  "packSize": zod.number().optional(),
-  "supplier": zod.string(),
-  "notes": zod.string().optional()
-})
-
+  name: zod.string().min(1),
+  sku: zod.string().optional(),
+  vendorName: zod.string().optional(),
+  vendorSku: zod.string().optional(),
+  category: zod.string(),
+  unit: zod.string(),
+  unitPrice: zod.number(),
+  tradeCost: zod.number().optional(),
+  packSize: zod.number().optional(),
+  supplier: zod.string(),
+  notes: zod.string().optional(),
+});
 
 export const UpdateMaterialParams = zod.object({
-  "id": zod.coerce.number()
-})
-
-
-
+  id: zod.coerce.number(),
+});
 
 export const UpdateMaterialBody = zod.object({
-  "name": zod.string().min(1).optional(),
-  "sku": zod.string().optional(),
-  "vendorName": zod.string().optional(),
-  "vendorSku": zod.string().optional(),
-  "category": zod.string().optional(),
-  "unit": zod.string().optional(),
-  "unitPrice": zod.number().optional(),
-  "tradeCost": zod.number().optional(),
-  "packSize": zod.number().optional(),
-  "supplier": zod.string().optional(),
-  "notes": zod.string().optional()
-})
+  name: zod.string().min(1).optional(),
+  sku: zod.string().optional(),
+  vendorName: zod.string().optional(),
+  vendorSku: zod.string().optional(),
+  category: zod.string().optional(),
+  unit: zod.string().optional(),
+  unitPrice: zod.number().optional(),
+  tradeCost: zod.number().optional(),
+  packSize: zod.number().optional(),
+  supplier: zod.string().optional(),
+  notes: zod.string().optional(),
+});
 
 export const UpdateMaterialResponse = zod.object({
-  "id": zod.number(),
-  "name": zod.string(),
-  "sku": zod.string().nullish(),
-  "vendorName": zod.string().nullish().describe('Canonical vendor name, ready for live supplier integrations'),
-  "vendorSku": zod.string().nullish().describe('Vendor-specific product SKU'),
-  "category": zod.string().describe('decking | joist | bearer | post | stump | screw | nail | bracket | sealant | other'),
-  "unit": zod.string().describe('each | metre | pack | bag'),
-  "unitPrice": zod.number().describe('Retail price per unit (AUD) — shown on client quotes'),
-  "tradeCost": zod.number().nullish().describe('Your trade\/buy price — never shown to clients'),
-  "packSize": zod.number().nullish().describe('Items per pack, if unit=pack'),
-  "supplier": zod.string().describe('bunnings | mitre10 | local | other'),
-  "notes": zod.string().nullish(),
-  "lastUpdated": zod.coerce.date()
-})
-
+  id: zod.number(),
+  name: zod.string(),
+  sku: zod.string().nullish(),
+  vendorName: zod
+    .string()
+    .nullish()
+    .describe("Canonical vendor name, ready for live supplier integrations"),
+  vendorSku: zod.string().nullish().describe("Vendor-specific product SKU"),
+  category: zod
+    .string()
+    .describe(
+      "decking | joist | bearer | post | stump | screw | nail | bracket | sealant | other",
+    ),
+  unit: zod.string().describe("each | metre | pack | bag"),
+  unitPrice: zod
+    .number()
+    .describe("Retail price per unit (AUD) — shown on client quotes"),
+  tradeCost: zod
+    .number()
+    .nullish()
+    .describe("Your trade\/buy price — never shown to clients"),
+  packSize: zod.number().nullish().describe("Items per pack, if unit=pack"),
+  supplier: zod.string().describe("bunnings | mitre10 | local | other"),
+  notes: zod.string().nullish(),
+  lastUpdated: zod.coerce.date(),
+});
 
 export const DeleteMaterialParams = zod.object({
-  "id": zod.coerce.number()
-})
+  id: zod.coerce.number(),
+});
 
 export const DeleteMaterialResponse = zod.object({
-  "deleted": zod.boolean()
-})
-
+  deleted: zod.boolean(),
+});
 
 /**
  * @summary List the seeded trade-specific quote templates
  */
 export const ListTradeTemplatesResponseItem = zod.object({
-  "id": zod.number(),
-  "tradeType": zod.string(),
-  "name": zod.string(),
-  "slug": zod.string(),
-  "defaultLineItems": zod.array(zod.object({
-  "description": zod.string(),
-  "category": zod.string(),
-  "quantity": zod.number(),
-  "unit": zod.string(),
-  "unitType": zod.enum(['sqm', 'lm', 'm3', 'item', 'box']),
-  "unitCost": zod.number(),
-  "markupPercentage": zod.number(),
-  "wastagePercentage": zod.number(),
-  "isBulkItem": zod.boolean()
-}))
-})
-export const ListTradeTemplatesResponse = zod.array(ListTradeTemplatesResponseItem)
-
+  id: zod.number(),
+  tradeType: zod.string(),
+  name: zod.string(),
+  slug: zod.string(),
+  defaultLineItems: zod.array(
+    zod.object({
+      description: zod.string(),
+      category: zod.string(),
+      quantity: zod.number(),
+      unit: zod.string(),
+      unitType: zod.enum(["sqm", "lm", "m3", "item", "box"]),
+      unitCost: zod.number(),
+      markupPercentage: zod.number(),
+      wastagePercentage: zod.number(),
+      isBulkItem: zod.boolean(),
+    }),
+  ),
+});
+export const ListTradeTemplatesResponse = zod.array(
+  ListTradeTemplatesResponseItem,
+);
 
 /**
  * @summary List the authenticated builder's presets for their primary trade
@@ -428,22 +486,51 @@ export const listTradeTemplatePresetsResponseOneWastagePercentageMax = 100;
 
 export const listTradeTemplatePresetsResponseOneIsBulkItemDefault = false;
 
-export const ListTradeTemplatePresetsResponseItem = zod.object({
-  "description": zod.string().min(1).max(listTradeTemplatePresetsResponseOneDescriptionMax),
-  "quantity": zod.number().gt(listTradeTemplatePresetsResponseOneQuantityExclusiveMin).max(listTradeTemplatePresetsResponseOneQuantityMax),
-  "unitCost": zod.number().min(listTradeTemplatePresetsResponseOneUnitCostMin).max(listTradeTemplatePresetsResponseOneUnitCostMax),
-  "markupPercentage": zod.number().min(listTradeTemplatePresetsResponseOneMarkupPercentageMin).max(listTradeTemplatePresetsResponseOneMarkupPercentageMax),
-  "unit": zod.string().min(1).max(listTradeTemplatePresetsResponseOneUnitMax).default(listTradeTemplatePresetsResponseOneUnitDefault),
-  "unitType": zod.enum(['sqm', 'lm', 'm3', 'item', 'box']).default(listTradeTemplatePresetsResponseOneUnitTypeDefault),
-  "wastagePercentage": zod.number().min(listTradeTemplatePresetsResponseOneWastagePercentageMin).max(listTradeTemplatePresetsResponseOneWastagePercentageMax).default(listTradeTemplatePresetsResponseOneWastagePercentageDefault),
-  "isBulkItem": zod.boolean().default(listTradeTemplatePresetsResponseOneIsBulkItemDefault)
-}).and(zod.object({
-  "id": zod.number(),
-  "tradeType": zod.string(),
-  "category": zod.string()
-}))
-export const ListTradeTemplatePresetsResponse = zod.array(ListTradeTemplatePresetsResponseItem)
-
+export const ListTradeTemplatePresetsResponseItem = zod
+  .object({
+    description: zod
+      .string()
+      .min(1)
+      .max(listTradeTemplatePresetsResponseOneDescriptionMax),
+    quantity: zod
+      .number()
+      .gt(listTradeTemplatePresetsResponseOneQuantityExclusiveMin)
+      .max(listTradeTemplatePresetsResponseOneQuantityMax),
+    unitCost: zod
+      .number()
+      .min(listTradeTemplatePresetsResponseOneUnitCostMin)
+      .max(listTradeTemplatePresetsResponseOneUnitCostMax),
+    markupPercentage: zod
+      .number()
+      .min(listTradeTemplatePresetsResponseOneMarkupPercentageMin)
+      .max(listTradeTemplatePresetsResponseOneMarkupPercentageMax),
+    unit: zod
+      .string()
+      .min(1)
+      .max(listTradeTemplatePresetsResponseOneUnitMax)
+      .default(listTradeTemplatePresetsResponseOneUnitDefault),
+    unitType: zod
+      .enum(["sqm", "lm", "m3", "item", "box"])
+      .default(listTradeTemplatePresetsResponseOneUnitTypeDefault),
+    wastagePercentage: zod
+      .number()
+      .min(listTradeTemplatePresetsResponseOneWastagePercentageMin)
+      .max(listTradeTemplatePresetsResponseOneWastagePercentageMax)
+      .default(listTradeTemplatePresetsResponseOneWastagePercentageDefault),
+    isBulkItem: zod
+      .boolean()
+      .default(listTradeTemplatePresetsResponseOneIsBulkItemDefault),
+  })
+  .and(
+    zod.object({
+      id: zod.number(),
+      tradeType: zod.string(),
+      category: zod.string(),
+    }),
+  );
+export const ListTradeTemplatePresetsResponse = zod.array(
+  ListTradeTemplatePresetsResponseItem,
+);
 
 /**
  * @summary Save or update a personal preset for the authenticated builder's primary trade
@@ -470,34 +557,55 @@ export const saveTradeTemplatePresetBodyWastagePercentageMax = 100;
 export const saveTradeTemplatePresetBodyIsBulkItemDefault = false;
 
 export const SaveTradeTemplatePresetBody = zod.object({
-  "description": zod.string().min(1).max(saveTradeTemplatePresetBodyDescriptionMax),
-  "quantity": zod.number().gt(saveTradeTemplatePresetBodyQuantityExclusiveMin).max(saveTradeTemplatePresetBodyQuantityMax),
-  "unitCost": zod.number().min(saveTradeTemplatePresetBodyUnitCostMin).max(saveTradeTemplatePresetBodyUnitCostMax),
-  "markupPercentage": zod.number().min(saveTradeTemplatePresetBodyMarkupPercentageMin).max(saveTradeTemplatePresetBodyMarkupPercentageMax),
-  "unit": zod.string().min(1).max(saveTradeTemplatePresetBodyUnitMax).default(saveTradeTemplatePresetBodyUnitDefault),
-  "unitType": zod.enum(['sqm', 'lm', 'm3', 'item', 'box']).default(saveTradeTemplatePresetBodyUnitTypeDefault),
-  "wastagePercentage": zod.number().min(saveTradeTemplatePresetBodyWastagePercentageMin).max(saveTradeTemplatePresetBodyWastagePercentageMax).default(saveTradeTemplatePresetBodyWastagePercentageDefault),
-  "isBulkItem": zod.boolean().default(saveTradeTemplatePresetBodyIsBulkItemDefault)
-})
-
+  description: zod
+    .string()
+    .min(1)
+    .max(saveTradeTemplatePresetBodyDescriptionMax),
+  quantity: zod
+    .number()
+    .gt(saveTradeTemplatePresetBodyQuantityExclusiveMin)
+    .max(saveTradeTemplatePresetBodyQuantityMax),
+  unitCost: zod
+    .number()
+    .min(saveTradeTemplatePresetBodyUnitCostMin)
+    .max(saveTradeTemplatePresetBodyUnitCostMax),
+  markupPercentage: zod
+    .number()
+    .min(saveTradeTemplatePresetBodyMarkupPercentageMin)
+    .max(saveTradeTemplatePresetBodyMarkupPercentageMax),
+  unit: zod
+    .string()
+    .min(1)
+    .max(saveTradeTemplatePresetBodyUnitMax)
+    .default(saveTradeTemplatePresetBodyUnitDefault),
+  unitType: zod
+    .enum(["sqm", "lm", "m3", "item", "box"])
+    .default(saveTradeTemplatePresetBodyUnitTypeDefault),
+  wastagePercentage: zod
+    .number()
+    .min(saveTradeTemplatePresetBodyWastagePercentageMin)
+    .max(saveTradeTemplatePresetBodyWastagePercentageMax)
+    .default(saveTradeTemplatePresetBodyWastagePercentageDefault),
+  isBulkItem: zod
+    .boolean()
+    .default(saveTradeTemplatePresetBodyIsBulkItemDefault),
+});
 
 export const ListQuotesResponseItem = zod.object({
-  "id": zod.number(),
-  "title": zod.string(),
-  "status": zod.string(),
-  "customerId": zod.number(),
-  "assignedTeamMemberId": zod.number().nullable(),
-  "masterProjectId": zod.number().nullable(),
-  "tradeType": zod.string(),
-  "customerName": zod.string().nullish(),
-  "lengthM": zod.number().optional(),
-  "widthM": zod.number().optional(),
-  "total": zod.number(),
-  "createdAt": zod.coerce.date()
-})
-export const ListQuotesResponse = zod.array(ListQuotesResponseItem)
-
-
+  id: zod.number(),
+  title: zod.string(),
+  status: zod.string(),
+  customerId: zod.number(),
+  assignedTeamMemberId: zod.number().nullable(),
+  masterProjectId: zod.number().nullable(),
+  tradeType: zod.string(),
+  customerName: zod.string().nullish(),
+  lengthM: zod.number().optional(),
+  widthM: zod.number().optional(),
+  total: zod.number(),
+  createdAt: zod.coerce.date(),
+});
+export const ListQuotesResponse = zod.array(ListQuotesResponseItem);
 
 export const createQuoteBodyTradeTypeDefault = `decking`;
 export const createQuoteBodyLineItemsItemDescriptionMax = 200;
@@ -523,60 +631,88 @@ export const createQuoteBodyLineItemsItemIsBulkItemDefault = false;
 export const createQuoteBodyLineItemsItemSaveToMyPresetsDefault = false;
 export const createQuoteBodyLineItemsMax = 200;
 
-
-
 export const CreateQuoteBody = zod.object({
-  "title": zod.string().min(1),
-  "customerId": zod.number(),
-  "tradeType": zod.string().default(createQuoteBodyTradeTypeDefault),
-  "siteAddress": zod.string().optional(),
-  "notes": zod.string().optional(),
-  "lengthM": zod.number(),
-  "widthM": zod.number(),
-  "heightM": zod.number().optional(),
-  "boardWidthMm": zod.number().optional(),
-  "joistSpacingMm": zod.number().optional(),
-  "bearerSpacingMm": zod.number().optional(),
-  "postSpacingMm": zod.number().optional(),
-  "wastageFactor": zod.number().optional(),
-  "labourHours": zod.number().optional(),
-  "labourRate": zod.number().optional(),
-  "gapSpacingMm": zod.number().optional(),
-  "deckBoardType": zod.string().optional(),
-  "subframeType": zod.string().optional(),
-  "fastenerType": zod.string().optional(),
-  "fasciaType": zod.string().optional(),
-  "includeHandrails": zod.boolean().optional(),
-  "handrailHeightMm": zod.number().optional(),
-  "balustradeType": zod.string().optional(),
-  "timberGapMm": zod.number().optional(),
-  "wireSpacingMm": zod.number().optional(),
-  "includeStairs": zod.boolean().optional(),
-  "stairFlights": zod.number().optional(),
-  "includeFencing": zod.boolean().optional(),
-  "fencingSides": zod.number().optional(),
-  "fencingHeightM": zod.number().optional(),
-  "fencingWidthM": zod.number().optional(),
-  "includeAwning": zod.boolean().optional(),
-  "awningWidthM": zod.number().optional(),
-  "awningLengthM": zod.number().optional(),
-  "lineItems": zod.array(zod.object({
-  "description": zod.string().min(1).max(createQuoteBodyLineItemsItemDescriptionMax),
-  "quantity": zod.number().gt(createQuoteBodyLineItemsItemQuantityExclusiveMin).max(createQuoteBodyLineItemsItemQuantityMax),
-  "unitCost": zod.number().min(createQuoteBodyLineItemsItemUnitCostMin).max(createQuoteBodyLineItemsItemUnitCostMax),
-  "markupPercentage": zod.number().min(createQuoteBodyLineItemsItemMarkupPercentageMin).max(createQuoteBodyLineItemsItemMarkupPercentageMax),
-  "unit": zod.string().min(1).max(createQuoteBodyLineItemsItemUnitMax).default(createQuoteBodyLineItemsItemUnitDefault),
-  "unitType": zod.enum(['sqm', 'lm', 'm3', 'item', 'box']).default(createQuoteBodyLineItemsItemUnitTypeDefault),
-  "wastagePercentage": zod.number().min(createQuoteBodyLineItemsItemWastagePercentageMin).max(createQuoteBodyLineItemsItemWastagePercentageMax).default(createQuoteBodyLineItemsItemWastagePercentageDefault),
-  "isBulkItem": zod.boolean().default(createQuoteBodyLineItemsItemIsBulkItemDefault),
-  "saveToMyPresets": zod.boolean().default(createQuoteBodyLineItemsItemSaveToMyPresetsDefault)
-})).max(createQuoteBodyLineItemsMax).optional()
-})
-
+  title: zod.string().min(1),
+  customerId: zod.number(),
+  tradeType: zod.string().default(createQuoteBodyTradeTypeDefault),
+  siteAddress: zod.string().optional(),
+  notes: zod.string().optional(),
+  lengthM: zod.number(),
+  widthM: zod.number(),
+  heightM: zod.number().optional(),
+  boardWidthMm: zod.number().optional(),
+  joistSpacingMm: zod.number().optional(),
+  bearerSpacingMm: zod.number().optional(),
+  postSpacingMm: zod.number().optional(),
+  wastageFactor: zod.number().optional(),
+  labourHours: zod.number().optional(),
+  labourRate: zod.number().optional(),
+  gapSpacingMm: zod.number().optional(),
+  deckBoardType: zod.string().optional(),
+  subframeType: zod.string().optional(),
+  fastenerType: zod.string().optional(),
+  fasciaType: zod.string().optional(),
+  includeHandrails: zod.boolean().optional(),
+  handrailHeightMm: zod.number().optional(),
+  balustradeType: zod.string().optional(),
+  timberGapMm: zod.number().optional(),
+  wireSpacingMm: zod.number().optional(),
+  includeStairs: zod.boolean().optional(),
+  stairFlights: zod.number().optional(),
+  includeFencing: zod.boolean().optional(),
+  fencingSides: zod.number().optional(),
+  fencingHeightM: zod.number().optional(),
+  fencingWidthM: zod.number().optional(),
+  includeAwning: zod.boolean().optional(),
+  awningWidthM: zod.number().optional(),
+  awningLengthM: zod.number().optional(),
+  lineItems: zod
+    .array(
+      zod.object({
+        description: zod
+          .string()
+          .min(1)
+          .max(createQuoteBodyLineItemsItemDescriptionMax),
+        quantity: zod
+          .number()
+          .gt(createQuoteBodyLineItemsItemQuantityExclusiveMin)
+          .max(createQuoteBodyLineItemsItemQuantityMax),
+        unitCost: zod
+          .number()
+          .min(createQuoteBodyLineItemsItemUnitCostMin)
+          .max(createQuoteBodyLineItemsItemUnitCostMax),
+        markupPercentage: zod
+          .number()
+          .min(createQuoteBodyLineItemsItemMarkupPercentageMin)
+          .max(createQuoteBodyLineItemsItemMarkupPercentageMax),
+        unit: zod
+          .string()
+          .min(1)
+          .max(createQuoteBodyLineItemsItemUnitMax)
+          .default(createQuoteBodyLineItemsItemUnitDefault),
+        unitType: zod
+          .enum(["sqm", "lm", "m3", "item", "box"])
+          .default(createQuoteBodyLineItemsItemUnitTypeDefault),
+        wastagePercentage: zod
+          .number()
+          .min(createQuoteBodyLineItemsItemWastagePercentageMin)
+          .max(createQuoteBodyLineItemsItemWastagePercentageMax)
+          .default(createQuoteBodyLineItemsItemWastagePercentageDefault),
+        isBulkItem: zod
+          .boolean()
+          .default(createQuoteBodyLineItemsItemIsBulkItemDefault),
+        saveToMyPresets: zod
+          .boolean()
+          .default(createQuoteBodyLineItemsItemSaveToMyPresetsDefault),
+      }),
+    )
+    .max(createQuoteBodyLineItemsMax)
+    .optional(),
+});
 
 export const GetQuoteParams = zod.object({
-  "id": zod.coerce.number()
-})
+  id: zod.coerce.number(),
+});
 
 export const getQuoteResponseSpecHeightMDefault = 0.6;
 export const getQuoteResponseSpecBoardWidthMmDefault = 90;
@@ -608,130 +744,208 @@ export const getQuoteResponseSpecAwningWidthMDefault = 3;
 export const getQuoteResponseSpecAwningLengthMDefault = 3;
 
 export const GetQuoteResponse = zod.object({
-  "id": zod.number(),
-  "title": zod.string(),
-  "status": zod.string().describe('draft | sent | accepted | rejected'),
-  "customerId": zod.number(),
-  "assignedTeamMemberId": zod.number().nullable(),
-  "masterProjectId": zod.number().nullable(),
-  "tradeType": zod.string(),
-  "portalToken": zod.string().nullable(),
-  "complianceDisclaimer": zod.string(),
-  "contractorLicenseNumber": zod.string().nullable(),
-  "customerName": zod.string().nullish(),
-  "siteAddress": zod.string().nullish(),
-  "notes": zod.string().nullish(),
-  "lengthM": zod.number(),
-  "widthM": zod.number(),
-  "heightM": zod.number(),
-  "boardWidthMm": zod.number().optional(),
-  "joistSpacingMm": zod.number().optional(),
-  "bearerSpacingMm": zod.number().optional(),
-  "postSpacingMm": zod.number().optional(),
-  "wastageFactor": zod.number().optional(),
-  "labourHours": zod.number().optional(),
-  "labourRate": zod.number().optional(),
-  "materialsSubtotal": zod.number(),
-  "labourCost": zod.number(),
-  "gst": zod.number(),
-  "total": zod.number(),
-  "spec": zod.object({
-  "lengthM": zod.number().describe('Deck length in metres'),
-  "widthM": zod.number().describe('Deck width in metres'),
-  "heightM": zod.number().default(getQuoteResponseSpecHeightMDefault).describe('Sub-floor height in metres'),
-  "boardWidthMm": zod.number().default(getQuoteResponseSpecBoardWidthMmDefault).describe('Decking board width in mm'),
-  "gapSpacingMm": zod.number().default(getQuoteResponseSpecGapSpacingMmDefault).describe('Gap between boards in mm'),
-  "joistSpacingMm": zod.number().default(getQuoteResponseSpecJoistSpacingMmDefault).describe('Joist centres in mm'),
-  "bearerSpacingMm": zod.number().default(getQuoteResponseSpecBearerSpacingMmDefault).describe('Bearer centres in mm'),
-  "postSpacingMm": zod.number().default(getQuoteResponseSpecPostSpacingMmDefault).describe('Post centres in mm'),
-  "footingDepthMm": zod.number().default(getQuoteResponseSpecFootingDepthMmDefault).describe('Footing depth in mm for stump subframes'),
-  "wastageFactor": zod.number().default(getQuoteResponseSpecWastageFactorDefault).describe('Multiplier for cuts and offcuts'),
-  "labourHours": zod.number().default(getQuoteResponseSpecLabourHoursDefault).describe('Labour hours for the job'),
-  "labourRate": zod.number().default(getQuoteResponseSpecLabourRateDefault).describe('AUD per hour labour rate'),
-  "deckBoardType": zod.string().default(getQuoteResponseSpecDeckBoardTypeDefault).describe('hardwood | composite | treated_pine'),
-  "subframeType": zod.string().default(getQuoteResponseSpecSubframeTypeDefault).describe('stumps | concrete_slab | existing_structure'),
-  "fastenerType": zod.string().default(getQuoteResponseSpecFastenerTypeDefault).describe('screws | hidden_clips'),
-  "fasciaType": zod.string().default(getQuoteResponseSpecFasciaTypeDefault).describe('none | timber | composite'),
-  "includeHandrails": zod.boolean().default(getQuoteResponseSpecIncludeHandrailsDefault),
-  "handrailHeightMm": zod.number().default(getQuoteResponseSpecHandrailHeightMmDefault).describe('Handrail height in mm'),
-  "balustradeType": zod.string().default(getQuoteResponseSpecBalustradeTypeDefault).describe('timber | stainless_cable'),
-  "timberGapMm": zod.number().default(getQuoteResponseSpecTimberGapMmDefault).describe('Gap between timber pickets in mm'),
-  "wireSpacingMm": zod.number().default(getQuoteResponseSpecWireSpacingMmDefault).describe('Stainless cable wire spacing in mm'),
-  "includeStairs": zod.boolean().default(getQuoteResponseSpecIncludeStairsDefault),
-  "stairFlights": zod.number().default(getQuoteResponseSpecStairFlightsDefault).describe('Number of stair flights'),
-  "includeFencing": zod.boolean().default(getQuoteResponseSpecIncludeFencingDefault),
-  "fencingSides": zod.number().default(getQuoteResponseSpecFencingSidesDefault).describe('Number of sides with fencing'),
-  "fencingHeightM": zod.number().default(getQuoteResponseSpecFencingHeightMDefault).describe('Fence height in metres'),
-  "fencingWidthM": zod.number().default(getQuoteResponseSpecFencingWidthMDefault).describe('Fence bay\/panel width in metres'),
-  "includeAwning": zod.boolean().default(getQuoteResponseSpecIncludeAwningDefault),
-  "awningWidthM": zod.number().default(getQuoteResponseSpecAwningWidthMDefault).describe('Awning width in metres (creates cutout in boards)'),
-  "awningLengthM": zod.number().default(getQuoteResponseSpecAwningLengthMDefault).describe('Awning length in metres')
-}),
-  "lineItems": zod.array(zod.object({
-  "id": zod.number(),
-  "quoteId": zod.number(),
-  "materialId": zod.number().nullish(),
-  "description": zod.string(),
-  "category": zod.string(),
-  "quantity": zod.number(),
-  "unit": zod.string(),
-  "unitType": zod.string(),
-  "unitPrice": zod.number(),
-  "unitCost": zod.number().optional(),
-  "markupPercentage": zod.number().optional(),
-  "wastagePercentage": zod.number(),
-  "isBulkItem": zod.boolean(),
-  "lineTotal": zod.number()
-})),
-  "createdAt": zod.coerce.date(),
-  "updatedAt": zod.coerce.date()
-})
-
+  id: zod.number(),
+  title: zod.string(),
+  status: zod.string().describe("draft | sent | accepted | rejected"),
+  customerId: zod.number(),
+  assignedTeamMemberId: zod.number().nullable(),
+  masterProjectId: zod.number().nullable(),
+  tradeType: zod.string(),
+  portalToken: zod.string().nullable(),
+  complianceDisclaimer: zod.string(),
+  contractorLicenseNumber: zod.string().nullable(),
+  customerName: zod.string().nullish(),
+  siteAddress: zod.string().nullish(),
+  notes: zod.string().nullish(),
+  lengthM: zod.number(),
+  widthM: zod.number(),
+  heightM: zod.number(),
+  boardWidthMm: zod.number().optional(),
+  joistSpacingMm: zod.number().optional(),
+  bearerSpacingMm: zod.number().optional(),
+  postSpacingMm: zod.number().optional(),
+  wastageFactor: zod.number().optional(),
+  labourHours: zod.number().optional(),
+  labourRate: zod.number().optional(),
+  materialsSubtotal: zod.number(),
+  labourCost: zod.number(),
+  gst: zod.number(),
+  total: zod.number(),
+  spec: zod.object({
+    lengthM: zod.number().describe("Deck length in metres"),
+    widthM: zod.number().describe("Deck width in metres"),
+    heightM: zod
+      .number()
+      .default(getQuoteResponseSpecHeightMDefault)
+      .describe("Sub-floor height in metres"),
+    boardWidthMm: zod
+      .number()
+      .default(getQuoteResponseSpecBoardWidthMmDefault)
+      .describe("Decking board width in mm"),
+    gapSpacingMm: zod
+      .number()
+      .default(getQuoteResponseSpecGapSpacingMmDefault)
+      .describe("Gap between boards in mm"),
+    joistSpacingMm: zod
+      .number()
+      .default(getQuoteResponseSpecJoistSpacingMmDefault)
+      .describe("Joist centres in mm"),
+    bearerSpacingMm: zod
+      .number()
+      .default(getQuoteResponseSpecBearerSpacingMmDefault)
+      .describe("Bearer centres in mm"),
+    postSpacingMm: zod
+      .number()
+      .default(getQuoteResponseSpecPostSpacingMmDefault)
+      .describe("Post centres in mm"),
+    footingDepthMm: zod
+      .number()
+      .default(getQuoteResponseSpecFootingDepthMmDefault)
+      .describe("Footing depth in mm for stump subframes"),
+    wastageFactor: zod
+      .number()
+      .default(getQuoteResponseSpecWastageFactorDefault)
+      .describe("Multiplier for cuts and offcuts"),
+    labourHours: zod
+      .number()
+      .default(getQuoteResponseSpecLabourHoursDefault)
+      .describe("Labour hours for the job"),
+    labourRate: zod
+      .number()
+      .default(getQuoteResponseSpecLabourRateDefault)
+      .describe("AUD per hour labour rate"),
+    deckBoardType: zod
+      .string()
+      .default(getQuoteResponseSpecDeckBoardTypeDefault)
+      .describe("hardwood | composite | treated_pine"),
+    subframeType: zod
+      .string()
+      .default(getQuoteResponseSpecSubframeTypeDefault)
+      .describe("stumps | concrete_slab | existing_structure"),
+    fastenerType: zod
+      .string()
+      .default(getQuoteResponseSpecFastenerTypeDefault)
+      .describe("screws | hidden_clips"),
+    fasciaType: zod
+      .string()
+      .default(getQuoteResponseSpecFasciaTypeDefault)
+      .describe("none | timber | composite"),
+    includeHandrails: zod
+      .boolean()
+      .default(getQuoteResponseSpecIncludeHandrailsDefault),
+    handrailHeightMm: zod
+      .number()
+      .default(getQuoteResponseSpecHandrailHeightMmDefault)
+      .describe("Handrail height in mm"),
+    balustradeType: zod
+      .string()
+      .default(getQuoteResponseSpecBalustradeTypeDefault)
+      .describe("timber | stainless_cable"),
+    timberGapMm: zod
+      .number()
+      .default(getQuoteResponseSpecTimberGapMmDefault)
+      .describe("Gap between timber pickets in mm"),
+    wireSpacingMm: zod
+      .number()
+      .default(getQuoteResponseSpecWireSpacingMmDefault)
+      .describe("Stainless cable wire spacing in mm"),
+    includeStairs: zod
+      .boolean()
+      .default(getQuoteResponseSpecIncludeStairsDefault),
+    stairFlights: zod
+      .number()
+      .default(getQuoteResponseSpecStairFlightsDefault)
+      .describe("Number of stair flights"),
+    includeFencing: zod
+      .boolean()
+      .default(getQuoteResponseSpecIncludeFencingDefault),
+    fencingSides: zod
+      .number()
+      .default(getQuoteResponseSpecFencingSidesDefault)
+      .describe("Number of sides with fencing"),
+    fencingHeightM: zod
+      .number()
+      .default(getQuoteResponseSpecFencingHeightMDefault)
+      .describe("Fence height in metres"),
+    fencingWidthM: zod
+      .number()
+      .default(getQuoteResponseSpecFencingWidthMDefault)
+      .describe("Fence bay\/panel width in metres"),
+    includeAwning: zod
+      .boolean()
+      .default(getQuoteResponseSpecIncludeAwningDefault),
+    awningWidthM: zod
+      .number()
+      .default(getQuoteResponseSpecAwningWidthMDefault)
+      .describe("Awning width in metres (creates cutout in boards)"),
+    awningLengthM: zod
+      .number()
+      .default(getQuoteResponseSpecAwningLengthMDefault)
+      .describe("Awning length in metres"),
+  }),
+  lineItems: zod.array(
+    zod.object({
+      id: zod.number(),
+      quoteId: zod.number(),
+      materialId: zod.number().nullish(),
+      description: zod.string(),
+      category: zod.string(),
+      quantity: zod.number(),
+      unit: zod.string(),
+      unitType: zod.string(),
+      unitPrice: zod.number(),
+      unitCost: zod.number().optional(),
+      markupPercentage: zod.number().optional(),
+      wastagePercentage: zod.number(),
+      isBulkItem: zod.boolean(),
+      lineTotal: zod.number(),
+    }),
+  ),
+  createdAt: zod.coerce.date(),
+  updatedAt: zod.coerce.date(),
+});
 
 export const UpdateQuoteParams = zod.object({
-  "id": zod.coerce.number()
-})
-
-
-
+  id: zod.coerce.number(),
+});
 
 export const UpdateQuoteBody = zod.object({
-  "title": zod.string().min(1).optional(),
-  "customerId": zod.number().optional(),
-  "assignedTeamMemberId": zod.number().nullish(),
-  "tradeType": zod.string().optional(),
-  "siteAddress": zod.string().optional(),
-  "notes": zod.string().optional(),
-  "lengthM": zod.number().optional(),
-  "widthM": zod.number().optional(),
-  "heightM": zod.number().optional(),
-  "boardWidthMm": zod.number().optional(),
-  "joistSpacingMm": zod.number().optional(),
-  "bearerSpacingMm": zod.number().optional(),
-  "postSpacingMm": zod.number().optional(),
-  "wastageFactor": zod.number().optional(),
-  "labourHours": zod.number().optional(),
-  "labourRate": zod.number().optional(),
-  "gapSpacingMm": zod.number().optional(),
-  "deckBoardType": zod.string().optional(),
-  "subframeType": zod.string().optional(),
-  "fastenerType": zod.string().optional(),
-  "fasciaType": zod.string().optional(),
-  "includeHandrails": zod.boolean().optional(),
-  "handrailHeightMm": zod.number().optional(),
-  "balustradeType": zod.string().optional(),
-  "timberGapMm": zod.number().optional(),
-  "wireSpacingMm": zod.number().optional(),
-  "includeStairs": zod.boolean().optional(),
-  "stairFlights": zod.number().optional(),
-  "includeFencing": zod.boolean().optional(),
-  "fencingSides": zod.number().optional(),
-  "fencingHeightM": zod.number().optional(),
-  "fencingWidthM": zod.number().optional(),
-  "includeAwning": zod.boolean().optional(),
-  "awningWidthM": zod.number().optional(),
-  "awningLengthM": zod.number().optional()
-})
+  title: zod.string().min(1).optional(),
+  customerId: zod.number().optional(),
+  assignedTeamMemberId: zod.number().nullish(),
+  tradeType: zod.string().optional(),
+  siteAddress: zod.string().optional(),
+  notes: zod.string().optional(),
+  lengthM: zod.number().optional(),
+  widthM: zod.number().optional(),
+  heightM: zod.number().optional(),
+  boardWidthMm: zod.number().optional(),
+  joistSpacingMm: zod.number().optional(),
+  bearerSpacingMm: zod.number().optional(),
+  postSpacingMm: zod.number().optional(),
+  wastageFactor: zod.number().optional(),
+  labourHours: zod.number().optional(),
+  labourRate: zod.number().optional(),
+  gapSpacingMm: zod.number().optional(),
+  deckBoardType: zod.string().optional(),
+  subframeType: zod.string().optional(),
+  fastenerType: zod.string().optional(),
+  fasciaType: zod.string().optional(),
+  includeHandrails: zod.boolean().optional(),
+  handrailHeightMm: zod.number().optional(),
+  balustradeType: zod.string().optional(),
+  timberGapMm: zod.number().optional(),
+  wireSpacingMm: zod.number().optional(),
+  includeStairs: zod.boolean().optional(),
+  stairFlights: zod.number().optional(),
+  includeFencing: zod.boolean().optional(),
+  fencingSides: zod.number().optional(),
+  fencingHeightM: zod.number().optional(),
+  fencingWidthM: zod.number().optional(),
+  includeAwning: zod.boolean().optional(),
+  awningWidthM: zod.number().optional(),
+  awningLengthM: zod.number().optional(),
+});
 
 export const updateQuoteResponseSpecHeightMDefault = 0.6;
 export const updateQuoteResponseSpecBoardWidthMmDefault = 90;
@@ -763,122 +977,340 @@ export const updateQuoteResponseSpecAwningWidthMDefault = 3;
 export const updateQuoteResponseSpecAwningLengthMDefault = 3;
 
 export const UpdateQuoteResponse = zod.object({
-  "id": zod.number(),
-  "title": zod.string(),
-  "status": zod.string().describe('draft | sent | accepted | rejected'),
-  "customerId": zod.number(),
-  "assignedTeamMemberId": zod.number().nullable(),
-  "masterProjectId": zod.number().nullable(),
-  "tradeType": zod.string(),
-  "portalToken": zod.string().nullable(),
-  "complianceDisclaimer": zod.string(),
-  "contractorLicenseNumber": zod.string().nullable(),
-  "customerName": zod.string().nullish(),
-  "siteAddress": zod.string().nullish(),
-  "notes": zod.string().nullish(),
-  "lengthM": zod.number(),
-  "widthM": zod.number(),
-  "heightM": zod.number(),
-  "boardWidthMm": zod.number().optional(),
-  "joistSpacingMm": zod.number().optional(),
-  "bearerSpacingMm": zod.number().optional(),
-  "postSpacingMm": zod.number().optional(),
-  "wastageFactor": zod.number().optional(),
-  "labourHours": zod.number().optional(),
-  "labourRate": zod.number().optional(),
-  "materialsSubtotal": zod.number(),
-  "labourCost": zod.number(),
-  "gst": zod.number(),
-  "total": zod.number(),
-  "spec": zod.object({
-  "lengthM": zod.number().describe('Deck length in metres'),
-  "widthM": zod.number().describe('Deck width in metres'),
-  "heightM": zod.number().default(updateQuoteResponseSpecHeightMDefault).describe('Sub-floor height in metres'),
-  "boardWidthMm": zod.number().default(updateQuoteResponseSpecBoardWidthMmDefault).describe('Decking board width in mm'),
-  "gapSpacingMm": zod.number().default(updateQuoteResponseSpecGapSpacingMmDefault).describe('Gap between boards in mm'),
-  "joistSpacingMm": zod.number().default(updateQuoteResponseSpecJoistSpacingMmDefault).describe('Joist centres in mm'),
-  "bearerSpacingMm": zod.number().default(updateQuoteResponseSpecBearerSpacingMmDefault).describe('Bearer centres in mm'),
-  "postSpacingMm": zod.number().default(updateQuoteResponseSpecPostSpacingMmDefault).describe('Post centres in mm'),
-  "footingDepthMm": zod.number().default(updateQuoteResponseSpecFootingDepthMmDefault).describe('Footing depth in mm for stump subframes'),
-  "wastageFactor": zod.number().default(updateQuoteResponseSpecWastageFactorDefault).describe('Multiplier for cuts and offcuts'),
-  "labourHours": zod.number().default(updateQuoteResponseSpecLabourHoursDefault).describe('Labour hours for the job'),
-  "labourRate": zod.number().default(updateQuoteResponseSpecLabourRateDefault).describe('AUD per hour labour rate'),
-  "deckBoardType": zod.string().default(updateQuoteResponseSpecDeckBoardTypeDefault).describe('hardwood | composite | treated_pine'),
-  "subframeType": zod.string().default(updateQuoteResponseSpecSubframeTypeDefault).describe('stumps | concrete_slab | existing_structure'),
-  "fastenerType": zod.string().default(updateQuoteResponseSpecFastenerTypeDefault).describe('screws | hidden_clips'),
-  "fasciaType": zod.string().default(updateQuoteResponseSpecFasciaTypeDefault).describe('none | timber | composite'),
-  "includeHandrails": zod.boolean().default(updateQuoteResponseSpecIncludeHandrailsDefault),
-  "handrailHeightMm": zod.number().default(updateQuoteResponseSpecHandrailHeightMmDefault).describe('Handrail height in mm'),
-  "balustradeType": zod.string().default(updateQuoteResponseSpecBalustradeTypeDefault).describe('timber | stainless_cable'),
-  "timberGapMm": zod.number().default(updateQuoteResponseSpecTimberGapMmDefault).describe('Gap between timber pickets in mm'),
-  "wireSpacingMm": zod.number().default(updateQuoteResponseSpecWireSpacingMmDefault).describe('Stainless cable wire spacing in mm'),
-  "includeStairs": zod.boolean().default(updateQuoteResponseSpecIncludeStairsDefault),
-  "stairFlights": zod.number().default(updateQuoteResponseSpecStairFlightsDefault).describe('Number of stair flights'),
-  "includeFencing": zod.boolean().default(updateQuoteResponseSpecIncludeFencingDefault),
-  "fencingSides": zod.number().default(updateQuoteResponseSpecFencingSidesDefault).describe('Number of sides with fencing'),
-  "fencingHeightM": zod.number().default(updateQuoteResponseSpecFencingHeightMDefault).describe('Fence height in metres'),
-  "fencingWidthM": zod.number().default(updateQuoteResponseSpecFencingWidthMDefault).describe('Fence bay\/panel width in metres'),
-  "includeAwning": zod.boolean().default(updateQuoteResponseSpecIncludeAwningDefault),
-  "awningWidthM": zod.number().default(updateQuoteResponseSpecAwningWidthMDefault).describe('Awning width in metres (creates cutout in boards)'),
-  "awningLengthM": zod.number().default(updateQuoteResponseSpecAwningLengthMDefault).describe('Awning length in metres')
-}),
-  "lineItems": zod.array(zod.object({
-  "id": zod.number(),
-  "quoteId": zod.number(),
-  "materialId": zod.number().nullish(),
-  "description": zod.string(),
-  "category": zod.string(),
-  "quantity": zod.number(),
-  "unit": zod.string(),
-  "unitType": zod.string(),
-  "unitPrice": zod.number(),
-  "unitCost": zod.number().optional(),
-  "markupPercentage": zod.number().optional(),
-  "wastagePercentage": zod.number(),
-  "isBulkItem": zod.boolean(),
-  "lineTotal": zod.number()
-})),
-  "createdAt": zod.coerce.date(),
-  "updatedAt": zod.coerce.date()
-})
-
+  id: zod.number(),
+  title: zod.string(),
+  status: zod.string().describe("draft | sent | accepted | rejected"),
+  customerId: zod.number(),
+  assignedTeamMemberId: zod.number().nullable(),
+  masterProjectId: zod.number().nullable(),
+  tradeType: zod.string(),
+  portalToken: zod.string().nullable(),
+  complianceDisclaimer: zod.string(),
+  contractorLicenseNumber: zod.string().nullable(),
+  customerName: zod.string().nullish(),
+  siteAddress: zod.string().nullish(),
+  notes: zod.string().nullish(),
+  lengthM: zod.number(),
+  widthM: zod.number(),
+  heightM: zod.number(),
+  boardWidthMm: zod.number().optional(),
+  joistSpacingMm: zod.number().optional(),
+  bearerSpacingMm: zod.number().optional(),
+  postSpacingMm: zod.number().optional(),
+  wastageFactor: zod.number().optional(),
+  labourHours: zod.number().optional(),
+  labourRate: zod.number().optional(),
+  materialsSubtotal: zod.number(),
+  labourCost: zod.number(),
+  gst: zod.number(),
+  total: zod.number(),
+  spec: zod.object({
+    lengthM: zod.number().describe("Deck length in metres"),
+    widthM: zod.number().describe("Deck width in metres"),
+    heightM: zod
+      .number()
+      .default(updateQuoteResponseSpecHeightMDefault)
+      .describe("Sub-floor height in metres"),
+    boardWidthMm: zod
+      .number()
+      .default(updateQuoteResponseSpecBoardWidthMmDefault)
+      .describe("Decking board width in mm"),
+    gapSpacingMm: zod
+      .number()
+      .default(updateQuoteResponseSpecGapSpacingMmDefault)
+      .describe("Gap between boards in mm"),
+    joistSpacingMm: zod
+      .number()
+      .default(updateQuoteResponseSpecJoistSpacingMmDefault)
+      .describe("Joist centres in mm"),
+    bearerSpacingMm: zod
+      .number()
+      .default(updateQuoteResponseSpecBearerSpacingMmDefault)
+      .describe("Bearer centres in mm"),
+    postSpacingMm: zod
+      .number()
+      .default(updateQuoteResponseSpecPostSpacingMmDefault)
+      .describe("Post centres in mm"),
+    footingDepthMm: zod
+      .number()
+      .default(updateQuoteResponseSpecFootingDepthMmDefault)
+      .describe("Footing depth in mm for stump subframes"),
+    wastageFactor: zod
+      .number()
+      .default(updateQuoteResponseSpecWastageFactorDefault)
+      .describe("Multiplier for cuts and offcuts"),
+    labourHours: zod
+      .number()
+      .default(updateQuoteResponseSpecLabourHoursDefault)
+      .describe("Labour hours for the job"),
+    labourRate: zod
+      .number()
+      .default(updateQuoteResponseSpecLabourRateDefault)
+      .describe("AUD per hour labour rate"),
+    deckBoardType: zod
+      .string()
+      .default(updateQuoteResponseSpecDeckBoardTypeDefault)
+      .describe("hardwood | composite | treated_pine"),
+    subframeType: zod
+      .string()
+      .default(updateQuoteResponseSpecSubframeTypeDefault)
+      .describe("stumps | concrete_slab | existing_structure"),
+    fastenerType: zod
+      .string()
+      .default(updateQuoteResponseSpecFastenerTypeDefault)
+      .describe("screws | hidden_clips"),
+    fasciaType: zod
+      .string()
+      .default(updateQuoteResponseSpecFasciaTypeDefault)
+      .describe("none | timber | composite"),
+    includeHandrails: zod
+      .boolean()
+      .default(updateQuoteResponseSpecIncludeHandrailsDefault),
+    handrailHeightMm: zod
+      .number()
+      .default(updateQuoteResponseSpecHandrailHeightMmDefault)
+      .describe("Handrail height in mm"),
+    balustradeType: zod
+      .string()
+      .default(updateQuoteResponseSpecBalustradeTypeDefault)
+      .describe("timber | stainless_cable"),
+    timberGapMm: zod
+      .number()
+      .default(updateQuoteResponseSpecTimberGapMmDefault)
+      .describe("Gap between timber pickets in mm"),
+    wireSpacingMm: zod
+      .number()
+      .default(updateQuoteResponseSpecWireSpacingMmDefault)
+      .describe("Stainless cable wire spacing in mm"),
+    includeStairs: zod
+      .boolean()
+      .default(updateQuoteResponseSpecIncludeStairsDefault),
+    stairFlights: zod
+      .number()
+      .default(updateQuoteResponseSpecStairFlightsDefault)
+      .describe("Number of stair flights"),
+    includeFencing: zod
+      .boolean()
+      .default(updateQuoteResponseSpecIncludeFencingDefault),
+    fencingSides: zod
+      .number()
+      .default(updateQuoteResponseSpecFencingSidesDefault)
+      .describe("Number of sides with fencing"),
+    fencingHeightM: zod
+      .number()
+      .default(updateQuoteResponseSpecFencingHeightMDefault)
+      .describe("Fence height in metres"),
+    fencingWidthM: zod
+      .number()
+      .default(updateQuoteResponseSpecFencingWidthMDefault)
+      .describe("Fence bay\/panel width in metres"),
+    includeAwning: zod
+      .boolean()
+      .default(updateQuoteResponseSpecIncludeAwningDefault),
+    awningWidthM: zod
+      .number()
+      .default(updateQuoteResponseSpecAwningWidthMDefault)
+      .describe("Awning width in metres (creates cutout in boards)"),
+    awningLengthM: zod
+      .number()
+      .default(updateQuoteResponseSpecAwningLengthMDefault)
+      .describe("Awning length in metres"),
+  }),
+  lineItems: zod.array(
+    zod.object({
+      id: zod.number(),
+      quoteId: zod.number(),
+      materialId: zod.number().nullish(),
+      description: zod.string(),
+      category: zod.string(),
+      quantity: zod.number(),
+      unit: zod.string(),
+      unitType: zod.string(),
+      unitPrice: zod.number(),
+      unitCost: zod.number().optional(),
+      markupPercentage: zod.number().optional(),
+      wastagePercentage: zod.number(),
+      isBulkItem: zod.boolean(),
+      lineTotal: zod.number(),
+    }),
+  ),
+  createdAt: zod.coerce.date(),
+  updatedAt: zod.coerce.date(),
+});
 
 export const DeleteQuoteParams = zod.object({
-  "id": zod.coerce.number()
-})
+  id: zod.coerce.number(),
+});
 
 export const DeleteQuoteResponse = zod.object({
-  "deleted": zod.boolean(),
-  "id": zod.number()
-})
+  deleted: zod.boolean(),
+  id: zod.number(),
+});
 
+/**
+ * @summary Get the latest validated CAD layout for an owned quote
+ */
+
+export const GetLatestCadLayoutParams = zod.object({
+  quoteId: zod.coerce.number().min(1),
+});
+
+export const getLatestCadLayoutResponseLayoutDimensionsXExclusiveMin = 0;
+
+export const getLatestCadLayoutResponseLayoutDimensionsYExclusiveMin = 0;
+
+export const getLatestCadLayoutResponseLayoutDimensionsZExclusiveMin = 0;
+
+export const getLatestCadLayoutResponseLayoutStructuralComponentsItemIdMax = 100;
+
+export const getLatestCadLayoutResponseLayoutStructuralComponentsItemNameMax = 200;
+
+export const getLatestCadLayoutResponseLayoutStructuralComponentsItemMaterialMax = 200;
+
+export const getLatestCadLayoutResponseLayoutStructuralComponentsItemMaterialSkuMax = 100;
+
+export const getLatestCadLayoutResponseLayoutStructuralComponentsItemGeometryIdMax = 100;
+
+export const getLatestCadLayoutResponseLayoutStructuralComponentsItemDimensionsXExclusiveMin = 0;
+
+export const getLatestCadLayoutResponseLayoutStructuralComponentsItemDimensionsYExclusiveMin = 0;
+
+export const getLatestCadLayoutResponseLayoutStructuralComponentsItemDimensionsZExclusiveMin = 0;
+
+export const getLatestCadLayoutResponseLayoutStructuralComponentsMax = 500;
+
+export const GetLatestCadLayoutResponse = zod.object({
+  id: zod.number(),
+  quoteId: zod.number(),
+  prompt: zod.string(),
+  tradeCategory: zod.enum(["carpentry", "electrical", "plumbing"]),
+  layout: zod.object({
+    version: zod.number(),
+    units: zod.literal("metres"),
+    coordinateSystem: zod.literal("right-handed-y-up"),
+    rotationUnit: zod.literal("radians"),
+    tradeCategory: zod.enum(["carpentry", "electrical", "plumbing"]),
+    dimensions: zod.object({
+      x: zod
+        .number()
+        .gt(getLatestCadLayoutResponseLayoutDimensionsXExclusiveMin),
+      y: zod
+        .number()
+        .gt(getLatestCadLayoutResponseLayoutDimensionsYExclusiveMin),
+      z: zod
+        .number()
+        .gt(getLatestCadLayoutResponseLayoutDimensionsZExclusiveMin),
+    }),
+    origin: zod.object({
+      x: zod.number(),
+      y: zod.number(),
+      z: zod.number(),
+    }),
+    structuralComponents: zod
+      .array(
+        zod.object({
+          id: zod
+            .string()
+            .min(1)
+            .max(getLatestCadLayoutResponseLayoutStructuralComponentsItemIdMax),
+          name: zod
+            .string()
+            .min(1)
+            .max(
+              getLatestCadLayoutResponseLayoutStructuralComponentsItemNameMax,
+            ),
+          type: zod.enum([
+            "beam",
+            "post",
+            "joist",
+            "wall",
+            "decking-board",
+            "handrail",
+            "conduit",
+            "cable",
+            "outlet",
+            "junction-box",
+            "pipe",
+            "fitting",
+            "fixture",
+          ]),
+          tradeCategory: zod.enum(["carpentry", "electrical", "plumbing"]),
+          material: zod
+            .string()
+            .min(1)
+            .max(
+              getLatestCadLayoutResponseLayoutStructuralComponentsItemMaterialMax,
+            ),
+          materialSku: zod
+            .string()
+            .min(1)
+            .max(
+              getLatestCadLayoutResponseLayoutStructuralComponentsItemMaterialSkuMax,
+            )
+            .nullable(),
+          geometryId: zod
+            .string()
+            .min(1)
+            .max(
+              getLatestCadLayoutResponseLayoutStructuralComponentsItemGeometryIdMax,
+            ),
+          dimensions: zod.object({
+            x: zod
+              .number()
+              .gt(
+                getLatestCadLayoutResponseLayoutStructuralComponentsItemDimensionsXExclusiveMin,
+              ),
+            y: zod
+              .number()
+              .gt(
+                getLatestCadLayoutResponseLayoutStructuralComponentsItemDimensionsYExclusiveMin,
+              ),
+            z: zod
+              .number()
+              .gt(
+                getLatestCadLayoutResponseLayoutStructuralComponentsItemDimensionsZExclusiveMin,
+              ),
+          }),
+          position: zod.object({
+            x: zod.number(),
+            y: zod.number(),
+            z: zod.number(),
+          }),
+          rotation: zod.object({
+            x: zod.number(),
+            y: zod.number(),
+            z: zod.number(),
+          }),
+        }),
+      )
+      .min(1)
+      .max(getLatestCadLayoutResponseLayoutStructuralComponentsMax),
+  }),
+  createdAt: zod.coerce.date(),
+  updatedAt: zod.coerce.date(),
+});
 
 /**
  * @summary Generate and store a validated CAD layout from natural language
  */
 
-
-
 export const CreateCadLayoutParams = zod.object({
-  "quoteId": zod.coerce.number().min(1)
-})
+  quoteId: zod.coerce.number().min(1),
+});
 
 export const createCadLayoutBodyPromptMax = 2000;
 
-
-
 export const CreateCadLayoutBody = zod.object({
-  "prompt": zod.string().min(1).max(createCadLayoutBodyPromptMax)
-})
-
+  prompt: zod.string().min(1).max(createCadLayoutBodyPromptMax),
+});
 
 export const SetQuoteStatusParams = zod.object({
-  "id": zod.coerce.number()
-})
+  id: zod.coerce.number(),
+});
 
 export const SetQuoteStatusBody = zod.object({
-  "status": zod.string()
-})
+  status: zod.string(),
+});
 
 export const setQuoteStatusResponseSpecHeightMDefault = 0.6;
 export const setQuoteStatusResponseSpecBoardWidthMmDefault = 90;
@@ -910,95 +1342,175 @@ export const setQuoteStatusResponseSpecAwningWidthMDefault = 3;
 export const setQuoteStatusResponseSpecAwningLengthMDefault = 3;
 
 export const SetQuoteStatusResponse = zod.object({
-  "id": zod.number(),
-  "title": zod.string(),
-  "status": zod.string().describe('draft | sent | accepted | rejected'),
-  "customerId": zod.number(),
-  "assignedTeamMemberId": zod.number().nullable(),
-  "masterProjectId": zod.number().nullable(),
-  "tradeType": zod.string(),
-  "portalToken": zod.string().nullable(),
-  "complianceDisclaimer": zod.string(),
-  "contractorLicenseNumber": zod.string().nullable(),
-  "customerName": zod.string().nullish(),
-  "siteAddress": zod.string().nullish(),
-  "notes": zod.string().nullish(),
-  "lengthM": zod.number(),
-  "widthM": zod.number(),
-  "heightM": zod.number(),
-  "boardWidthMm": zod.number().optional(),
-  "joistSpacingMm": zod.number().optional(),
-  "bearerSpacingMm": zod.number().optional(),
-  "postSpacingMm": zod.number().optional(),
-  "wastageFactor": zod.number().optional(),
-  "labourHours": zod.number().optional(),
-  "labourRate": zod.number().optional(),
-  "materialsSubtotal": zod.number(),
-  "labourCost": zod.number(),
-  "gst": zod.number(),
-  "total": zod.number(),
-  "spec": zod.object({
-  "lengthM": zod.number().describe('Deck length in metres'),
-  "widthM": zod.number().describe('Deck width in metres'),
-  "heightM": zod.number().default(setQuoteStatusResponseSpecHeightMDefault).describe('Sub-floor height in metres'),
-  "boardWidthMm": zod.number().default(setQuoteStatusResponseSpecBoardWidthMmDefault).describe('Decking board width in mm'),
-  "gapSpacingMm": zod.number().default(setQuoteStatusResponseSpecGapSpacingMmDefault).describe('Gap between boards in mm'),
-  "joistSpacingMm": zod.number().default(setQuoteStatusResponseSpecJoistSpacingMmDefault).describe('Joist centres in mm'),
-  "bearerSpacingMm": zod.number().default(setQuoteStatusResponseSpecBearerSpacingMmDefault).describe('Bearer centres in mm'),
-  "postSpacingMm": zod.number().default(setQuoteStatusResponseSpecPostSpacingMmDefault).describe('Post centres in mm'),
-  "footingDepthMm": zod.number().default(setQuoteStatusResponseSpecFootingDepthMmDefault).describe('Footing depth in mm for stump subframes'),
-  "wastageFactor": zod.number().default(setQuoteStatusResponseSpecWastageFactorDefault).describe('Multiplier for cuts and offcuts'),
-  "labourHours": zod.number().default(setQuoteStatusResponseSpecLabourHoursDefault).describe('Labour hours for the job'),
-  "labourRate": zod.number().default(setQuoteStatusResponseSpecLabourRateDefault).describe('AUD per hour labour rate'),
-  "deckBoardType": zod.string().default(setQuoteStatusResponseSpecDeckBoardTypeDefault).describe('hardwood | composite | treated_pine'),
-  "subframeType": zod.string().default(setQuoteStatusResponseSpecSubframeTypeDefault).describe('stumps | concrete_slab | existing_structure'),
-  "fastenerType": zod.string().default(setQuoteStatusResponseSpecFastenerTypeDefault).describe('screws | hidden_clips'),
-  "fasciaType": zod.string().default(setQuoteStatusResponseSpecFasciaTypeDefault).describe('none | timber | composite'),
-  "includeHandrails": zod.boolean().default(setQuoteStatusResponseSpecIncludeHandrailsDefault),
-  "handrailHeightMm": zod.number().default(setQuoteStatusResponseSpecHandrailHeightMmDefault).describe('Handrail height in mm'),
-  "balustradeType": zod.string().default(setQuoteStatusResponseSpecBalustradeTypeDefault).describe('timber | stainless_cable'),
-  "timberGapMm": zod.number().default(setQuoteStatusResponseSpecTimberGapMmDefault).describe('Gap between timber pickets in mm'),
-  "wireSpacingMm": zod.number().default(setQuoteStatusResponseSpecWireSpacingMmDefault).describe('Stainless cable wire spacing in mm'),
-  "includeStairs": zod.boolean().default(setQuoteStatusResponseSpecIncludeStairsDefault),
-  "stairFlights": zod.number().default(setQuoteStatusResponseSpecStairFlightsDefault).describe('Number of stair flights'),
-  "includeFencing": zod.boolean().default(setQuoteStatusResponseSpecIncludeFencingDefault),
-  "fencingSides": zod.number().default(setQuoteStatusResponseSpecFencingSidesDefault).describe('Number of sides with fencing'),
-  "fencingHeightM": zod.number().default(setQuoteStatusResponseSpecFencingHeightMDefault).describe('Fence height in metres'),
-  "fencingWidthM": zod.number().default(setQuoteStatusResponseSpecFencingWidthMDefault).describe('Fence bay\/panel width in metres'),
-  "includeAwning": zod.boolean().default(setQuoteStatusResponseSpecIncludeAwningDefault),
-  "awningWidthM": zod.number().default(setQuoteStatusResponseSpecAwningWidthMDefault).describe('Awning width in metres (creates cutout in boards)'),
-  "awningLengthM": zod.number().default(setQuoteStatusResponseSpecAwningLengthMDefault).describe('Awning length in metres')
-}),
-  "lineItems": zod.array(zod.object({
-  "id": zod.number(),
-  "quoteId": zod.number(),
-  "materialId": zod.number().nullish(),
-  "description": zod.string(),
-  "category": zod.string(),
-  "quantity": zod.number(),
-  "unit": zod.string(),
-  "unitType": zod.string(),
-  "unitPrice": zod.number(),
-  "unitCost": zod.number().optional(),
-  "markupPercentage": zod.number().optional(),
-  "wastagePercentage": zod.number(),
-  "isBulkItem": zod.boolean(),
-  "lineTotal": zod.number()
-})),
-  "createdAt": zod.coerce.date(),
-  "updatedAt": zod.coerce.date()
-})
-
+  id: zod.number(),
+  title: zod.string(),
+  status: zod.string().describe("draft | sent | accepted | rejected"),
+  customerId: zod.number(),
+  assignedTeamMemberId: zod.number().nullable(),
+  masterProjectId: zod.number().nullable(),
+  tradeType: zod.string(),
+  portalToken: zod.string().nullable(),
+  complianceDisclaimer: zod.string(),
+  contractorLicenseNumber: zod.string().nullable(),
+  customerName: zod.string().nullish(),
+  siteAddress: zod.string().nullish(),
+  notes: zod.string().nullish(),
+  lengthM: zod.number(),
+  widthM: zod.number(),
+  heightM: zod.number(),
+  boardWidthMm: zod.number().optional(),
+  joistSpacingMm: zod.number().optional(),
+  bearerSpacingMm: zod.number().optional(),
+  postSpacingMm: zod.number().optional(),
+  wastageFactor: zod.number().optional(),
+  labourHours: zod.number().optional(),
+  labourRate: zod.number().optional(),
+  materialsSubtotal: zod.number(),
+  labourCost: zod.number(),
+  gst: zod.number(),
+  total: zod.number(),
+  spec: zod.object({
+    lengthM: zod.number().describe("Deck length in metres"),
+    widthM: zod.number().describe("Deck width in metres"),
+    heightM: zod
+      .number()
+      .default(setQuoteStatusResponseSpecHeightMDefault)
+      .describe("Sub-floor height in metres"),
+    boardWidthMm: zod
+      .number()
+      .default(setQuoteStatusResponseSpecBoardWidthMmDefault)
+      .describe("Decking board width in mm"),
+    gapSpacingMm: zod
+      .number()
+      .default(setQuoteStatusResponseSpecGapSpacingMmDefault)
+      .describe("Gap between boards in mm"),
+    joistSpacingMm: zod
+      .number()
+      .default(setQuoteStatusResponseSpecJoistSpacingMmDefault)
+      .describe("Joist centres in mm"),
+    bearerSpacingMm: zod
+      .number()
+      .default(setQuoteStatusResponseSpecBearerSpacingMmDefault)
+      .describe("Bearer centres in mm"),
+    postSpacingMm: zod
+      .number()
+      .default(setQuoteStatusResponseSpecPostSpacingMmDefault)
+      .describe("Post centres in mm"),
+    footingDepthMm: zod
+      .number()
+      .default(setQuoteStatusResponseSpecFootingDepthMmDefault)
+      .describe("Footing depth in mm for stump subframes"),
+    wastageFactor: zod
+      .number()
+      .default(setQuoteStatusResponseSpecWastageFactorDefault)
+      .describe("Multiplier for cuts and offcuts"),
+    labourHours: zod
+      .number()
+      .default(setQuoteStatusResponseSpecLabourHoursDefault)
+      .describe("Labour hours for the job"),
+    labourRate: zod
+      .number()
+      .default(setQuoteStatusResponseSpecLabourRateDefault)
+      .describe("AUD per hour labour rate"),
+    deckBoardType: zod
+      .string()
+      .default(setQuoteStatusResponseSpecDeckBoardTypeDefault)
+      .describe("hardwood | composite | treated_pine"),
+    subframeType: zod
+      .string()
+      .default(setQuoteStatusResponseSpecSubframeTypeDefault)
+      .describe("stumps | concrete_slab | existing_structure"),
+    fastenerType: zod
+      .string()
+      .default(setQuoteStatusResponseSpecFastenerTypeDefault)
+      .describe("screws | hidden_clips"),
+    fasciaType: zod
+      .string()
+      .default(setQuoteStatusResponseSpecFasciaTypeDefault)
+      .describe("none | timber | composite"),
+    includeHandrails: zod
+      .boolean()
+      .default(setQuoteStatusResponseSpecIncludeHandrailsDefault),
+    handrailHeightMm: zod
+      .number()
+      .default(setQuoteStatusResponseSpecHandrailHeightMmDefault)
+      .describe("Handrail height in mm"),
+    balustradeType: zod
+      .string()
+      .default(setQuoteStatusResponseSpecBalustradeTypeDefault)
+      .describe("timber | stainless_cable"),
+    timberGapMm: zod
+      .number()
+      .default(setQuoteStatusResponseSpecTimberGapMmDefault)
+      .describe("Gap between timber pickets in mm"),
+    wireSpacingMm: zod
+      .number()
+      .default(setQuoteStatusResponseSpecWireSpacingMmDefault)
+      .describe("Stainless cable wire spacing in mm"),
+    includeStairs: zod
+      .boolean()
+      .default(setQuoteStatusResponseSpecIncludeStairsDefault),
+    stairFlights: zod
+      .number()
+      .default(setQuoteStatusResponseSpecStairFlightsDefault)
+      .describe("Number of stair flights"),
+    includeFencing: zod
+      .boolean()
+      .default(setQuoteStatusResponseSpecIncludeFencingDefault),
+    fencingSides: zod
+      .number()
+      .default(setQuoteStatusResponseSpecFencingSidesDefault)
+      .describe("Number of sides with fencing"),
+    fencingHeightM: zod
+      .number()
+      .default(setQuoteStatusResponseSpecFencingHeightMDefault)
+      .describe("Fence height in metres"),
+    fencingWidthM: zod
+      .number()
+      .default(setQuoteStatusResponseSpecFencingWidthMDefault)
+      .describe("Fence bay\/panel width in metres"),
+    includeAwning: zod
+      .boolean()
+      .default(setQuoteStatusResponseSpecIncludeAwningDefault),
+    awningWidthM: zod
+      .number()
+      .default(setQuoteStatusResponseSpecAwningWidthMDefault)
+      .describe("Awning width in metres (creates cutout in boards)"),
+    awningLengthM: zod
+      .number()
+      .default(setQuoteStatusResponseSpecAwningLengthMDefault)
+      .describe("Awning length in metres"),
+  }),
+  lineItems: zod.array(
+    zod.object({
+      id: zod.number(),
+      quoteId: zod.number(),
+      materialId: zod.number().nullish(),
+      description: zod.string(),
+      category: zod.string(),
+      quantity: zod.number(),
+      unit: zod.string(),
+      unitType: zod.string(),
+      unitPrice: zod.number(),
+      unitCost: zod.number().optional(),
+      markupPercentage: zod.number().optional(),
+      wastagePercentage: zod.number(),
+      isBulkItem: zod.boolean(),
+      lineTotal: zod.number(),
+    }),
+  ),
+  createdAt: zod.coerce.date(),
+  updatedAt: zod.coerce.date(),
+});
 
 /**
  * @summary Get the customer-safe view of a quote
  */
-export const getQuotePortalPathTokenRegExp = new RegExp('^[A-Za-z0-9_-]{43}$');
-
+export const getQuotePortalPathTokenRegExp = new RegExp("^[A-Za-z0-9_-]{43}$");
 
 export const GetQuotePortalParams = zod.object({
-  "token": zod.coerce.string().regex(getQuotePortalPathTokenRegExp)
-})
+  token: zod.coerce.string().regex(getQuotePortalPathTokenRegExp),
+});
 
 export const getQuotePortalResponseSpecHeightMDefault = 0.6;
 export const getQuotePortalResponseSpecBoardWidthMmDefault = 90;
@@ -1030,82 +1542,164 @@ export const getQuotePortalResponseSpecAwningWidthMDefault = 3;
 export const getQuotePortalResponseSpecAwningLengthMDefault = 3;
 
 export const GetQuotePortalResponse = zod.object({
-  "id": zod.number(),
-  "title": zod.string(),
-  "status": zod.string(),
-  "customerName": zod.string().nullable(),
-  "siteAddress": zod.string().nullable(),
-  "notes": zod.string().nullable(),
-  "complianceDisclaimer": zod.string(),
-  "contractorLicenseNumber": zod.string().nullable(),
-  "businessName": zod.string().nullable(),
-  "businessPhone": zod.string().nullable(),
-  "businessTradeType": zod.string().nullable(),
-  "businessLogoUrl": zod.string(),
-  "spec": zod.object({
-  "lengthM": zod.number().describe('Deck length in metres'),
-  "widthM": zod.number().describe('Deck width in metres'),
-  "heightM": zod.number().default(getQuotePortalResponseSpecHeightMDefault).describe('Sub-floor height in metres'),
-  "boardWidthMm": zod.number().default(getQuotePortalResponseSpecBoardWidthMmDefault).describe('Decking board width in mm'),
-  "gapSpacingMm": zod.number().default(getQuotePortalResponseSpecGapSpacingMmDefault).describe('Gap between boards in mm'),
-  "joistSpacingMm": zod.number().default(getQuotePortalResponseSpecJoistSpacingMmDefault).describe('Joist centres in mm'),
-  "bearerSpacingMm": zod.number().default(getQuotePortalResponseSpecBearerSpacingMmDefault).describe('Bearer centres in mm'),
-  "postSpacingMm": zod.number().default(getQuotePortalResponseSpecPostSpacingMmDefault).describe('Post centres in mm'),
-  "footingDepthMm": zod.number().default(getQuotePortalResponseSpecFootingDepthMmDefault).describe('Footing depth in mm for stump subframes'),
-  "wastageFactor": zod.number().default(getQuotePortalResponseSpecWastageFactorDefault).describe('Multiplier for cuts and offcuts'),
-  "labourHours": zod.number().default(getQuotePortalResponseSpecLabourHoursDefault).describe('Labour hours for the job'),
-  "labourRate": zod.number().default(getQuotePortalResponseSpecLabourRateDefault).describe('AUD per hour labour rate'),
-  "deckBoardType": zod.string().default(getQuotePortalResponseSpecDeckBoardTypeDefault).describe('hardwood | composite | treated_pine'),
-  "subframeType": zod.string().default(getQuotePortalResponseSpecSubframeTypeDefault).describe('stumps | concrete_slab | existing_structure'),
-  "fastenerType": zod.string().default(getQuotePortalResponseSpecFastenerTypeDefault).describe('screws | hidden_clips'),
-  "fasciaType": zod.string().default(getQuotePortalResponseSpecFasciaTypeDefault).describe('none | timber | composite'),
-  "includeHandrails": zod.boolean().default(getQuotePortalResponseSpecIncludeHandrailsDefault),
-  "handrailHeightMm": zod.number().default(getQuotePortalResponseSpecHandrailHeightMmDefault).describe('Handrail height in mm'),
-  "balustradeType": zod.string().default(getQuotePortalResponseSpecBalustradeTypeDefault).describe('timber | stainless_cable'),
-  "timberGapMm": zod.number().default(getQuotePortalResponseSpecTimberGapMmDefault).describe('Gap between timber pickets in mm'),
-  "wireSpacingMm": zod.number().default(getQuotePortalResponseSpecWireSpacingMmDefault).describe('Stainless cable wire spacing in mm'),
-  "includeStairs": zod.boolean().default(getQuotePortalResponseSpecIncludeStairsDefault),
-  "stairFlights": zod.number().default(getQuotePortalResponseSpecStairFlightsDefault).describe('Number of stair flights'),
-  "includeFencing": zod.boolean().default(getQuotePortalResponseSpecIncludeFencingDefault),
-  "fencingSides": zod.number().default(getQuotePortalResponseSpecFencingSidesDefault).describe('Number of sides with fencing'),
-  "fencingHeightM": zod.number().default(getQuotePortalResponseSpecFencingHeightMDefault).describe('Fence height in metres'),
-  "fencingWidthM": zod.number().default(getQuotePortalResponseSpecFencingWidthMDefault).describe('Fence bay\/panel width in metres'),
-  "includeAwning": zod.boolean().default(getQuotePortalResponseSpecIncludeAwningDefault),
-  "awningWidthM": zod.number().default(getQuotePortalResponseSpecAwningWidthMDefault).describe('Awning width in metres (creates cutout in boards)'),
-  "awningLengthM": zod.number().default(getQuotePortalResponseSpecAwningLengthMDefault).describe('Awning length in metres')
-}),
-  "lineItems": zod.array(zod.object({
-  "description": zod.string(),
-  "category": zod.string(),
-  "quantity": zod.number(),
-  "unit": zod.string(),
-  "unitType": zod.string(),
-  "unitPrice": zod.number(),
-  "lineTotal": zod.number()
-})),
-  "materialsSubtotal": zod.number(),
-  "labourCost": zod.number(),
-  "gst": zod.number(),
-  "total": zod.number(),
-  "createdAt": zod.coerce.date(),
-  "updatedAt": zod.coerce.date()
-})
-
+  id: zod.number(),
+  title: zod.string(),
+  status: zod.string(),
+  customerName: zod.string().nullable(),
+  siteAddress: zod.string().nullable(),
+  notes: zod.string().nullable(),
+  complianceDisclaimer: zod.string(),
+  contractorLicenseNumber: zod.string().nullable(),
+  businessName: zod.string().nullable(),
+  businessPhone: zod.string().nullable(),
+  businessTradeType: zod.string().nullable(),
+  businessLogoUrl: zod.string(),
+  spec: zod.object({
+    lengthM: zod.number().describe("Deck length in metres"),
+    widthM: zod.number().describe("Deck width in metres"),
+    heightM: zod
+      .number()
+      .default(getQuotePortalResponseSpecHeightMDefault)
+      .describe("Sub-floor height in metres"),
+    boardWidthMm: zod
+      .number()
+      .default(getQuotePortalResponseSpecBoardWidthMmDefault)
+      .describe("Decking board width in mm"),
+    gapSpacingMm: zod
+      .number()
+      .default(getQuotePortalResponseSpecGapSpacingMmDefault)
+      .describe("Gap between boards in mm"),
+    joistSpacingMm: zod
+      .number()
+      .default(getQuotePortalResponseSpecJoistSpacingMmDefault)
+      .describe("Joist centres in mm"),
+    bearerSpacingMm: zod
+      .number()
+      .default(getQuotePortalResponseSpecBearerSpacingMmDefault)
+      .describe("Bearer centres in mm"),
+    postSpacingMm: zod
+      .number()
+      .default(getQuotePortalResponseSpecPostSpacingMmDefault)
+      .describe("Post centres in mm"),
+    footingDepthMm: zod
+      .number()
+      .default(getQuotePortalResponseSpecFootingDepthMmDefault)
+      .describe("Footing depth in mm for stump subframes"),
+    wastageFactor: zod
+      .number()
+      .default(getQuotePortalResponseSpecWastageFactorDefault)
+      .describe("Multiplier for cuts and offcuts"),
+    labourHours: zod
+      .number()
+      .default(getQuotePortalResponseSpecLabourHoursDefault)
+      .describe("Labour hours for the job"),
+    labourRate: zod
+      .number()
+      .default(getQuotePortalResponseSpecLabourRateDefault)
+      .describe("AUD per hour labour rate"),
+    deckBoardType: zod
+      .string()
+      .default(getQuotePortalResponseSpecDeckBoardTypeDefault)
+      .describe("hardwood | composite | treated_pine"),
+    subframeType: zod
+      .string()
+      .default(getQuotePortalResponseSpecSubframeTypeDefault)
+      .describe("stumps | concrete_slab | existing_structure"),
+    fastenerType: zod
+      .string()
+      .default(getQuotePortalResponseSpecFastenerTypeDefault)
+      .describe("screws | hidden_clips"),
+    fasciaType: zod
+      .string()
+      .default(getQuotePortalResponseSpecFasciaTypeDefault)
+      .describe("none | timber | composite"),
+    includeHandrails: zod
+      .boolean()
+      .default(getQuotePortalResponseSpecIncludeHandrailsDefault),
+    handrailHeightMm: zod
+      .number()
+      .default(getQuotePortalResponseSpecHandrailHeightMmDefault)
+      .describe("Handrail height in mm"),
+    balustradeType: zod
+      .string()
+      .default(getQuotePortalResponseSpecBalustradeTypeDefault)
+      .describe("timber | stainless_cable"),
+    timberGapMm: zod
+      .number()
+      .default(getQuotePortalResponseSpecTimberGapMmDefault)
+      .describe("Gap between timber pickets in mm"),
+    wireSpacingMm: zod
+      .number()
+      .default(getQuotePortalResponseSpecWireSpacingMmDefault)
+      .describe("Stainless cable wire spacing in mm"),
+    includeStairs: zod
+      .boolean()
+      .default(getQuotePortalResponseSpecIncludeStairsDefault),
+    stairFlights: zod
+      .number()
+      .default(getQuotePortalResponseSpecStairFlightsDefault)
+      .describe("Number of stair flights"),
+    includeFencing: zod
+      .boolean()
+      .default(getQuotePortalResponseSpecIncludeFencingDefault),
+    fencingSides: zod
+      .number()
+      .default(getQuotePortalResponseSpecFencingSidesDefault)
+      .describe("Number of sides with fencing"),
+    fencingHeightM: zod
+      .number()
+      .default(getQuotePortalResponseSpecFencingHeightMDefault)
+      .describe("Fence height in metres"),
+    fencingWidthM: zod
+      .number()
+      .default(getQuotePortalResponseSpecFencingWidthMDefault)
+      .describe("Fence bay\/panel width in metres"),
+    includeAwning: zod
+      .boolean()
+      .default(getQuotePortalResponseSpecIncludeAwningDefault),
+    awningWidthM: zod
+      .number()
+      .default(getQuotePortalResponseSpecAwningWidthMDefault)
+      .describe("Awning width in metres (creates cutout in boards)"),
+    awningLengthM: zod
+      .number()
+      .default(getQuotePortalResponseSpecAwningLengthMDefault)
+      .describe("Awning length in metres"),
+  }),
+  lineItems: zod.array(
+    zod.object({
+      description: zod.string(),
+      category: zod.string(),
+      quantity: zod.number(),
+      unit: zod.string(),
+      unitType: zod.string(),
+      unitPrice: zod.number(),
+      lineTotal: zod.number(),
+    }),
+  ),
+  materialsSubtotal: zod.number(),
+  labourCost: zod.number(),
+  gst: zod.number(),
+  total: zod.number(),
+  createdAt: zod.coerce.date(),
+  updatedAt: zod.coerce.date(),
+});
 
 /**
  * @summary Apply an allowed customer upgrade using a secure portal token
  */
-export const updateQuotePortalPathTokenRegExp = new RegExp('^[A-Za-z0-9_-]{43}$');
-
+export const updateQuotePortalPathTokenRegExp = new RegExp(
+  "^[A-Za-z0-9_-]{43}$",
+);
 
 export const UpdateQuotePortalParams = zod.object({
-  "token": zod.coerce.string().regex(updateQuotePortalPathTokenRegExp)
-})
+  token: zod.coerce.string().regex(updateQuotePortalPathTokenRegExp),
+});
 
 export const UpdateQuotePortalBody = zod.object({
-  "deckBoardType": zod.string().optional(),
-  "balustradeType": zod.string().optional()
-})
+  deckBoardType: zod.string().optional(),
+  balustradeType: zod.string().optional(),
+});
 
 export const updateQuotePortalResponseSpecHeightMDefault = 0.6;
 export const updateQuotePortalResponseSpecBoardWidthMmDefault = 90;
@@ -1137,81 +1731,163 @@ export const updateQuotePortalResponseSpecAwningWidthMDefault = 3;
 export const updateQuotePortalResponseSpecAwningLengthMDefault = 3;
 
 export const UpdateQuotePortalResponse = zod.object({
-  "id": zod.number(),
-  "title": zod.string(),
-  "status": zod.string(),
-  "customerName": zod.string().nullable(),
-  "siteAddress": zod.string().nullable(),
-  "notes": zod.string().nullable(),
-  "complianceDisclaimer": zod.string(),
-  "contractorLicenseNumber": zod.string().nullable(),
-  "businessName": zod.string().nullable(),
-  "businessPhone": zod.string().nullable(),
-  "businessTradeType": zod.string().nullable(),
-  "businessLogoUrl": zod.string(),
-  "spec": zod.object({
-  "lengthM": zod.number().describe('Deck length in metres'),
-  "widthM": zod.number().describe('Deck width in metres'),
-  "heightM": zod.number().default(updateQuotePortalResponseSpecHeightMDefault).describe('Sub-floor height in metres'),
-  "boardWidthMm": zod.number().default(updateQuotePortalResponseSpecBoardWidthMmDefault).describe('Decking board width in mm'),
-  "gapSpacingMm": zod.number().default(updateQuotePortalResponseSpecGapSpacingMmDefault).describe('Gap between boards in mm'),
-  "joistSpacingMm": zod.number().default(updateQuotePortalResponseSpecJoistSpacingMmDefault).describe('Joist centres in mm'),
-  "bearerSpacingMm": zod.number().default(updateQuotePortalResponseSpecBearerSpacingMmDefault).describe('Bearer centres in mm'),
-  "postSpacingMm": zod.number().default(updateQuotePortalResponseSpecPostSpacingMmDefault).describe('Post centres in mm'),
-  "footingDepthMm": zod.number().default(updateQuotePortalResponseSpecFootingDepthMmDefault).describe('Footing depth in mm for stump subframes'),
-  "wastageFactor": zod.number().default(updateQuotePortalResponseSpecWastageFactorDefault).describe('Multiplier for cuts and offcuts'),
-  "labourHours": zod.number().default(updateQuotePortalResponseSpecLabourHoursDefault).describe('Labour hours for the job'),
-  "labourRate": zod.number().default(updateQuotePortalResponseSpecLabourRateDefault).describe('AUD per hour labour rate'),
-  "deckBoardType": zod.string().default(updateQuotePortalResponseSpecDeckBoardTypeDefault).describe('hardwood | composite | treated_pine'),
-  "subframeType": zod.string().default(updateQuotePortalResponseSpecSubframeTypeDefault).describe('stumps | concrete_slab | existing_structure'),
-  "fastenerType": zod.string().default(updateQuotePortalResponseSpecFastenerTypeDefault).describe('screws | hidden_clips'),
-  "fasciaType": zod.string().default(updateQuotePortalResponseSpecFasciaTypeDefault).describe('none | timber | composite'),
-  "includeHandrails": zod.boolean().default(updateQuotePortalResponseSpecIncludeHandrailsDefault),
-  "handrailHeightMm": zod.number().default(updateQuotePortalResponseSpecHandrailHeightMmDefault).describe('Handrail height in mm'),
-  "balustradeType": zod.string().default(updateQuotePortalResponseSpecBalustradeTypeDefault).describe('timber | stainless_cable'),
-  "timberGapMm": zod.number().default(updateQuotePortalResponseSpecTimberGapMmDefault).describe('Gap between timber pickets in mm'),
-  "wireSpacingMm": zod.number().default(updateQuotePortalResponseSpecWireSpacingMmDefault).describe('Stainless cable wire spacing in mm'),
-  "includeStairs": zod.boolean().default(updateQuotePortalResponseSpecIncludeStairsDefault),
-  "stairFlights": zod.number().default(updateQuotePortalResponseSpecStairFlightsDefault).describe('Number of stair flights'),
-  "includeFencing": zod.boolean().default(updateQuotePortalResponseSpecIncludeFencingDefault),
-  "fencingSides": zod.number().default(updateQuotePortalResponseSpecFencingSidesDefault).describe('Number of sides with fencing'),
-  "fencingHeightM": zod.number().default(updateQuotePortalResponseSpecFencingHeightMDefault).describe('Fence height in metres'),
-  "fencingWidthM": zod.number().default(updateQuotePortalResponseSpecFencingWidthMDefault).describe('Fence bay\/panel width in metres'),
-  "includeAwning": zod.boolean().default(updateQuotePortalResponseSpecIncludeAwningDefault),
-  "awningWidthM": zod.number().default(updateQuotePortalResponseSpecAwningWidthMDefault).describe('Awning width in metres (creates cutout in boards)'),
-  "awningLengthM": zod.number().default(updateQuotePortalResponseSpecAwningLengthMDefault).describe('Awning length in metres')
-}),
-  "lineItems": zod.array(zod.object({
-  "description": zod.string(),
-  "category": zod.string(),
-  "quantity": zod.number(),
-  "unit": zod.string(),
-  "unitType": zod.string(),
-  "unitPrice": zod.number(),
-  "lineTotal": zod.number()
-})),
-  "materialsSubtotal": zod.number(),
-  "labourCost": zod.number(),
-  "gst": zod.number(),
-  "total": zod.number(),
-  "createdAt": zod.coerce.date(),
-  "updatedAt": zod.coerce.date()
-})
-
+  id: zod.number(),
+  title: zod.string(),
+  status: zod.string(),
+  customerName: zod.string().nullable(),
+  siteAddress: zod.string().nullable(),
+  notes: zod.string().nullable(),
+  complianceDisclaimer: zod.string(),
+  contractorLicenseNumber: zod.string().nullable(),
+  businessName: zod.string().nullable(),
+  businessPhone: zod.string().nullable(),
+  businessTradeType: zod.string().nullable(),
+  businessLogoUrl: zod.string(),
+  spec: zod.object({
+    lengthM: zod.number().describe("Deck length in metres"),
+    widthM: zod.number().describe("Deck width in metres"),
+    heightM: zod
+      .number()
+      .default(updateQuotePortalResponseSpecHeightMDefault)
+      .describe("Sub-floor height in metres"),
+    boardWidthMm: zod
+      .number()
+      .default(updateQuotePortalResponseSpecBoardWidthMmDefault)
+      .describe("Decking board width in mm"),
+    gapSpacingMm: zod
+      .number()
+      .default(updateQuotePortalResponseSpecGapSpacingMmDefault)
+      .describe("Gap between boards in mm"),
+    joistSpacingMm: zod
+      .number()
+      .default(updateQuotePortalResponseSpecJoistSpacingMmDefault)
+      .describe("Joist centres in mm"),
+    bearerSpacingMm: zod
+      .number()
+      .default(updateQuotePortalResponseSpecBearerSpacingMmDefault)
+      .describe("Bearer centres in mm"),
+    postSpacingMm: zod
+      .number()
+      .default(updateQuotePortalResponseSpecPostSpacingMmDefault)
+      .describe("Post centres in mm"),
+    footingDepthMm: zod
+      .number()
+      .default(updateQuotePortalResponseSpecFootingDepthMmDefault)
+      .describe("Footing depth in mm for stump subframes"),
+    wastageFactor: zod
+      .number()
+      .default(updateQuotePortalResponseSpecWastageFactorDefault)
+      .describe("Multiplier for cuts and offcuts"),
+    labourHours: zod
+      .number()
+      .default(updateQuotePortalResponseSpecLabourHoursDefault)
+      .describe("Labour hours for the job"),
+    labourRate: zod
+      .number()
+      .default(updateQuotePortalResponseSpecLabourRateDefault)
+      .describe("AUD per hour labour rate"),
+    deckBoardType: zod
+      .string()
+      .default(updateQuotePortalResponseSpecDeckBoardTypeDefault)
+      .describe("hardwood | composite | treated_pine"),
+    subframeType: zod
+      .string()
+      .default(updateQuotePortalResponseSpecSubframeTypeDefault)
+      .describe("stumps | concrete_slab | existing_structure"),
+    fastenerType: zod
+      .string()
+      .default(updateQuotePortalResponseSpecFastenerTypeDefault)
+      .describe("screws | hidden_clips"),
+    fasciaType: zod
+      .string()
+      .default(updateQuotePortalResponseSpecFasciaTypeDefault)
+      .describe("none | timber | composite"),
+    includeHandrails: zod
+      .boolean()
+      .default(updateQuotePortalResponseSpecIncludeHandrailsDefault),
+    handrailHeightMm: zod
+      .number()
+      .default(updateQuotePortalResponseSpecHandrailHeightMmDefault)
+      .describe("Handrail height in mm"),
+    balustradeType: zod
+      .string()
+      .default(updateQuotePortalResponseSpecBalustradeTypeDefault)
+      .describe("timber | stainless_cable"),
+    timberGapMm: zod
+      .number()
+      .default(updateQuotePortalResponseSpecTimberGapMmDefault)
+      .describe("Gap between timber pickets in mm"),
+    wireSpacingMm: zod
+      .number()
+      .default(updateQuotePortalResponseSpecWireSpacingMmDefault)
+      .describe("Stainless cable wire spacing in mm"),
+    includeStairs: zod
+      .boolean()
+      .default(updateQuotePortalResponseSpecIncludeStairsDefault),
+    stairFlights: zod
+      .number()
+      .default(updateQuotePortalResponseSpecStairFlightsDefault)
+      .describe("Number of stair flights"),
+    includeFencing: zod
+      .boolean()
+      .default(updateQuotePortalResponseSpecIncludeFencingDefault),
+    fencingSides: zod
+      .number()
+      .default(updateQuotePortalResponseSpecFencingSidesDefault)
+      .describe("Number of sides with fencing"),
+    fencingHeightM: zod
+      .number()
+      .default(updateQuotePortalResponseSpecFencingHeightMDefault)
+      .describe("Fence height in metres"),
+    fencingWidthM: zod
+      .number()
+      .default(updateQuotePortalResponseSpecFencingWidthMDefault)
+      .describe("Fence bay\/panel width in metres"),
+    includeAwning: zod
+      .boolean()
+      .default(updateQuotePortalResponseSpecIncludeAwningDefault),
+    awningWidthM: zod
+      .number()
+      .default(updateQuotePortalResponseSpecAwningWidthMDefault)
+      .describe("Awning width in metres (creates cutout in boards)"),
+    awningLengthM: zod
+      .number()
+      .default(updateQuotePortalResponseSpecAwningLengthMDefault)
+      .describe("Awning length in metres"),
+  }),
+  lineItems: zod.array(
+    zod.object({
+      description: zod.string(),
+      category: zod.string(),
+      quantity: zod.number(),
+      unit: zod.string(),
+      unitType: zod.string(),
+      unitPrice: zod.number(),
+      lineTotal: zod.number(),
+    }),
+  ),
+  materialsSubtotal: zod.number(),
+  labourCost: zod.number(),
+  gst: zod.number(),
+  total: zod.number(),
+  createdAt: zod.coerce.date(),
+  updatedAt: zod.coerce.date(),
+});
 
 /**
  * @summary Accept a quote using a secure portal token
  */
-export const setQuotePortalStatusPathTokenRegExp = new RegExp('^[A-Za-z0-9_-]{43}$');
-
+export const setQuotePortalStatusPathTokenRegExp = new RegExp(
+  "^[A-Za-z0-9_-]{43}$",
+);
 
 export const SetQuotePortalStatusParams = zod.object({
-  "token": zod.coerce.string().regex(setQuotePortalStatusPathTokenRegExp)
-})
+  token: zod.coerce.string().regex(setQuotePortalStatusPathTokenRegExp),
+});
 
 export const SetQuotePortalStatusBody = zod.object({
-  "status": zod.string()
-})
+  status: zod.string(),
+});
 
 export const setQuotePortalStatusResponseSpecHeightMDefault = 0.6;
 export const setQuotePortalStatusResponseSpecBoardWidthMmDefault = 90;
@@ -1243,99 +1919,177 @@ export const setQuotePortalStatusResponseSpecAwningWidthMDefault = 3;
 export const setQuotePortalStatusResponseSpecAwningLengthMDefault = 3;
 
 export const SetQuotePortalStatusResponse = zod.object({
-  "id": zod.number(),
-  "title": zod.string(),
-  "status": zod.string(),
-  "customerName": zod.string().nullable(),
-  "siteAddress": zod.string().nullable(),
-  "notes": zod.string().nullable(),
-  "complianceDisclaimer": zod.string(),
-  "contractorLicenseNumber": zod.string().nullable(),
-  "businessName": zod.string().nullable(),
-  "businessPhone": zod.string().nullable(),
-  "businessTradeType": zod.string().nullable(),
-  "businessLogoUrl": zod.string(),
-  "spec": zod.object({
-  "lengthM": zod.number().describe('Deck length in metres'),
-  "widthM": zod.number().describe('Deck width in metres'),
-  "heightM": zod.number().default(setQuotePortalStatusResponseSpecHeightMDefault).describe('Sub-floor height in metres'),
-  "boardWidthMm": zod.number().default(setQuotePortalStatusResponseSpecBoardWidthMmDefault).describe('Decking board width in mm'),
-  "gapSpacingMm": zod.number().default(setQuotePortalStatusResponseSpecGapSpacingMmDefault).describe('Gap between boards in mm'),
-  "joistSpacingMm": zod.number().default(setQuotePortalStatusResponseSpecJoistSpacingMmDefault).describe('Joist centres in mm'),
-  "bearerSpacingMm": zod.number().default(setQuotePortalStatusResponseSpecBearerSpacingMmDefault).describe('Bearer centres in mm'),
-  "postSpacingMm": zod.number().default(setQuotePortalStatusResponseSpecPostSpacingMmDefault).describe('Post centres in mm'),
-  "footingDepthMm": zod.number().default(setQuotePortalStatusResponseSpecFootingDepthMmDefault).describe('Footing depth in mm for stump subframes'),
-  "wastageFactor": zod.number().default(setQuotePortalStatusResponseSpecWastageFactorDefault).describe('Multiplier for cuts and offcuts'),
-  "labourHours": zod.number().default(setQuotePortalStatusResponseSpecLabourHoursDefault).describe('Labour hours for the job'),
-  "labourRate": zod.number().default(setQuotePortalStatusResponseSpecLabourRateDefault).describe('AUD per hour labour rate'),
-  "deckBoardType": zod.string().default(setQuotePortalStatusResponseSpecDeckBoardTypeDefault).describe('hardwood | composite | treated_pine'),
-  "subframeType": zod.string().default(setQuotePortalStatusResponseSpecSubframeTypeDefault).describe('stumps | concrete_slab | existing_structure'),
-  "fastenerType": zod.string().default(setQuotePortalStatusResponseSpecFastenerTypeDefault).describe('screws | hidden_clips'),
-  "fasciaType": zod.string().default(setQuotePortalStatusResponseSpecFasciaTypeDefault).describe('none | timber | composite'),
-  "includeHandrails": zod.boolean().default(setQuotePortalStatusResponseSpecIncludeHandrailsDefault),
-  "handrailHeightMm": zod.number().default(setQuotePortalStatusResponseSpecHandrailHeightMmDefault).describe('Handrail height in mm'),
-  "balustradeType": zod.string().default(setQuotePortalStatusResponseSpecBalustradeTypeDefault).describe('timber | stainless_cable'),
-  "timberGapMm": zod.number().default(setQuotePortalStatusResponseSpecTimberGapMmDefault).describe('Gap between timber pickets in mm'),
-  "wireSpacingMm": zod.number().default(setQuotePortalStatusResponseSpecWireSpacingMmDefault).describe('Stainless cable wire spacing in mm'),
-  "includeStairs": zod.boolean().default(setQuotePortalStatusResponseSpecIncludeStairsDefault),
-  "stairFlights": zod.number().default(setQuotePortalStatusResponseSpecStairFlightsDefault).describe('Number of stair flights'),
-  "includeFencing": zod.boolean().default(setQuotePortalStatusResponseSpecIncludeFencingDefault),
-  "fencingSides": zod.number().default(setQuotePortalStatusResponseSpecFencingSidesDefault).describe('Number of sides with fencing'),
-  "fencingHeightM": zod.number().default(setQuotePortalStatusResponseSpecFencingHeightMDefault).describe('Fence height in metres'),
-  "fencingWidthM": zod.number().default(setQuotePortalStatusResponseSpecFencingWidthMDefault).describe('Fence bay\/panel width in metres'),
-  "includeAwning": zod.boolean().default(setQuotePortalStatusResponseSpecIncludeAwningDefault),
-  "awningWidthM": zod.number().default(setQuotePortalStatusResponseSpecAwningWidthMDefault).describe('Awning width in metres (creates cutout in boards)'),
-  "awningLengthM": zod.number().default(setQuotePortalStatusResponseSpecAwningLengthMDefault).describe('Awning length in metres')
-}),
-  "lineItems": zod.array(zod.object({
-  "description": zod.string(),
-  "category": zod.string(),
-  "quantity": zod.number(),
-  "unit": zod.string(),
-  "unitType": zod.string(),
-  "unitPrice": zod.number(),
-  "lineTotal": zod.number()
-})),
-  "materialsSubtotal": zod.number(),
-  "labourCost": zod.number(),
-  "gst": zod.number(),
-  "total": zod.number(),
-  "createdAt": zod.coerce.date(),
-  "updatedAt": zod.coerce.date()
-})
-
+  id: zod.number(),
+  title: zod.string(),
+  status: zod.string(),
+  customerName: zod.string().nullable(),
+  siteAddress: zod.string().nullable(),
+  notes: zod.string().nullable(),
+  complianceDisclaimer: zod.string(),
+  contractorLicenseNumber: zod.string().nullable(),
+  businessName: zod.string().nullable(),
+  businessPhone: zod.string().nullable(),
+  businessTradeType: zod.string().nullable(),
+  businessLogoUrl: zod.string(),
+  spec: zod.object({
+    lengthM: zod.number().describe("Deck length in metres"),
+    widthM: zod.number().describe("Deck width in metres"),
+    heightM: zod
+      .number()
+      .default(setQuotePortalStatusResponseSpecHeightMDefault)
+      .describe("Sub-floor height in metres"),
+    boardWidthMm: zod
+      .number()
+      .default(setQuotePortalStatusResponseSpecBoardWidthMmDefault)
+      .describe("Decking board width in mm"),
+    gapSpacingMm: zod
+      .number()
+      .default(setQuotePortalStatusResponseSpecGapSpacingMmDefault)
+      .describe("Gap between boards in mm"),
+    joistSpacingMm: zod
+      .number()
+      .default(setQuotePortalStatusResponseSpecJoistSpacingMmDefault)
+      .describe("Joist centres in mm"),
+    bearerSpacingMm: zod
+      .number()
+      .default(setQuotePortalStatusResponseSpecBearerSpacingMmDefault)
+      .describe("Bearer centres in mm"),
+    postSpacingMm: zod
+      .number()
+      .default(setQuotePortalStatusResponseSpecPostSpacingMmDefault)
+      .describe("Post centres in mm"),
+    footingDepthMm: zod
+      .number()
+      .default(setQuotePortalStatusResponseSpecFootingDepthMmDefault)
+      .describe("Footing depth in mm for stump subframes"),
+    wastageFactor: zod
+      .number()
+      .default(setQuotePortalStatusResponseSpecWastageFactorDefault)
+      .describe("Multiplier for cuts and offcuts"),
+    labourHours: zod
+      .number()
+      .default(setQuotePortalStatusResponseSpecLabourHoursDefault)
+      .describe("Labour hours for the job"),
+    labourRate: zod
+      .number()
+      .default(setQuotePortalStatusResponseSpecLabourRateDefault)
+      .describe("AUD per hour labour rate"),
+    deckBoardType: zod
+      .string()
+      .default(setQuotePortalStatusResponseSpecDeckBoardTypeDefault)
+      .describe("hardwood | composite | treated_pine"),
+    subframeType: zod
+      .string()
+      .default(setQuotePortalStatusResponseSpecSubframeTypeDefault)
+      .describe("stumps | concrete_slab | existing_structure"),
+    fastenerType: zod
+      .string()
+      .default(setQuotePortalStatusResponseSpecFastenerTypeDefault)
+      .describe("screws | hidden_clips"),
+    fasciaType: zod
+      .string()
+      .default(setQuotePortalStatusResponseSpecFasciaTypeDefault)
+      .describe("none | timber | composite"),
+    includeHandrails: zod
+      .boolean()
+      .default(setQuotePortalStatusResponseSpecIncludeHandrailsDefault),
+    handrailHeightMm: zod
+      .number()
+      .default(setQuotePortalStatusResponseSpecHandrailHeightMmDefault)
+      .describe("Handrail height in mm"),
+    balustradeType: zod
+      .string()
+      .default(setQuotePortalStatusResponseSpecBalustradeTypeDefault)
+      .describe("timber | stainless_cable"),
+    timberGapMm: zod
+      .number()
+      .default(setQuotePortalStatusResponseSpecTimberGapMmDefault)
+      .describe("Gap between timber pickets in mm"),
+    wireSpacingMm: zod
+      .number()
+      .default(setQuotePortalStatusResponseSpecWireSpacingMmDefault)
+      .describe("Stainless cable wire spacing in mm"),
+    includeStairs: zod
+      .boolean()
+      .default(setQuotePortalStatusResponseSpecIncludeStairsDefault),
+    stairFlights: zod
+      .number()
+      .default(setQuotePortalStatusResponseSpecStairFlightsDefault)
+      .describe("Number of stair flights"),
+    includeFencing: zod
+      .boolean()
+      .default(setQuotePortalStatusResponseSpecIncludeFencingDefault),
+    fencingSides: zod
+      .number()
+      .default(setQuotePortalStatusResponseSpecFencingSidesDefault)
+      .describe("Number of sides with fencing"),
+    fencingHeightM: zod
+      .number()
+      .default(setQuotePortalStatusResponseSpecFencingHeightMDefault)
+      .describe("Fence height in metres"),
+    fencingWidthM: zod
+      .number()
+      .default(setQuotePortalStatusResponseSpecFencingWidthMDefault)
+      .describe("Fence bay\/panel width in metres"),
+    includeAwning: zod
+      .boolean()
+      .default(setQuotePortalStatusResponseSpecIncludeAwningDefault),
+    awningWidthM: zod
+      .number()
+      .default(setQuotePortalStatusResponseSpecAwningWidthMDefault)
+      .describe("Awning width in metres (creates cutout in boards)"),
+    awningLengthM: zod
+      .number()
+      .default(setQuotePortalStatusResponseSpecAwningLengthMDefault)
+      .describe("Awning length in metres"),
+  }),
+  lineItems: zod.array(
+    zod.object({
+      description: zod.string(),
+      category: zod.string(),
+      quantity: zod.number(),
+      unit: zod.string(),
+      unitType: zod.string(),
+      unitPrice: zod.number(),
+      lineTotal: zod.number(),
+    }),
+  ),
+  materialsSubtotal: zod.number(),
+  labourCost: zod.number(),
+  gst: zod.number(),
+  total: zod.number(),
+  createdAt: zod.coerce.date(),
+  updatedAt: zod.coerce.date(),
+});
 
 /**
  * @summary Replace a quote's public portal token
  */
 export const RegenerateQuotePortalTokenParams = zod.object({
-  "id": zod.coerce.number()
-})
+  id: zod.coerce.number(),
+});
 
 export const RegenerateQuotePortalTokenResponse = zod.object({
-  "portalToken": zod.string()
-})
-
+  portalToken: zod.string(),
+});
 
 /**
  * @summary Revoke a quote's public portal token
  */
 export const RevokeQuotePortalTokenParams = zod.object({
-  "id": zod.coerce.number()
-})
+  id: zod.coerce.number(),
+});
 
 export const RevokeQuotePortalTokenResponse = zod.object({
-  "revoked": zod.boolean()
-})
-
+  revoked: zod.boolean(),
+});
 
 /**
  * @summary Download an authenticated quote PDF
  */
 export const GetQuotePdfParams = zod.object({
-  "id": zod.coerce.number()
-})
-
+  id: zod.coerce.number(),
+});
 
 /**
  * @summary Calculate a bill of materials from deck dimensions without saving
@@ -1370,37 +2124,111 @@ export const estimateDeckBodyAwningWidthMDefault = 3;
 export const estimateDeckBodyAwningLengthMDefault = 3;
 
 export const EstimateDeckBody = zod.object({
-  "lengthM": zod.number().describe('Deck length in metres'),
-  "widthM": zod.number().describe('Deck width in metres'),
-  "heightM": zod.number().default(estimateDeckBodyHeightMDefault).describe('Sub-floor height in metres'),
-  "boardWidthMm": zod.number().default(estimateDeckBodyBoardWidthMmDefault).describe('Decking board width in mm'),
-  "gapSpacingMm": zod.number().default(estimateDeckBodyGapSpacingMmDefault).describe('Gap between boards in mm'),
-  "joistSpacingMm": zod.number().default(estimateDeckBodyJoistSpacingMmDefault).describe('Joist centres in mm'),
-  "bearerSpacingMm": zod.number().default(estimateDeckBodyBearerSpacingMmDefault).describe('Bearer centres in mm'),
-  "postSpacingMm": zod.number().default(estimateDeckBodyPostSpacingMmDefault).describe('Post centres in mm'),
-  "footingDepthMm": zod.number().default(estimateDeckBodyFootingDepthMmDefault).describe('Footing depth in mm for stump subframes'),
-  "wastageFactor": zod.number().default(estimateDeckBodyWastageFactorDefault).describe('Multiplier for cuts and offcuts'),
-  "labourHours": zod.number().default(estimateDeckBodyLabourHoursDefault).describe('Labour hours for the job'),
-  "labourRate": zod.number().default(estimateDeckBodyLabourRateDefault).describe('AUD per hour labour rate'),
-  "deckBoardType": zod.string().default(estimateDeckBodyDeckBoardTypeDefault).describe('hardwood | composite | treated_pine'),
-  "subframeType": zod.string().default(estimateDeckBodySubframeTypeDefault).describe('stumps | concrete_slab | existing_structure'),
-  "fastenerType": zod.string().default(estimateDeckBodyFastenerTypeDefault).describe('screws | hidden_clips'),
-  "fasciaType": zod.string().default(estimateDeckBodyFasciaTypeDefault).describe('none | timber | composite'),
-  "includeHandrails": zod.boolean().default(estimateDeckBodyIncludeHandrailsDefault),
-  "handrailHeightMm": zod.number().default(estimateDeckBodyHandrailHeightMmDefault).describe('Handrail height in mm'),
-  "balustradeType": zod.string().default(estimateDeckBodyBalustradeTypeDefault).describe('timber | stainless_cable'),
-  "timberGapMm": zod.number().default(estimateDeckBodyTimberGapMmDefault).describe('Gap between timber pickets in mm'),
-  "wireSpacingMm": zod.number().default(estimateDeckBodyWireSpacingMmDefault).describe('Stainless cable wire spacing in mm'),
-  "includeStairs": zod.boolean().default(estimateDeckBodyIncludeStairsDefault),
-  "stairFlights": zod.number().default(estimateDeckBodyStairFlightsDefault).describe('Number of stair flights'),
-  "includeFencing": zod.boolean().default(estimateDeckBodyIncludeFencingDefault),
-  "fencingSides": zod.number().default(estimateDeckBodyFencingSidesDefault).describe('Number of sides with fencing'),
-  "fencingHeightM": zod.number().default(estimateDeckBodyFencingHeightMDefault).describe('Fence height in metres'),
-  "fencingWidthM": zod.number().default(estimateDeckBodyFencingWidthMDefault).describe('Fence bay\/panel width in metres'),
-  "includeAwning": zod.boolean().default(estimateDeckBodyIncludeAwningDefault),
-  "awningWidthM": zod.number().default(estimateDeckBodyAwningWidthMDefault).describe('Awning width in metres (creates cutout in boards)'),
-  "awningLengthM": zod.number().default(estimateDeckBodyAwningLengthMDefault).describe('Awning length in metres')
-})
+  lengthM: zod.number().describe("Deck length in metres"),
+  widthM: zod.number().describe("Deck width in metres"),
+  heightM: zod
+    .number()
+    .default(estimateDeckBodyHeightMDefault)
+    .describe("Sub-floor height in metres"),
+  boardWidthMm: zod
+    .number()
+    .default(estimateDeckBodyBoardWidthMmDefault)
+    .describe("Decking board width in mm"),
+  gapSpacingMm: zod
+    .number()
+    .default(estimateDeckBodyGapSpacingMmDefault)
+    .describe("Gap between boards in mm"),
+  joistSpacingMm: zod
+    .number()
+    .default(estimateDeckBodyJoistSpacingMmDefault)
+    .describe("Joist centres in mm"),
+  bearerSpacingMm: zod
+    .number()
+    .default(estimateDeckBodyBearerSpacingMmDefault)
+    .describe("Bearer centres in mm"),
+  postSpacingMm: zod
+    .number()
+    .default(estimateDeckBodyPostSpacingMmDefault)
+    .describe("Post centres in mm"),
+  footingDepthMm: zod
+    .number()
+    .default(estimateDeckBodyFootingDepthMmDefault)
+    .describe("Footing depth in mm for stump subframes"),
+  wastageFactor: zod
+    .number()
+    .default(estimateDeckBodyWastageFactorDefault)
+    .describe("Multiplier for cuts and offcuts"),
+  labourHours: zod
+    .number()
+    .default(estimateDeckBodyLabourHoursDefault)
+    .describe("Labour hours for the job"),
+  labourRate: zod
+    .number()
+    .default(estimateDeckBodyLabourRateDefault)
+    .describe("AUD per hour labour rate"),
+  deckBoardType: zod
+    .string()
+    .default(estimateDeckBodyDeckBoardTypeDefault)
+    .describe("hardwood | composite | treated_pine"),
+  subframeType: zod
+    .string()
+    .default(estimateDeckBodySubframeTypeDefault)
+    .describe("stumps | concrete_slab | existing_structure"),
+  fastenerType: zod
+    .string()
+    .default(estimateDeckBodyFastenerTypeDefault)
+    .describe("screws | hidden_clips"),
+  fasciaType: zod
+    .string()
+    .default(estimateDeckBodyFasciaTypeDefault)
+    .describe("none | timber | composite"),
+  includeHandrails: zod
+    .boolean()
+    .default(estimateDeckBodyIncludeHandrailsDefault),
+  handrailHeightMm: zod
+    .number()
+    .default(estimateDeckBodyHandrailHeightMmDefault)
+    .describe("Handrail height in mm"),
+  balustradeType: zod
+    .string()
+    .default(estimateDeckBodyBalustradeTypeDefault)
+    .describe("timber | stainless_cable"),
+  timberGapMm: zod
+    .number()
+    .default(estimateDeckBodyTimberGapMmDefault)
+    .describe("Gap between timber pickets in mm"),
+  wireSpacingMm: zod
+    .number()
+    .default(estimateDeckBodyWireSpacingMmDefault)
+    .describe("Stainless cable wire spacing in mm"),
+  includeStairs: zod.boolean().default(estimateDeckBodyIncludeStairsDefault),
+  stairFlights: zod
+    .number()
+    .default(estimateDeckBodyStairFlightsDefault)
+    .describe("Number of stair flights"),
+  includeFencing: zod.boolean().default(estimateDeckBodyIncludeFencingDefault),
+  fencingSides: zod
+    .number()
+    .default(estimateDeckBodyFencingSidesDefault)
+    .describe("Number of sides with fencing"),
+  fencingHeightM: zod
+    .number()
+    .default(estimateDeckBodyFencingHeightMDefault)
+    .describe("Fence height in metres"),
+  fencingWidthM: zod
+    .number()
+    .default(estimateDeckBodyFencingWidthMDefault)
+    .describe("Fence bay\/panel width in metres"),
+  includeAwning: zod.boolean().default(estimateDeckBodyIncludeAwningDefault),
+  awningWidthM: zod
+    .number()
+    .default(estimateDeckBodyAwningWidthMDefault)
+    .describe("Awning width in metres (creates cutout in boards)"),
+  awningLengthM: zod
+    .number()
+    .default(estimateDeckBodyAwningLengthMDefault)
+    .describe("Awning length in metres"),
+});
 
 export const estimateDeckResponseSpecHeightMDefault = 0.6;
 export const estimateDeckResponseSpecBoardWidthMmDefault = 90;
@@ -1432,959 +2260,1149 @@ export const estimateDeckResponseSpecAwningWidthMDefault = 3;
 export const estimateDeckResponseSpecAwningLengthMDefault = 3;
 
 export const EstimateDeckResponse = zod.object({
-  "spec": zod.object({
-  "lengthM": zod.number().describe('Deck length in metres'),
-  "widthM": zod.number().describe('Deck width in metres'),
-  "heightM": zod.number().default(estimateDeckResponseSpecHeightMDefault).describe('Sub-floor height in metres'),
-  "boardWidthMm": zod.number().default(estimateDeckResponseSpecBoardWidthMmDefault).describe('Decking board width in mm'),
-  "gapSpacingMm": zod.number().default(estimateDeckResponseSpecGapSpacingMmDefault).describe('Gap between boards in mm'),
-  "joistSpacingMm": zod.number().default(estimateDeckResponseSpecJoistSpacingMmDefault).describe('Joist centres in mm'),
-  "bearerSpacingMm": zod.number().default(estimateDeckResponseSpecBearerSpacingMmDefault).describe('Bearer centres in mm'),
-  "postSpacingMm": zod.number().default(estimateDeckResponseSpecPostSpacingMmDefault).describe('Post centres in mm'),
-  "footingDepthMm": zod.number().default(estimateDeckResponseSpecFootingDepthMmDefault).describe('Footing depth in mm for stump subframes'),
-  "wastageFactor": zod.number().default(estimateDeckResponseSpecWastageFactorDefault).describe('Multiplier for cuts and offcuts'),
-  "labourHours": zod.number().default(estimateDeckResponseSpecLabourHoursDefault).describe('Labour hours for the job'),
-  "labourRate": zod.number().default(estimateDeckResponseSpecLabourRateDefault).describe('AUD per hour labour rate'),
-  "deckBoardType": zod.string().default(estimateDeckResponseSpecDeckBoardTypeDefault).describe('hardwood | composite | treated_pine'),
-  "subframeType": zod.string().default(estimateDeckResponseSpecSubframeTypeDefault).describe('stumps | concrete_slab | existing_structure'),
-  "fastenerType": zod.string().default(estimateDeckResponseSpecFastenerTypeDefault).describe('screws | hidden_clips'),
-  "fasciaType": zod.string().default(estimateDeckResponseSpecFasciaTypeDefault).describe('none | timber | composite'),
-  "includeHandrails": zod.boolean().default(estimateDeckResponseSpecIncludeHandrailsDefault),
-  "handrailHeightMm": zod.number().default(estimateDeckResponseSpecHandrailHeightMmDefault).describe('Handrail height in mm'),
-  "balustradeType": zod.string().default(estimateDeckResponseSpecBalustradeTypeDefault).describe('timber | stainless_cable'),
-  "timberGapMm": zod.number().default(estimateDeckResponseSpecTimberGapMmDefault).describe('Gap between timber pickets in mm'),
-  "wireSpacingMm": zod.number().default(estimateDeckResponseSpecWireSpacingMmDefault).describe('Stainless cable wire spacing in mm'),
-  "includeStairs": zod.boolean().default(estimateDeckResponseSpecIncludeStairsDefault),
-  "stairFlights": zod.number().default(estimateDeckResponseSpecStairFlightsDefault).describe('Number of stair flights'),
-  "includeFencing": zod.boolean().default(estimateDeckResponseSpecIncludeFencingDefault),
-  "fencingSides": zod.number().default(estimateDeckResponseSpecFencingSidesDefault).describe('Number of sides with fencing'),
-  "fencingHeightM": zod.number().default(estimateDeckResponseSpecFencingHeightMDefault).describe('Fence height in metres'),
-  "fencingWidthM": zod.number().default(estimateDeckResponseSpecFencingWidthMDefault).describe('Fence bay\/panel width in metres'),
-  "includeAwning": zod.boolean().default(estimateDeckResponseSpecIncludeAwningDefault),
-  "awningWidthM": zod.number().default(estimateDeckResponseSpecAwningWidthMDefault).describe('Awning width in metres (creates cutout in boards)'),
-  "awningLengthM": zod.number().default(estimateDeckResponseSpecAwningLengthMDefault).describe('Awning length in metres')
-}),
-  "deckAreaM2": zod.number().optional(),
-  "lines": zod.array(zod.object({
-  "materialId": zod.number().nullish(),
-  "description": zod.string(),
-  "category": zod.string(),
-  "quantity": zod.number(),
-  "unit": zod.string(),
-  "unitType": zod.string(),
-  "unitPrice": zod.number(),
-  "wastagePercentage": zod.number(),
-  "isBulkItem": zod.boolean(),
-  "lineTotal": zod.number()
-})),
-  "materialsSubtotal": zod.number(),
-  "labourCost": zod.number(),
-  "gst": zod.number(),
-  "total": zod.number(),
-  "complianceWarnings": zod.array(zod.object({
-  "code": zod.string(),
-  "severity": zod.enum(['warning']),
-  "standard": zod.string(),
-  "title": zod.string(),
-  "message": zod.string(),
-  "actual": zod.number(),
-  "limit": zod.number(),
-  "recommendation": zod.string()
-}))
-})
-
+  spec: zod.object({
+    lengthM: zod.number().describe("Deck length in metres"),
+    widthM: zod.number().describe("Deck width in metres"),
+    heightM: zod
+      .number()
+      .default(estimateDeckResponseSpecHeightMDefault)
+      .describe("Sub-floor height in metres"),
+    boardWidthMm: zod
+      .number()
+      .default(estimateDeckResponseSpecBoardWidthMmDefault)
+      .describe("Decking board width in mm"),
+    gapSpacingMm: zod
+      .number()
+      .default(estimateDeckResponseSpecGapSpacingMmDefault)
+      .describe("Gap between boards in mm"),
+    joistSpacingMm: zod
+      .number()
+      .default(estimateDeckResponseSpecJoistSpacingMmDefault)
+      .describe("Joist centres in mm"),
+    bearerSpacingMm: zod
+      .number()
+      .default(estimateDeckResponseSpecBearerSpacingMmDefault)
+      .describe("Bearer centres in mm"),
+    postSpacingMm: zod
+      .number()
+      .default(estimateDeckResponseSpecPostSpacingMmDefault)
+      .describe("Post centres in mm"),
+    footingDepthMm: zod
+      .number()
+      .default(estimateDeckResponseSpecFootingDepthMmDefault)
+      .describe("Footing depth in mm for stump subframes"),
+    wastageFactor: zod
+      .number()
+      .default(estimateDeckResponseSpecWastageFactorDefault)
+      .describe("Multiplier for cuts and offcuts"),
+    labourHours: zod
+      .number()
+      .default(estimateDeckResponseSpecLabourHoursDefault)
+      .describe("Labour hours for the job"),
+    labourRate: zod
+      .number()
+      .default(estimateDeckResponseSpecLabourRateDefault)
+      .describe("AUD per hour labour rate"),
+    deckBoardType: zod
+      .string()
+      .default(estimateDeckResponseSpecDeckBoardTypeDefault)
+      .describe("hardwood | composite | treated_pine"),
+    subframeType: zod
+      .string()
+      .default(estimateDeckResponseSpecSubframeTypeDefault)
+      .describe("stumps | concrete_slab | existing_structure"),
+    fastenerType: zod
+      .string()
+      .default(estimateDeckResponseSpecFastenerTypeDefault)
+      .describe("screws | hidden_clips"),
+    fasciaType: zod
+      .string()
+      .default(estimateDeckResponseSpecFasciaTypeDefault)
+      .describe("none | timber | composite"),
+    includeHandrails: zod
+      .boolean()
+      .default(estimateDeckResponseSpecIncludeHandrailsDefault),
+    handrailHeightMm: zod
+      .number()
+      .default(estimateDeckResponseSpecHandrailHeightMmDefault)
+      .describe("Handrail height in mm"),
+    balustradeType: zod
+      .string()
+      .default(estimateDeckResponseSpecBalustradeTypeDefault)
+      .describe("timber | stainless_cable"),
+    timberGapMm: zod
+      .number()
+      .default(estimateDeckResponseSpecTimberGapMmDefault)
+      .describe("Gap between timber pickets in mm"),
+    wireSpacingMm: zod
+      .number()
+      .default(estimateDeckResponseSpecWireSpacingMmDefault)
+      .describe("Stainless cable wire spacing in mm"),
+    includeStairs: zod
+      .boolean()
+      .default(estimateDeckResponseSpecIncludeStairsDefault),
+    stairFlights: zod
+      .number()
+      .default(estimateDeckResponseSpecStairFlightsDefault)
+      .describe("Number of stair flights"),
+    includeFencing: zod
+      .boolean()
+      .default(estimateDeckResponseSpecIncludeFencingDefault),
+    fencingSides: zod
+      .number()
+      .default(estimateDeckResponseSpecFencingSidesDefault)
+      .describe("Number of sides with fencing"),
+    fencingHeightM: zod
+      .number()
+      .default(estimateDeckResponseSpecFencingHeightMDefault)
+      .describe("Fence height in metres"),
+    fencingWidthM: zod
+      .number()
+      .default(estimateDeckResponseSpecFencingWidthMDefault)
+      .describe("Fence bay\/panel width in metres"),
+    includeAwning: zod
+      .boolean()
+      .default(estimateDeckResponseSpecIncludeAwningDefault),
+    awningWidthM: zod
+      .number()
+      .default(estimateDeckResponseSpecAwningWidthMDefault)
+      .describe("Awning width in metres (creates cutout in boards)"),
+    awningLengthM: zod
+      .number()
+      .default(estimateDeckResponseSpecAwningLengthMDefault)
+      .describe("Awning length in metres"),
+  }),
+  deckAreaM2: zod.number().optional(),
+  lines: zod.array(
+    zod.object({
+      materialId: zod.number().nullish(),
+      description: zod.string(),
+      category: zod.string(),
+      quantity: zod.number(),
+      unit: zod.string(),
+      unitType: zod.string(),
+      unitPrice: zod.number(),
+      wastagePercentage: zod.number(),
+      isBulkItem: zod.boolean(),
+      lineTotal: zod.number(),
+    }),
+  ),
+  materialsSubtotal: zod.number(),
+  labourCost: zod.number(),
+  gst: zod.number(),
+  total: zod.number(),
+  complianceWarnings: zod.array(
+    zod.object({
+      code: zod.string(),
+      severity: zod.enum(["warning"]),
+      standard: zod.string(),
+      title: zod.string(),
+      message: zod.string(),
+      actual: zod.number(),
+      limit: zod.number(),
+      recommendation: zod.string(),
+    }),
+  ),
+});
 
 export const ListMasterProjectsResponseItem = zod.object({
-  "id": zod.number(),
-  "title": zod.string(),
-  "status": zod.string(),
-  "customerId": zod.number(),
-  "customerName": zod.string().nullish(),
-  "builderMarginPct": zod.number(),
-  "materialsSubtotal": zod.number(),
-  "labourSubtotal": zod.number(),
-  "marginAmount": zod.number(),
-  "gst": zod.number(),
-  "total": zod.number(),
-  "quoteCount": zod.number(),
-  "createdAt": zod.coerce.date(),
-  "updatedAt": zod.coerce.date().optional()
-})
-export const ListMasterProjectsResponse = zod.array(ListMasterProjectsResponseItem)
-
-
+  id: zod.number(),
+  title: zod.string(),
+  status: zod.string(),
+  customerId: zod.number(),
+  customerName: zod.string().nullish(),
+  builderMarginPct: zod.number(),
+  materialsSubtotal: zod.number(),
+  labourSubtotal: zod.number(),
+  marginAmount: zod.number(),
+  gst: zod.number(),
+  total: zod.number(),
+  quoteCount: zod.number(),
+  createdAt: zod.coerce.date(),
+  updatedAt: zod.coerce.date().optional(),
+});
+export const ListMasterProjectsResponse = zod.array(
+  ListMasterProjectsResponseItem,
+);
 
 export const createMasterProjectBodyBuilderMarginPctDefault = 0;
 export const createMasterProjectBodyBuilderMarginPctMin = 0;
 export const createMasterProjectBodyBuilderMarginPctMax = 99.99;
 
-
-
 export const CreateMasterProjectBody = zod.object({
-  "title": zod.string().min(1),
-  "customerId": zod.number(),
-  "builderMarginPct": zod.number().min(createMasterProjectBodyBuilderMarginPctMin).max(createMasterProjectBodyBuilderMarginPctMax).default(createMasterProjectBodyBuilderMarginPctDefault),
-  "notes": zod.string().optional()
-})
-
+  title: zod.string().min(1),
+  customerId: zod.number(),
+  builderMarginPct: zod
+    .number()
+    .min(createMasterProjectBodyBuilderMarginPctMin)
+    .max(createMasterProjectBodyBuilderMarginPctMax)
+    .default(createMasterProjectBodyBuilderMarginPctDefault),
+  notes: zod.string().optional(),
+});
 
 export const GetMasterProjectParams = zod.object({
-  "id": zod.coerce.number()
-})
+  id: zod.coerce.number(),
+});
 
 export const GetMasterProjectResponse = zod.object({
-  "id": zod.number(),
-  "title": zod.string(),
-  "status": zod.string(),
-  "customerId": zod.number(),
-  "customerName": zod.string().nullish(),
-  "notes": zod.string().nullish(),
-  "builderMarginPct": zod.number(),
-  "materialsSubtotal": zod.number(),
-  "labourSubtotal": zod.number(),
-  "marginAmount": zod.number(),
-  "gst": zod.number(),
-  "total": zod.number(),
-  "hasActivePortalLink": zod.boolean(),
-  "complianceDisclaimer": zod.string(),
-  "quotes": zod.array(zod.object({
-  "id": zod.number(),
-  "title": zod.string(),
-  "status": zod.string(),
-  "customerId": zod.number(),
-  "tradeType": zod.string(),
-  "materialsSubtotal": zod.number(),
-  "labourCost": zod.number(),
-  "gst": zod.number(),
-  "total": zod.number(),
-  "lineItems": zod.array(zod.object({
-  "id": zod.number(),
-  "quoteId": zod.number(),
-  "materialId": zod.number().nullish(),
-  "description": zod.string(),
-  "category": zod.string(),
-  "quantity": zod.number(),
-  "unit": zod.string(),
-  "unitType": zod.string(),
-  "unitPrice": zod.number(),
-  "unitCost": zod.number().optional(),
-  "markupPercentage": zod.number().optional(),
-  "wastagePercentage": zod.number(),
-  "isBulkItem": zod.boolean(),
-  "lineTotal": zod.number()
-})),
-  "createdAt": zod.coerce.date()
-})),
-  "tradeGroups": zod.array(zod.object({
-  "tradeType": zod.string(),
-  "label": zod.string(),
-  "quotes": zod.array(zod.object({
-  "id": zod.number(),
-  "title": zod.string(),
-  "status": zod.string(),
-  "customerId": zod.number(),
-  "tradeType": zod.string(),
-  "materialsSubtotal": zod.number(),
-  "labourCost": zod.number(),
-  "gst": zod.number(),
-  "total": zod.number(),
-  "lineItems": zod.array(zod.object({
-  "id": zod.number(),
-  "quoteId": zod.number(),
-  "materialId": zod.number().nullish(),
-  "description": zod.string(),
-  "category": zod.string(),
-  "quantity": zod.number(),
-  "unit": zod.string(),
-  "unitType": zod.string(),
-  "unitPrice": zod.number(),
-  "unitCost": zod.number().optional(),
-  "markupPercentage": zod.number().optional(),
-  "wastagePercentage": zod.number(),
-  "isBulkItem": zod.boolean(),
-  "lineTotal": zod.number()
-})),
-  "createdAt": zod.coerce.date()
-}))
-})),
-  "billOfMaterials": zod.array(zod.object({
-  "materialId": zod.number().nullish(),
-  "description": zod.string(),
-  "category": zod.string(),
-  "quantity": zod.number(),
-  "unit": zod.string(),
-  "unitPrice": zod.number(),
-  "lineTotal": zod.number(),
-  "quoteCount": zod.number()
-})),
-  "acceptanceHistory": zod.array(zod.object({
-  "id": zod.number(),
-  "acceptedAt": zod.coerce.date(),
-  "snapshot": zod.object({
-  "id": zod.number(),
-  "title": zod.string(),
-  "status": zod.string(),
-  "notes": zod.string().nullable(),
-  "builderMarginPct": zod.number(),
-  "materialsSubtotal": zod.number(),
-  "labourSubtotal": zod.number(),
-  "marginAmount": zod.number(),
-  "gst": zod.number(),
-  "total": zod.number(),
-  "complianceDisclaimer": zod.string(),
-  "quotes": zod.array(zod.object({
-  "id": zod.number(),
-  "title": zod.string(),
-  "status": zod.string(),
-  "tradeType": zod.string(),
-  "materialsSubtotal": zod.number(),
-  "labourCost": zod.number(),
-  "gst": zod.number(),
-  "total": zod.number(),
-  "lineItems": zod.array(zod.object({
-  "description": zod.string(),
-  "category": zod.string(),
-  "quantity": zod.number(),
-  "unit": zod.string(),
-  "unitType": zod.string(),
-  "unitPrice": zod.number(),
-  "lineTotal": zod.number()
-})),
-  "createdAt": zod.coerce.date()
-})),
-  "tradeGroups": zod.array(zod.object({
-  "tradeType": zod.string(),
-  "label": zod.string(),
-  "quotes": zod.array(zod.object({
-  "id": zod.number(),
-  "title": zod.string(),
-  "status": zod.string(),
-  "tradeType": zod.string(),
-  "materialsSubtotal": zod.number(),
-  "labourCost": zod.number(),
-  "gst": zod.number(),
-  "total": zod.number(),
-  "lineItems": zod.array(zod.object({
-  "description": zod.string(),
-  "category": zod.string(),
-  "quantity": zod.number(),
-  "unit": zod.string(),
-  "unitType": zod.string(),
-  "unitPrice": zod.number(),
-  "lineTotal": zod.number()
-})),
-  "createdAt": zod.coerce.date()
-}))
-})),
-  "billOfMaterials": zod.array(zod.object({
-  "materialId": zod.number().nullish(),
-  "description": zod.string(),
-  "category": zod.string(),
-  "quantity": zod.number(),
-  "unit": zod.string(),
-  "unitPrice": zod.number(),
-  "lineTotal": zod.number(),
-  "quoteCount": zod.number()
-})),
-  "createdAt": zod.coerce.date(),
-  "updatedAt": zod.coerce.date()
-})
-})),
-  "createdAt": zod.coerce.date(),
-  "updatedAt": zod.coerce.date()
-})
-
+  id: zod.number(),
+  title: zod.string(),
+  status: zod.string(),
+  customerId: zod.number(),
+  customerName: zod.string().nullish(),
+  notes: zod.string().nullish(),
+  builderMarginPct: zod.number(),
+  materialsSubtotal: zod.number(),
+  labourSubtotal: zod.number(),
+  marginAmount: zod.number(),
+  gst: zod.number(),
+  total: zod.number(),
+  hasActivePortalLink: zod.boolean(),
+  complianceDisclaimer: zod.string(),
+  quotes: zod.array(
+    zod.object({
+      id: zod.number(),
+      title: zod.string(),
+      status: zod.string(),
+      customerId: zod.number(),
+      tradeType: zod.string(),
+      materialsSubtotal: zod.number(),
+      labourCost: zod.number(),
+      gst: zod.number(),
+      total: zod.number(),
+      lineItems: zod.array(
+        zod.object({
+          id: zod.number(),
+          quoteId: zod.number(),
+          materialId: zod.number().nullish(),
+          description: zod.string(),
+          category: zod.string(),
+          quantity: zod.number(),
+          unit: zod.string(),
+          unitType: zod.string(),
+          unitPrice: zod.number(),
+          unitCost: zod.number().optional(),
+          markupPercentage: zod.number().optional(),
+          wastagePercentage: zod.number(),
+          isBulkItem: zod.boolean(),
+          lineTotal: zod.number(),
+        }),
+      ),
+      createdAt: zod.coerce.date(),
+    }),
+  ),
+  tradeGroups: zod.array(
+    zod.object({
+      tradeType: zod.string(),
+      label: zod.string(),
+      quotes: zod.array(
+        zod.object({
+          id: zod.number(),
+          title: zod.string(),
+          status: zod.string(),
+          customerId: zod.number(),
+          tradeType: zod.string(),
+          materialsSubtotal: zod.number(),
+          labourCost: zod.number(),
+          gst: zod.number(),
+          total: zod.number(),
+          lineItems: zod.array(
+            zod.object({
+              id: zod.number(),
+              quoteId: zod.number(),
+              materialId: zod.number().nullish(),
+              description: zod.string(),
+              category: zod.string(),
+              quantity: zod.number(),
+              unit: zod.string(),
+              unitType: zod.string(),
+              unitPrice: zod.number(),
+              unitCost: zod.number().optional(),
+              markupPercentage: zod.number().optional(),
+              wastagePercentage: zod.number(),
+              isBulkItem: zod.boolean(),
+              lineTotal: zod.number(),
+            }),
+          ),
+          createdAt: zod.coerce.date(),
+        }),
+      ),
+    }),
+  ),
+  billOfMaterials: zod.array(
+    zod.object({
+      materialId: zod.number().nullish(),
+      description: zod.string(),
+      category: zod.string(),
+      quantity: zod.number(),
+      unit: zod.string(),
+      unitPrice: zod.number(),
+      lineTotal: zod.number(),
+      quoteCount: zod.number(),
+    }),
+  ),
+  acceptanceHistory: zod.array(
+    zod.object({
+      id: zod.number(),
+      acceptedAt: zod.coerce.date(),
+      snapshot: zod.object({
+        id: zod.number(),
+        title: zod.string(),
+        status: zod.string(),
+        notes: zod.string().nullable(),
+        builderMarginPct: zod.number(),
+        materialsSubtotal: zod.number(),
+        labourSubtotal: zod.number(),
+        marginAmount: zod.number(),
+        gst: zod.number(),
+        total: zod.number(),
+        complianceDisclaimer: zod.string(),
+        quotes: zod.array(
+          zod.object({
+            id: zod.number(),
+            title: zod.string(),
+            status: zod.string(),
+            tradeType: zod.string(),
+            materialsSubtotal: zod.number(),
+            labourCost: zod.number(),
+            gst: zod.number(),
+            total: zod.number(),
+            lineItems: zod.array(
+              zod.object({
+                description: zod.string(),
+                category: zod.string(),
+                quantity: zod.number(),
+                unit: zod.string(),
+                unitType: zod.string(),
+                unitPrice: zod.number(),
+                lineTotal: zod.number(),
+              }),
+            ),
+            createdAt: zod.coerce.date(),
+          }),
+        ),
+        tradeGroups: zod.array(
+          zod.object({
+            tradeType: zod.string(),
+            label: zod.string(),
+            quotes: zod.array(
+              zod.object({
+                id: zod.number(),
+                title: zod.string(),
+                status: zod.string(),
+                tradeType: zod.string(),
+                materialsSubtotal: zod.number(),
+                labourCost: zod.number(),
+                gst: zod.number(),
+                total: zod.number(),
+                lineItems: zod.array(
+                  zod.object({
+                    description: zod.string(),
+                    category: zod.string(),
+                    quantity: zod.number(),
+                    unit: zod.string(),
+                    unitType: zod.string(),
+                    unitPrice: zod.number(),
+                    lineTotal: zod.number(),
+                  }),
+                ),
+                createdAt: zod.coerce.date(),
+              }),
+            ),
+          }),
+        ),
+        billOfMaterials: zod.array(
+          zod.object({
+            materialId: zod.number().nullish(),
+            description: zod.string(),
+            category: zod.string(),
+            quantity: zod.number(),
+            unit: zod.string(),
+            unitPrice: zod.number(),
+            lineTotal: zod.number(),
+            quoteCount: zod.number(),
+          }),
+        ),
+        createdAt: zod.coerce.date(),
+        updatedAt: zod.coerce.date(),
+      }),
+    }),
+  ),
+  createdAt: zod.coerce.date(),
+  updatedAt: zod.coerce.date(),
+});
 
 export const UpdateMasterProjectParams = zod.object({
-  "id": zod.coerce.number()
-})
-
+  id: zod.coerce.number(),
+});
 
 export const updateMasterProjectBodyBuilderMarginPctMin = 0;
 export const updateMasterProjectBodyBuilderMarginPctMax = 99.99;
 
-
-
 export const UpdateMasterProjectBody = zod.object({
-  "title": zod.string().min(1).optional(),
-  "status": zod.string().optional(),
-  "builderMarginPct": zod.number().min(updateMasterProjectBodyBuilderMarginPctMin).max(updateMasterProjectBodyBuilderMarginPctMax).optional(),
-  "notes": zod.string().nullish()
-})
+  title: zod.string().min(1).optional(),
+  status: zod.string().optional(),
+  builderMarginPct: zod
+    .number()
+    .min(updateMasterProjectBodyBuilderMarginPctMin)
+    .max(updateMasterProjectBodyBuilderMarginPctMax)
+    .optional(),
+  notes: zod.string().nullish(),
+});
 
 export const UpdateMasterProjectResponse = zod.object({
-  "id": zod.number(),
-  "title": zod.string(),
-  "status": zod.string(),
-  "customerId": zod.number(),
-  "customerName": zod.string().nullish(),
-  "notes": zod.string().nullish(),
-  "builderMarginPct": zod.number(),
-  "materialsSubtotal": zod.number(),
-  "labourSubtotal": zod.number(),
-  "marginAmount": zod.number(),
-  "gst": zod.number(),
-  "total": zod.number(),
-  "hasActivePortalLink": zod.boolean(),
-  "complianceDisclaimer": zod.string(),
-  "quotes": zod.array(zod.object({
-  "id": zod.number(),
-  "title": zod.string(),
-  "status": zod.string(),
-  "customerId": zod.number(),
-  "tradeType": zod.string(),
-  "materialsSubtotal": zod.number(),
-  "labourCost": zod.number(),
-  "gst": zod.number(),
-  "total": zod.number(),
-  "lineItems": zod.array(zod.object({
-  "id": zod.number(),
-  "quoteId": zod.number(),
-  "materialId": zod.number().nullish(),
-  "description": zod.string(),
-  "category": zod.string(),
-  "quantity": zod.number(),
-  "unit": zod.string(),
-  "unitType": zod.string(),
-  "unitPrice": zod.number(),
-  "unitCost": zod.number().optional(),
-  "markupPercentage": zod.number().optional(),
-  "wastagePercentage": zod.number(),
-  "isBulkItem": zod.boolean(),
-  "lineTotal": zod.number()
-})),
-  "createdAt": zod.coerce.date()
-})),
-  "tradeGroups": zod.array(zod.object({
-  "tradeType": zod.string(),
-  "label": zod.string(),
-  "quotes": zod.array(zod.object({
-  "id": zod.number(),
-  "title": zod.string(),
-  "status": zod.string(),
-  "customerId": zod.number(),
-  "tradeType": zod.string(),
-  "materialsSubtotal": zod.number(),
-  "labourCost": zod.number(),
-  "gst": zod.number(),
-  "total": zod.number(),
-  "lineItems": zod.array(zod.object({
-  "id": zod.number(),
-  "quoteId": zod.number(),
-  "materialId": zod.number().nullish(),
-  "description": zod.string(),
-  "category": zod.string(),
-  "quantity": zod.number(),
-  "unit": zod.string(),
-  "unitType": zod.string(),
-  "unitPrice": zod.number(),
-  "unitCost": zod.number().optional(),
-  "markupPercentage": zod.number().optional(),
-  "wastagePercentage": zod.number(),
-  "isBulkItem": zod.boolean(),
-  "lineTotal": zod.number()
-})),
-  "createdAt": zod.coerce.date()
-}))
-})),
-  "billOfMaterials": zod.array(zod.object({
-  "materialId": zod.number().nullish(),
-  "description": zod.string(),
-  "category": zod.string(),
-  "quantity": zod.number(),
-  "unit": zod.string(),
-  "unitPrice": zod.number(),
-  "lineTotal": zod.number(),
-  "quoteCount": zod.number()
-})),
-  "acceptanceHistory": zod.array(zod.object({
-  "id": zod.number(),
-  "acceptedAt": zod.coerce.date(),
-  "snapshot": zod.object({
-  "id": zod.number(),
-  "title": zod.string(),
-  "status": zod.string(),
-  "notes": zod.string().nullable(),
-  "builderMarginPct": zod.number(),
-  "materialsSubtotal": zod.number(),
-  "labourSubtotal": zod.number(),
-  "marginAmount": zod.number(),
-  "gst": zod.number(),
-  "total": zod.number(),
-  "complianceDisclaimer": zod.string(),
-  "quotes": zod.array(zod.object({
-  "id": zod.number(),
-  "title": zod.string(),
-  "status": zod.string(),
-  "tradeType": zod.string(),
-  "materialsSubtotal": zod.number(),
-  "labourCost": zod.number(),
-  "gst": zod.number(),
-  "total": zod.number(),
-  "lineItems": zod.array(zod.object({
-  "description": zod.string(),
-  "category": zod.string(),
-  "quantity": zod.number(),
-  "unit": zod.string(),
-  "unitType": zod.string(),
-  "unitPrice": zod.number(),
-  "lineTotal": zod.number()
-})),
-  "createdAt": zod.coerce.date()
-})),
-  "tradeGroups": zod.array(zod.object({
-  "tradeType": zod.string(),
-  "label": zod.string(),
-  "quotes": zod.array(zod.object({
-  "id": zod.number(),
-  "title": zod.string(),
-  "status": zod.string(),
-  "tradeType": zod.string(),
-  "materialsSubtotal": zod.number(),
-  "labourCost": zod.number(),
-  "gst": zod.number(),
-  "total": zod.number(),
-  "lineItems": zod.array(zod.object({
-  "description": zod.string(),
-  "category": zod.string(),
-  "quantity": zod.number(),
-  "unit": zod.string(),
-  "unitType": zod.string(),
-  "unitPrice": zod.number(),
-  "lineTotal": zod.number()
-})),
-  "createdAt": zod.coerce.date()
-}))
-})),
-  "billOfMaterials": zod.array(zod.object({
-  "materialId": zod.number().nullish(),
-  "description": zod.string(),
-  "category": zod.string(),
-  "quantity": zod.number(),
-  "unit": zod.string(),
-  "unitPrice": zod.number(),
-  "lineTotal": zod.number(),
-  "quoteCount": zod.number()
-})),
-  "createdAt": zod.coerce.date(),
-  "updatedAt": zod.coerce.date()
-})
-})),
-  "createdAt": zod.coerce.date(),
-  "updatedAt": zod.coerce.date()
-})
-
+  id: zod.number(),
+  title: zod.string(),
+  status: zod.string(),
+  customerId: zod.number(),
+  customerName: zod.string().nullish(),
+  notes: zod.string().nullish(),
+  builderMarginPct: zod.number(),
+  materialsSubtotal: zod.number(),
+  labourSubtotal: zod.number(),
+  marginAmount: zod.number(),
+  gst: zod.number(),
+  total: zod.number(),
+  hasActivePortalLink: zod.boolean(),
+  complianceDisclaimer: zod.string(),
+  quotes: zod.array(
+    zod.object({
+      id: zod.number(),
+      title: zod.string(),
+      status: zod.string(),
+      customerId: zod.number(),
+      tradeType: zod.string(),
+      materialsSubtotal: zod.number(),
+      labourCost: zod.number(),
+      gst: zod.number(),
+      total: zod.number(),
+      lineItems: zod.array(
+        zod.object({
+          id: zod.number(),
+          quoteId: zod.number(),
+          materialId: zod.number().nullish(),
+          description: zod.string(),
+          category: zod.string(),
+          quantity: zod.number(),
+          unit: zod.string(),
+          unitType: zod.string(),
+          unitPrice: zod.number(),
+          unitCost: zod.number().optional(),
+          markupPercentage: zod.number().optional(),
+          wastagePercentage: zod.number(),
+          isBulkItem: zod.boolean(),
+          lineTotal: zod.number(),
+        }),
+      ),
+      createdAt: zod.coerce.date(),
+    }),
+  ),
+  tradeGroups: zod.array(
+    zod.object({
+      tradeType: zod.string(),
+      label: zod.string(),
+      quotes: zod.array(
+        zod.object({
+          id: zod.number(),
+          title: zod.string(),
+          status: zod.string(),
+          customerId: zod.number(),
+          tradeType: zod.string(),
+          materialsSubtotal: zod.number(),
+          labourCost: zod.number(),
+          gst: zod.number(),
+          total: zod.number(),
+          lineItems: zod.array(
+            zod.object({
+              id: zod.number(),
+              quoteId: zod.number(),
+              materialId: zod.number().nullish(),
+              description: zod.string(),
+              category: zod.string(),
+              quantity: zod.number(),
+              unit: zod.string(),
+              unitType: zod.string(),
+              unitPrice: zod.number(),
+              unitCost: zod.number().optional(),
+              markupPercentage: zod.number().optional(),
+              wastagePercentage: zod.number(),
+              isBulkItem: zod.boolean(),
+              lineTotal: zod.number(),
+            }),
+          ),
+          createdAt: zod.coerce.date(),
+        }),
+      ),
+    }),
+  ),
+  billOfMaterials: zod.array(
+    zod.object({
+      materialId: zod.number().nullish(),
+      description: zod.string(),
+      category: zod.string(),
+      quantity: zod.number(),
+      unit: zod.string(),
+      unitPrice: zod.number(),
+      lineTotal: zod.number(),
+      quoteCount: zod.number(),
+    }),
+  ),
+  acceptanceHistory: zod.array(
+    zod.object({
+      id: zod.number(),
+      acceptedAt: zod.coerce.date(),
+      snapshot: zod.object({
+        id: zod.number(),
+        title: zod.string(),
+        status: zod.string(),
+        notes: zod.string().nullable(),
+        builderMarginPct: zod.number(),
+        materialsSubtotal: zod.number(),
+        labourSubtotal: zod.number(),
+        marginAmount: zod.number(),
+        gst: zod.number(),
+        total: zod.number(),
+        complianceDisclaimer: zod.string(),
+        quotes: zod.array(
+          zod.object({
+            id: zod.number(),
+            title: zod.string(),
+            status: zod.string(),
+            tradeType: zod.string(),
+            materialsSubtotal: zod.number(),
+            labourCost: zod.number(),
+            gst: zod.number(),
+            total: zod.number(),
+            lineItems: zod.array(
+              zod.object({
+                description: zod.string(),
+                category: zod.string(),
+                quantity: zod.number(),
+                unit: zod.string(),
+                unitType: zod.string(),
+                unitPrice: zod.number(),
+                lineTotal: zod.number(),
+              }),
+            ),
+            createdAt: zod.coerce.date(),
+          }),
+        ),
+        tradeGroups: zod.array(
+          zod.object({
+            tradeType: zod.string(),
+            label: zod.string(),
+            quotes: zod.array(
+              zod.object({
+                id: zod.number(),
+                title: zod.string(),
+                status: zod.string(),
+                tradeType: zod.string(),
+                materialsSubtotal: zod.number(),
+                labourCost: zod.number(),
+                gst: zod.number(),
+                total: zod.number(),
+                lineItems: zod.array(
+                  zod.object({
+                    description: zod.string(),
+                    category: zod.string(),
+                    quantity: zod.number(),
+                    unit: zod.string(),
+                    unitType: zod.string(),
+                    unitPrice: zod.number(),
+                    lineTotal: zod.number(),
+                  }),
+                ),
+                createdAt: zod.coerce.date(),
+              }),
+            ),
+          }),
+        ),
+        billOfMaterials: zod.array(
+          zod.object({
+            materialId: zod.number().nullish(),
+            description: zod.string(),
+            category: zod.string(),
+            quantity: zod.number(),
+            unit: zod.string(),
+            unitPrice: zod.number(),
+            lineTotal: zod.number(),
+            quoteCount: zod.number(),
+          }),
+        ),
+        createdAt: zod.coerce.date(),
+        updatedAt: zod.coerce.date(),
+      }),
+    }),
+  ),
+  createdAt: zod.coerce.date(),
+  updatedAt: zod.coerce.date(),
+});
 
 export const DeleteMasterProjectParams = zod.object({
-  "id": zod.coerce.number()
-})
+  id: zod.coerce.number(),
+});
 
 export const DeleteMasterProjectResponse = zod.object({
-  "success": zod.boolean(),
-  "id": zod.number()
-})
-
+  success: zod.boolean(),
+  id: zod.number(),
+});
 
 export const SetMasterProjectQuotesParams = zod.object({
-  "id": zod.coerce.number()
-})
+  id: zod.coerce.number(),
+});
 
 export const SetMasterProjectQuotesBody = zod.object({
-  "quoteIds": zod.array(zod.number())
-})
+  quoteIds: zod.array(zod.number()),
+});
 
 export const SetMasterProjectQuotesResponse = zod.object({
-  "id": zod.number(),
-  "title": zod.string(),
-  "status": zod.string(),
-  "customerId": zod.number(),
-  "customerName": zod.string().nullish(),
-  "notes": zod.string().nullish(),
-  "builderMarginPct": zod.number(),
-  "materialsSubtotal": zod.number(),
-  "labourSubtotal": zod.number(),
-  "marginAmount": zod.number(),
-  "gst": zod.number(),
-  "total": zod.number(),
-  "hasActivePortalLink": zod.boolean(),
-  "complianceDisclaimer": zod.string(),
-  "quotes": zod.array(zod.object({
-  "id": zod.number(),
-  "title": zod.string(),
-  "status": zod.string(),
-  "customerId": zod.number(),
-  "tradeType": zod.string(),
-  "materialsSubtotal": zod.number(),
-  "labourCost": zod.number(),
-  "gst": zod.number(),
-  "total": zod.number(),
-  "lineItems": zod.array(zod.object({
-  "id": zod.number(),
-  "quoteId": zod.number(),
-  "materialId": zod.number().nullish(),
-  "description": zod.string(),
-  "category": zod.string(),
-  "quantity": zod.number(),
-  "unit": zod.string(),
-  "unitType": zod.string(),
-  "unitPrice": zod.number(),
-  "unitCost": zod.number().optional(),
-  "markupPercentage": zod.number().optional(),
-  "wastagePercentage": zod.number(),
-  "isBulkItem": zod.boolean(),
-  "lineTotal": zod.number()
-})),
-  "createdAt": zod.coerce.date()
-})),
-  "tradeGroups": zod.array(zod.object({
-  "tradeType": zod.string(),
-  "label": zod.string(),
-  "quotes": zod.array(zod.object({
-  "id": zod.number(),
-  "title": zod.string(),
-  "status": zod.string(),
-  "customerId": zod.number(),
-  "tradeType": zod.string(),
-  "materialsSubtotal": zod.number(),
-  "labourCost": zod.number(),
-  "gst": zod.number(),
-  "total": zod.number(),
-  "lineItems": zod.array(zod.object({
-  "id": zod.number(),
-  "quoteId": zod.number(),
-  "materialId": zod.number().nullish(),
-  "description": zod.string(),
-  "category": zod.string(),
-  "quantity": zod.number(),
-  "unit": zod.string(),
-  "unitType": zod.string(),
-  "unitPrice": zod.number(),
-  "unitCost": zod.number().optional(),
-  "markupPercentage": zod.number().optional(),
-  "wastagePercentage": zod.number(),
-  "isBulkItem": zod.boolean(),
-  "lineTotal": zod.number()
-})),
-  "createdAt": zod.coerce.date()
-}))
-})),
-  "billOfMaterials": zod.array(zod.object({
-  "materialId": zod.number().nullish(),
-  "description": zod.string(),
-  "category": zod.string(),
-  "quantity": zod.number(),
-  "unit": zod.string(),
-  "unitPrice": zod.number(),
-  "lineTotal": zod.number(),
-  "quoteCount": zod.number()
-})),
-  "acceptanceHistory": zod.array(zod.object({
-  "id": zod.number(),
-  "acceptedAt": zod.coerce.date(),
-  "snapshot": zod.object({
-  "id": zod.number(),
-  "title": zod.string(),
-  "status": zod.string(),
-  "notes": zod.string().nullable(),
-  "builderMarginPct": zod.number(),
-  "materialsSubtotal": zod.number(),
-  "labourSubtotal": zod.number(),
-  "marginAmount": zod.number(),
-  "gst": zod.number(),
-  "total": zod.number(),
-  "complianceDisclaimer": zod.string(),
-  "quotes": zod.array(zod.object({
-  "id": zod.number(),
-  "title": zod.string(),
-  "status": zod.string(),
-  "tradeType": zod.string(),
-  "materialsSubtotal": zod.number(),
-  "labourCost": zod.number(),
-  "gst": zod.number(),
-  "total": zod.number(),
-  "lineItems": zod.array(zod.object({
-  "description": zod.string(),
-  "category": zod.string(),
-  "quantity": zod.number(),
-  "unit": zod.string(),
-  "unitType": zod.string(),
-  "unitPrice": zod.number(),
-  "lineTotal": zod.number()
-})),
-  "createdAt": zod.coerce.date()
-})),
-  "tradeGroups": zod.array(zod.object({
-  "tradeType": zod.string(),
-  "label": zod.string(),
-  "quotes": zod.array(zod.object({
-  "id": zod.number(),
-  "title": zod.string(),
-  "status": zod.string(),
-  "tradeType": zod.string(),
-  "materialsSubtotal": zod.number(),
-  "labourCost": zod.number(),
-  "gst": zod.number(),
-  "total": zod.number(),
-  "lineItems": zod.array(zod.object({
-  "description": zod.string(),
-  "category": zod.string(),
-  "quantity": zod.number(),
-  "unit": zod.string(),
-  "unitType": zod.string(),
-  "unitPrice": zod.number(),
-  "lineTotal": zod.number()
-})),
-  "createdAt": zod.coerce.date()
-}))
-})),
-  "billOfMaterials": zod.array(zod.object({
-  "materialId": zod.number().nullish(),
-  "description": zod.string(),
-  "category": zod.string(),
-  "quantity": zod.number(),
-  "unit": zod.string(),
-  "unitPrice": zod.number(),
-  "lineTotal": zod.number(),
-  "quoteCount": zod.number()
-})),
-  "createdAt": zod.coerce.date(),
-  "updatedAt": zod.coerce.date()
-})
-})),
-  "createdAt": zod.coerce.date(),
-  "updatedAt": zod.coerce.date()
-})
-
+  id: zod.number(),
+  title: zod.string(),
+  status: zod.string(),
+  customerId: zod.number(),
+  customerName: zod.string().nullish(),
+  notes: zod.string().nullish(),
+  builderMarginPct: zod.number(),
+  materialsSubtotal: zod.number(),
+  labourSubtotal: zod.number(),
+  marginAmount: zod.number(),
+  gst: zod.number(),
+  total: zod.number(),
+  hasActivePortalLink: zod.boolean(),
+  complianceDisclaimer: zod.string(),
+  quotes: zod.array(
+    zod.object({
+      id: zod.number(),
+      title: zod.string(),
+      status: zod.string(),
+      customerId: zod.number(),
+      tradeType: zod.string(),
+      materialsSubtotal: zod.number(),
+      labourCost: zod.number(),
+      gst: zod.number(),
+      total: zod.number(),
+      lineItems: zod.array(
+        zod.object({
+          id: zod.number(),
+          quoteId: zod.number(),
+          materialId: zod.number().nullish(),
+          description: zod.string(),
+          category: zod.string(),
+          quantity: zod.number(),
+          unit: zod.string(),
+          unitType: zod.string(),
+          unitPrice: zod.number(),
+          unitCost: zod.number().optional(),
+          markupPercentage: zod.number().optional(),
+          wastagePercentage: zod.number(),
+          isBulkItem: zod.boolean(),
+          lineTotal: zod.number(),
+        }),
+      ),
+      createdAt: zod.coerce.date(),
+    }),
+  ),
+  tradeGroups: zod.array(
+    zod.object({
+      tradeType: zod.string(),
+      label: zod.string(),
+      quotes: zod.array(
+        zod.object({
+          id: zod.number(),
+          title: zod.string(),
+          status: zod.string(),
+          customerId: zod.number(),
+          tradeType: zod.string(),
+          materialsSubtotal: zod.number(),
+          labourCost: zod.number(),
+          gst: zod.number(),
+          total: zod.number(),
+          lineItems: zod.array(
+            zod.object({
+              id: zod.number(),
+              quoteId: zod.number(),
+              materialId: zod.number().nullish(),
+              description: zod.string(),
+              category: zod.string(),
+              quantity: zod.number(),
+              unit: zod.string(),
+              unitType: zod.string(),
+              unitPrice: zod.number(),
+              unitCost: zod.number().optional(),
+              markupPercentage: zod.number().optional(),
+              wastagePercentage: zod.number(),
+              isBulkItem: zod.boolean(),
+              lineTotal: zod.number(),
+            }),
+          ),
+          createdAt: zod.coerce.date(),
+        }),
+      ),
+    }),
+  ),
+  billOfMaterials: zod.array(
+    zod.object({
+      materialId: zod.number().nullish(),
+      description: zod.string(),
+      category: zod.string(),
+      quantity: zod.number(),
+      unit: zod.string(),
+      unitPrice: zod.number(),
+      lineTotal: zod.number(),
+      quoteCount: zod.number(),
+    }),
+  ),
+  acceptanceHistory: zod.array(
+    zod.object({
+      id: zod.number(),
+      acceptedAt: zod.coerce.date(),
+      snapshot: zod.object({
+        id: zod.number(),
+        title: zod.string(),
+        status: zod.string(),
+        notes: zod.string().nullable(),
+        builderMarginPct: zod.number(),
+        materialsSubtotal: zod.number(),
+        labourSubtotal: zod.number(),
+        marginAmount: zod.number(),
+        gst: zod.number(),
+        total: zod.number(),
+        complianceDisclaimer: zod.string(),
+        quotes: zod.array(
+          zod.object({
+            id: zod.number(),
+            title: zod.string(),
+            status: zod.string(),
+            tradeType: zod.string(),
+            materialsSubtotal: zod.number(),
+            labourCost: zod.number(),
+            gst: zod.number(),
+            total: zod.number(),
+            lineItems: zod.array(
+              zod.object({
+                description: zod.string(),
+                category: zod.string(),
+                quantity: zod.number(),
+                unit: zod.string(),
+                unitType: zod.string(),
+                unitPrice: zod.number(),
+                lineTotal: zod.number(),
+              }),
+            ),
+            createdAt: zod.coerce.date(),
+          }),
+        ),
+        tradeGroups: zod.array(
+          zod.object({
+            tradeType: zod.string(),
+            label: zod.string(),
+            quotes: zod.array(
+              zod.object({
+                id: zod.number(),
+                title: zod.string(),
+                status: zod.string(),
+                tradeType: zod.string(),
+                materialsSubtotal: zod.number(),
+                labourCost: zod.number(),
+                gst: zod.number(),
+                total: zod.number(),
+                lineItems: zod.array(
+                  zod.object({
+                    description: zod.string(),
+                    category: zod.string(),
+                    quantity: zod.number(),
+                    unit: zod.string(),
+                    unitType: zod.string(),
+                    unitPrice: zod.number(),
+                    lineTotal: zod.number(),
+                  }),
+                ),
+                createdAt: zod.coerce.date(),
+              }),
+            ),
+          }),
+        ),
+        billOfMaterials: zod.array(
+          zod.object({
+            materialId: zod.number().nullish(),
+            description: zod.string(),
+            category: zod.string(),
+            quantity: zod.number(),
+            unit: zod.string(),
+            unitPrice: zod.number(),
+            lineTotal: zod.number(),
+            quoteCount: zod.number(),
+          }),
+        ),
+        createdAt: zod.coerce.date(),
+        updatedAt: zod.coerce.date(),
+      }),
+    }),
+  ),
+  createdAt: zod.coerce.date(),
+  updatedAt: zod.coerce.date(),
+});
 
 /**
  * @summary Download an authenticated Master Project proposal PDF
  */
 export const GetMasterProjectPdfParams = zod.object({
-  "id": zod.coerce.number()
-})
-
+  id: zod.coerce.number(),
+});
 
 /**
  * @summary Replace a Master Project's public portal token
  */
 export const RegenerateMasterProjectPortalTokenParams = zod.object({
-  "id": zod.coerce.number()
-})
+  id: zod.coerce.number(),
+});
 
-export const regenerateMasterProjectPortalTokenResponsePortalTokenRegExp = new RegExp('^[A-Za-z0-9_-]{43}$');
-
+export const regenerateMasterProjectPortalTokenResponsePortalTokenRegExp =
+  new RegExp("^[A-Za-z0-9_-]{43}$");
 
 export const RegenerateMasterProjectPortalTokenResponse = zod.object({
-  "portalToken": zod.string().regex(regenerateMasterProjectPortalTokenResponsePortalTokenRegExp)
-})
-
+  portalToken: zod
+    .string()
+    .regex(regenerateMasterProjectPortalTokenResponsePortalTokenRegExp),
+});
 
 /**
  * @summary Revoke a Master Project's public portal token
  */
 export const RevokeMasterProjectPortalTokenParams = zod.object({
-  "id": zod.coerce.number()
-})
+  id: zod.coerce.number(),
+});
 
 export const RevokeMasterProjectPortalTokenResponse = zod.object({
-  "revoked": zod.boolean()
-})
-
+  revoked: zod.boolean(),
+});
 
 /**
  * @summary Get a customer-safe Master Project proposal using a secure token
  */
-export const getMasterProjectPortalPathTokenRegExp = new RegExp('^[A-Za-z0-9_-]{43}$');
-
+export const getMasterProjectPortalPathTokenRegExp = new RegExp(
+  "^[A-Za-z0-9_-]{43}$",
+);
 
 export const GetMasterProjectPortalParams = zod.object({
-  "token": zod.coerce.string().regex(getMasterProjectPortalPathTokenRegExp)
-})
+  token: zod.coerce.string().regex(getMasterProjectPortalPathTokenRegExp),
+});
 
 export const GetMasterProjectPortalResponse = zod.object({
-  "id": zod.number(),
-  "title": zod.string(),
-  "status": zod.string(),
-  "notes": zod.string().nullable(),
-  "builderMarginPct": zod.number(),
-  "materialsSubtotal": zod.number(),
-  "labourSubtotal": zod.number(),
-  "marginAmount": zod.number(),
-  "gst": zod.number(),
-  "total": zod.number(),
-  "complianceDisclaimer": zod.string(),
-  "quotes": zod.array(zod.object({
-  "id": zod.number(),
-  "title": zod.string(),
-  "status": zod.string(),
-  "tradeType": zod.string(),
-  "materialsSubtotal": zod.number(),
-  "labourCost": zod.number(),
-  "gst": zod.number(),
-  "total": zod.number(),
-  "lineItems": zod.array(zod.object({
-  "description": zod.string(),
-  "category": zod.string(),
-  "quantity": zod.number(),
-  "unit": zod.string(),
-  "unitType": zod.string(),
-  "unitPrice": zod.number(),
-  "lineTotal": zod.number()
-})),
-  "createdAt": zod.coerce.date()
-})),
-  "tradeGroups": zod.array(zod.object({
-  "tradeType": zod.string(),
-  "label": zod.string(),
-  "quotes": zod.array(zod.object({
-  "id": zod.number(),
-  "title": zod.string(),
-  "status": zod.string(),
-  "tradeType": zod.string(),
-  "materialsSubtotal": zod.number(),
-  "labourCost": zod.number(),
-  "gst": zod.number(),
-  "total": zod.number(),
-  "lineItems": zod.array(zod.object({
-  "description": zod.string(),
-  "category": zod.string(),
-  "quantity": zod.number(),
-  "unit": zod.string(),
-  "unitType": zod.string(),
-  "unitPrice": zod.number(),
-  "lineTotal": zod.number()
-})),
-  "createdAt": zod.coerce.date()
-}))
-})),
-  "billOfMaterials": zod.array(zod.object({
-  "materialId": zod.number().nullish(),
-  "description": zod.string(),
-  "category": zod.string(),
-  "quantity": zod.number(),
-  "unit": zod.string(),
-  "unitPrice": zod.number(),
-  "lineTotal": zod.number(),
-  "quoteCount": zod.number()
-})),
-  "createdAt": zod.coerce.date(),
-  "updatedAt": zod.coerce.date()
-})
-
+  id: zod.number(),
+  title: zod.string(),
+  status: zod.string(),
+  notes: zod.string().nullable(),
+  builderMarginPct: zod.number(),
+  materialsSubtotal: zod.number(),
+  labourSubtotal: zod.number(),
+  marginAmount: zod.number(),
+  gst: zod.number(),
+  total: zod.number(),
+  complianceDisclaimer: zod.string(),
+  quotes: zod.array(
+    zod.object({
+      id: zod.number(),
+      title: zod.string(),
+      status: zod.string(),
+      tradeType: zod.string(),
+      materialsSubtotal: zod.number(),
+      labourCost: zod.number(),
+      gst: zod.number(),
+      total: zod.number(),
+      lineItems: zod.array(
+        zod.object({
+          description: zod.string(),
+          category: zod.string(),
+          quantity: zod.number(),
+          unit: zod.string(),
+          unitType: zod.string(),
+          unitPrice: zod.number(),
+          lineTotal: zod.number(),
+        }),
+      ),
+      createdAt: zod.coerce.date(),
+    }),
+  ),
+  tradeGroups: zod.array(
+    zod.object({
+      tradeType: zod.string(),
+      label: zod.string(),
+      quotes: zod.array(
+        zod.object({
+          id: zod.number(),
+          title: zod.string(),
+          status: zod.string(),
+          tradeType: zod.string(),
+          materialsSubtotal: zod.number(),
+          labourCost: zod.number(),
+          gst: zod.number(),
+          total: zod.number(),
+          lineItems: zod.array(
+            zod.object({
+              description: zod.string(),
+              category: zod.string(),
+              quantity: zod.number(),
+              unit: zod.string(),
+              unitType: zod.string(),
+              unitPrice: zod.number(),
+              lineTotal: zod.number(),
+            }),
+          ),
+          createdAt: zod.coerce.date(),
+        }),
+      ),
+    }),
+  ),
+  billOfMaterials: zod.array(
+    zod.object({
+      materialId: zod.number().nullish(),
+      description: zod.string(),
+      category: zod.string(),
+      quantity: zod.number(),
+      unit: zod.string(),
+      unitPrice: zod.number(),
+      lineTotal: zod.number(),
+      quoteCount: zod.number(),
+    }),
+  ),
+  createdAt: zod.coerce.date(),
+  updatedAt: zod.coerce.date(),
+});
 
 /**
  * @summary Accept a Master Project proposal using a secure token
  */
-export const setMasterProjectPortalStatusPathTokenRegExp = new RegExp('^[A-Za-z0-9_-]{43}$');
-
+export const setMasterProjectPortalStatusPathTokenRegExp = new RegExp(
+  "^[A-Za-z0-9_-]{43}$",
+);
 
 export const SetMasterProjectPortalStatusParams = zod.object({
-  "token": zod.coerce.string().regex(setMasterProjectPortalStatusPathTokenRegExp)
-})
+  token: zod.coerce.string().regex(setMasterProjectPortalStatusPathTokenRegExp),
+});
 
 export const SetMasterProjectPortalStatusBody = zod.object({
-  "status": zod.string()
-})
+  status: zod.string(),
+});
 
 export const SetMasterProjectPortalStatusResponse = zod.object({
-  "id": zod.number(),
-  "title": zod.string(),
-  "status": zod.string(),
-  "notes": zod.string().nullable(),
-  "builderMarginPct": zod.number(),
-  "materialsSubtotal": zod.number(),
-  "labourSubtotal": zod.number(),
-  "marginAmount": zod.number(),
-  "gst": zod.number(),
-  "total": zod.number(),
-  "complianceDisclaimer": zod.string(),
-  "quotes": zod.array(zod.object({
-  "id": zod.number(),
-  "title": zod.string(),
-  "status": zod.string(),
-  "tradeType": zod.string(),
-  "materialsSubtotal": zod.number(),
-  "labourCost": zod.number(),
-  "gst": zod.number(),
-  "total": zod.number(),
-  "lineItems": zod.array(zod.object({
-  "description": zod.string(),
-  "category": zod.string(),
-  "quantity": zod.number(),
-  "unit": zod.string(),
-  "unitType": zod.string(),
-  "unitPrice": zod.number(),
-  "lineTotal": zod.number()
-})),
-  "createdAt": zod.coerce.date()
-})),
-  "tradeGroups": zod.array(zod.object({
-  "tradeType": zod.string(),
-  "label": zod.string(),
-  "quotes": zod.array(zod.object({
-  "id": zod.number(),
-  "title": zod.string(),
-  "status": zod.string(),
-  "tradeType": zod.string(),
-  "materialsSubtotal": zod.number(),
-  "labourCost": zod.number(),
-  "gst": zod.number(),
-  "total": zod.number(),
-  "lineItems": zod.array(zod.object({
-  "description": zod.string(),
-  "category": zod.string(),
-  "quantity": zod.number(),
-  "unit": zod.string(),
-  "unitType": zod.string(),
-  "unitPrice": zod.number(),
-  "lineTotal": zod.number()
-})),
-  "createdAt": zod.coerce.date()
-}))
-})),
-  "billOfMaterials": zod.array(zod.object({
-  "materialId": zod.number().nullish(),
-  "description": zod.string(),
-  "category": zod.string(),
-  "quantity": zod.number(),
-  "unit": zod.string(),
-  "unitPrice": zod.number(),
-  "lineTotal": zod.number(),
-  "quoteCount": zod.number()
-})),
-  "createdAt": zod.coerce.date(),
-  "updatedAt": zod.coerce.date()
-})
-
+  id: zod.number(),
+  title: zod.string(),
+  status: zod.string(),
+  notes: zod.string().nullable(),
+  builderMarginPct: zod.number(),
+  materialsSubtotal: zod.number(),
+  labourSubtotal: zod.number(),
+  marginAmount: zod.number(),
+  gst: zod.number(),
+  total: zod.number(),
+  complianceDisclaimer: zod.string(),
+  quotes: zod.array(
+    zod.object({
+      id: zod.number(),
+      title: zod.string(),
+      status: zod.string(),
+      tradeType: zod.string(),
+      materialsSubtotal: zod.number(),
+      labourCost: zod.number(),
+      gst: zod.number(),
+      total: zod.number(),
+      lineItems: zod.array(
+        zod.object({
+          description: zod.string(),
+          category: zod.string(),
+          quantity: zod.number(),
+          unit: zod.string(),
+          unitType: zod.string(),
+          unitPrice: zod.number(),
+          lineTotal: zod.number(),
+        }),
+      ),
+      createdAt: zod.coerce.date(),
+    }),
+  ),
+  tradeGroups: zod.array(
+    zod.object({
+      tradeType: zod.string(),
+      label: zod.string(),
+      quotes: zod.array(
+        zod.object({
+          id: zod.number(),
+          title: zod.string(),
+          status: zod.string(),
+          tradeType: zod.string(),
+          materialsSubtotal: zod.number(),
+          labourCost: zod.number(),
+          gst: zod.number(),
+          total: zod.number(),
+          lineItems: zod.array(
+            zod.object({
+              description: zod.string(),
+              category: zod.string(),
+              quantity: zod.number(),
+              unit: zod.string(),
+              unitType: zod.string(),
+              unitPrice: zod.number(),
+              lineTotal: zod.number(),
+            }),
+          ),
+          createdAt: zod.coerce.date(),
+        }),
+      ),
+    }),
+  ),
+  billOfMaterials: zod.array(
+    zod.object({
+      materialId: zod.number().nullish(),
+      description: zod.string(),
+      category: zod.string(),
+      quantity: zod.number(),
+      unit: zod.string(),
+      unitPrice: zod.number(),
+      lineTotal: zod.number(),
+      quoteCount: zod.number(),
+    }),
+  ),
+  createdAt: zod.coerce.date(),
+  updatedAt: zod.coerce.date(),
+});
 
 export const ListBookingsResponseItem = zod.object({
-  "id": zod.number(),
-  "title": zod.string(),
-  "customerId": zod.number().nullish(),
-  "customerName": zod.string().nullish(),
-  "quoteId": zod.number().nullish(),
-  "siteAddress": zod.string().nullish(),
-  "notes": zod.string().nullish(),
-  "startAt": zod.coerce.date(),
-  "endAt": zod.coerce.date(),
-  "status": zod.string().describe('scheduled | in_progress | completed | cancelled'),
-  "photos": zod.array(zod.string()).optional().describe('Object paths for site photos'),
-  "createdAt": zod.coerce.date()
-})
-export const ListBookingsResponse = zod.array(ListBookingsResponseItem)
-
-
-
-
+  id: zod.number(),
+  title: zod.string(),
+  customerId: zod.number().nullish(),
+  customerName: zod.string().nullish(),
+  quoteId: zod.number().nullish(),
+  siteAddress: zod.string().nullish(),
+  notes: zod.string().nullish(),
+  startAt: zod.coerce.date(),
+  endAt: zod.coerce.date(),
+  status: zod
+    .string()
+    .describe("scheduled | in_progress | completed | cancelled"),
+  photos: zod
+    .array(zod.string())
+    .optional()
+    .describe("Object paths for site photos"),
+  createdAt: zod.coerce.date(),
+});
+export const ListBookingsResponse = zod.array(ListBookingsResponseItem);
 
 export const CreateBookingBody = zod.object({
-  "title": zod.string().min(1),
-  "customerId": zod.number().optional(),
-  "quoteId": zod.number().optional(),
-  "siteAddress": zod.string().optional(),
-  "notes": zod.string().optional(),
-  "startAt": zod.coerce.date(),
-  "endAt": zod.coerce.date(),
-  "status": zod.string().optional()
-})
-
+  title: zod.string().min(1),
+  customerId: zod.number().optional(),
+  quoteId: zod.number().optional(),
+  siteAddress: zod.string().optional(),
+  notes: zod.string().optional(),
+  startAt: zod.coerce.date(),
+  endAt: zod.coerce.date(),
+  status: zod.string().optional(),
+});
 
 export const UpdateBookingParams = zod.object({
-  "id": zod.coerce.number()
-})
-
-
-
+  id: zod.coerce.number(),
+});
 
 export const UpdateBookingBody = zod.object({
-  "title": zod.string().min(1).optional(),
-  "customerId": zod.number().optional(),
-  "quoteId": zod.number().optional(),
-  "siteAddress": zod.string().optional(),
-  "notes": zod.string().optional(),
-  "startAt": zod.coerce.date().optional(),
-  "endAt": zod.coerce.date().optional(),
-  "status": zod.string().optional()
-})
+  title: zod.string().min(1).optional(),
+  customerId: zod.number().optional(),
+  quoteId: zod.number().optional(),
+  siteAddress: zod.string().optional(),
+  notes: zod.string().optional(),
+  startAt: zod.coerce.date().optional(),
+  endAt: zod.coerce.date().optional(),
+  status: zod.string().optional(),
+});
 
 export const UpdateBookingResponse = zod.object({
-  "id": zod.number(),
-  "title": zod.string(),
-  "customerId": zod.number().nullish(),
-  "customerName": zod.string().nullish(),
-  "quoteId": zod.number().nullish(),
-  "siteAddress": zod.string().nullish(),
-  "notes": zod.string().nullish(),
-  "startAt": zod.coerce.date(),
-  "endAt": zod.coerce.date(),
-  "status": zod.string().describe('scheduled | in_progress | completed | cancelled'),
-  "photos": zod.array(zod.string()).optional().describe('Object paths for site photos'),
-  "createdAt": zod.coerce.date()
-})
-
+  id: zod.number(),
+  title: zod.string(),
+  customerId: zod.number().nullish(),
+  customerName: zod.string().nullish(),
+  quoteId: zod.number().nullish(),
+  siteAddress: zod.string().nullish(),
+  notes: zod.string().nullish(),
+  startAt: zod.coerce.date(),
+  endAt: zod.coerce.date(),
+  status: zod
+    .string()
+    .describe("scheduled | in_progress | completed | cancelled"),
+  photos: zod
+    .array(zod.string())
+    .optional()
+    .describe("Object paths for site photos"),
+  createdAt: zod.coerce.date(),
+});
 
 export const DeleteBookingParams = zod.object({
-  "id": zod.coerce.number()
-})
+  id: zod.coerce.number(),
+});
 
 export const DeleteBookingResponse = zod.object({
-  "deleted": zod.boolean()
-})
-
+  deleted: zod.boolean(),
+});
 
 /**
  * @summary Attach an uploaded object path to a booking's photo evidence list
  */
 export const AddBookingPhotoParams = zod.object({
-  "id": zod.coerce.number()
-})
+  id: zod.coerce.number(),
+});
 
 export const AddBookingPhotoBody = zod.object({
-  "objectPath": zod.string().describe('Object path returned from storage upload')
-})
+  objectPath: zod.string().describe("Object path returned from storage upload"),
+});
 
 export const AddBookingPhotoResponse = zod.object({
-  "id": zod.number(),
-  "title": zod.string(),
-  "customerId": zod.number().nullish(),
-  "customerName": zod.string().nullish(),
-  "quoteId": zod.number().nullish(),
-  "siteAddress": zod.string().nullish(),
-  "notes": zod.string().nullish(),
-  "startAt": zod.coerce.date(),
-  "endAt": zod.coerce.date(),
-  "status": zod.string().describe('scheduled | in_progress | completed | cancelled'),
-  "photos": zod.array(zod.string()).optional().describe('Object paths for site photos'),
-  "createdAt": zod.coerce.date()
-})
-
+  id: zod.number(),
+  title: zod.string(),
+  customerId: zod.number().nullish(),
+  customerName: zod.string().nullish(),
+  quoteId: zod.number().nullish(),
+  siteAddress: zod.string().nullish(),
+  notes: zod.string().nullish(),
+  startAt: zod.coerce.date(),
+  endAt: zod.coerce.date(),
+  status: zod
+    .string()
+    .describe("scheduled | in_progress | completed | cancelled"),
+  photos: zod
+    .array(zod.string())
+    .optional()
+    .describe("Object paths for site photos"),
+  createdAt: zod.coerce.date(),
+});
 
 /**
  * @summary Remove a photo from a booking
  */
 export const RemoveBookingPhotoParams = zod.object({
-  "id": zod.coerce.number()
-})
+  id: zod.coerce.number(),
+});
 
 export const RemoveBookingPhotoBody = zod.object({
-  "objectPath": zod.string()
-})
+  objectPath: zod.string(),
+});
 
 export const RemoveBookingPhotoResponse = zod.object({
-  "id": zod.number(),
-  "title": zod.string(),
-  "customerId": zod.number().nullish(),
-  "customerName": zod.string().nullish(),
-  "quoteId": zod.number().nullish(),
-  "siteAddress": zod.string().nullish(),
-  "notes": zod.string().nullish(),
-  "startAt": zod.coerce.date(),
-  "endAt": zod.coerce.date(),
-  "status": zod.string().describe('scheduled | in_progress | completed | cancelled'),
-  "photos": zod.array(zod.string()).optional().describe('Object paths for site photos'),
-  "createdAt": zod.coerce.date()
-})
-
+  id: zod.number(),
+  title: zod.string(),
+  customerId: zod.number().nullish(),
+  customerName: zod.string().nullish(),
+  quoteId: zod.number().nullish(),
+  siteAddress: zod.string().nullish(),
+  notes: zod.string().nullish(),
+  startAt: zod.coerce.date(),
+  endAt: zod.coerce.date(),
+  status: zod
+    .string()
+    .describe("scheduled | in_progress | completed | cancelled"),
+  photos: zod
+    .array(zod.string())
+    .optional()
+    .describe("Object paths for site photos"),
+  createdAt: zod.coerce.date(),
+});
 
 /**
  * @summary Request a presigned URL for an authenticated object upload
@@ -2392,466 +3410,441 @@ export const RemoveBookingPhotoResponse = zod.object({
 
 export const requestStorageUploadUrlBodySizeMin = 0;
 
-
-
-
 export const RequestStorageUploadUrlBody = zod.object({
-  "name": zod.string().min(1),
-  "size": zod.number().min(requestStorageUploadUrlBodySizeMin),
-  "contentType": zod.string().min(1)
-})
+  name: zod.string().min(1),
+  size: zod.number().min(requestStorageUploadUrlBodySizeMin),
+  contentType: zod.string().min(1),
+});
 
 export const RequestStorageUploadUrlResponse = zod.object({
-  "uploadURL": zod.string(),
-  "objectPath": zod.string()
-})
-
+  uploadURL: zod.string(),
+  objectPath: zod.string(),
+});
 
 /**
  * @summary Create a variation quote based on an existing quote
  */
 export const CreateQuoteVariationParams = zod.object({
-  "id": zod.coerce.number()
-})
-
-
-
+  id: zod.coerce.number(),
+});
 
 export const CreateQuoteVariationBody = zod.object({
-  "title": zod.string().min(1).describe('Title for the variation quote'),
-  "notes": zod.string().optional().describe('Description of what\'s different in this variation'),
-  "lengthM": zod.number().optional(),
-  "widthM": zod.number().optional(),
-  "heightM": zod.number().optional(),
-  "labourHours": zod.number().optional(),
-  "labourRate": zod.number().optional()
-})
-
+  title: zod.string().min(1).describe("Title for the variation quote"),
+  notes: zod
+    .string()
+    .optional()
+    .describe("Description of what's different in this variation"),
+  lengthM: zod.number().optional(),
+  widthM: zod.number().optional(),
+  heightM: zod.number().optional(),
+  labourHours: zod.number().optional(),
+  labourRate: zod.number().optional(),
+});
 
 /**
  * @summary Resolve the signed-in user's linked team-member access
  */
 export const GetAssignmentAccessResponse = zod.object({
-  "linked": zod.boolean(),
-  "teamMemberId": zod.number().nullish(),
-  "role": zod.string().nullish().describe('employee | subcontractor')
-})
-
+  linked: zod.boolean(),
+  teamMemberId: zod.number().nullish(),
+  role: zod.string().nullish().describe("employee | subcontractor"),
+});
 
 /**
  * @summary List all team members
  */
 export const ListTeamMembersResponseItem = zod.object({
-  "id": zod.number(),
-  "linkedClerkUserId": zod.string().nullish(),
-  "name": zod.string(),
-  "email": zod.string().nullish(),
-  "phone": zod.string().nullish(),
-  "role": zod.string().describe('owner | employee | subcontractor'),
-  "active": zod.boolean(),
-  "accountLinked": zod.boolean(),
-  "accountUserId": zod.string().nullish(),
-  "createdAt": zod.coerce.date()
-})
-export const ListTeamMembersResponse = zod.array(ListTeamMembersResponseItem)
+  id: zod.number(),
+  linkedClerkUserId: zod.string().nullish(),
+  name: zod.string(),
+  email: zod.string().nullish(),
+  phone: zod.string().nullish(),
+  role: zod.string().describe("owner | employee | subcontractor"),
+  active: zod.boolean(),
+  accountLinked: zod.boolean(),
+  accountUserId: zod.string().nullish(),
+  createdAt: zod.coerce.date(),
+});
+export const ListTeamMembersResponse = zod.array(ListTeamMembersResponseItem);
 
-
-
-export const createTeamMemberBodyLinkedClerkUserIdRegExp = new RegExp('^user_[A-Za-z0-9]+$');
-
+export const createTeamMemberBodyLinkedClerkUserIdRegExp = new RegExp(
+  "^user_[A-Za-z0-9]+$",
+);
 
 export const CreateTeamMemberBody = zod.object({
-  "name": zod.string().min(1),
-  "linkedClerkUserId": zod.string().regex(createTeamMemberBodyLinkedClerkUserIdRegExp).optional(),
-  "email": zod.string().optional(),
-  "phone": zod.string().optional(),
-  "role": zod.string().optional(),
-  "pin": zod.string().optional()
-})
-
+  name: zod.string().min(1),
+  linkedClerkUserId: zod
+    .string()
+    .regex(createTeamMemberBodyLinkedClerkUserIdRegExp)
+    .optional(),
+  email: zod.string().optional(),
+  phone: zod.string().optional(),
+  role: zod.string().optional(),
+  pin: zod.string().optional(),
+});
 
 export const UpdateTeamMemberParams = zod.object({
-  "id": zod.coerce.number()
-})
+  id: zod.coerce.number(),
+});
 
-
-export const updateTeamMemberBodyLinkedClerkUserIdRegExp = new RegExp('^user_[A-Za-z0-9]+$');
-
+export const updateTeamMemberBodyLinkedClerkUserIdRegExp = new RegExp(
+  "^user_[A-Za-z0-9]+$",
+);
 
 export const UpdateTeamMemberBody = zod.object({
-  "name": zod.string().min(1).optional(),
-  "linkedClerkUserId": zod.string().regex(updateTeamMemberBodyLinkedClerkUserIdRegExp).nullish(),
-  "email": zod.string().optional(),
-  "phone": zod.string().optional(),
-  "role": zod.string().optional(),
-  "pin": zod.string().optional(),
-  "active": zod.boolean().optional()
-})
+  name: zod.string().min(1).optional(),
+  linkedClerkUserId: zod
+    .string()
+    .regex(updateTeamMemberBodyLinkedClerkUserIdRegExp)
+    .nullish(),
+  email: zod.string().optional(),
+  phone: zod.string().optional(),
+  role: zod.string().optional(),
+  pin: zod.string().optional(),
+  active: zod.boolean().optional(),
+});
 
 export const UpdateTeamMemberResponse = zod.object({
-  "id": zod.number(),
-  "linkedClerkUserId": zod.string().nullish(),
-  "name": zod.string(),
-  "email": zod.string().nullish(),
-  "phone": zod.string().nullish(),
-  "role": zod.string().describe('owner | employee | subcontractor'),
-  "active": zod.boolean(),
-  "accountLinked": zod.boolean(),
-  "accountUserId": zod.string().nullish(),
-  "createdAt": zod.coerce.date()
-})
-
+  id: zod.number(),
+  linkedClerkUserId: zod.string().nullish(),
+  name: zod.string(),
+  email: zod.string().nullish(),
+  phone: zod.string().nullish(),
+  role: zod.string().describe("owner | employee | subcontractor"),
+  active: zod.boolean(),
+  accountLinked: zod.boolean(),
+  accountUserId: zod.string().nullish(),
+  createdAt: zod.coerce.date(),
+});
 
 export const DeleteTeamMemberParams = zod.object({
-  "id": zod.coerce.number()
-})
+  id: zod.coerce.number(),
+});
 
 export const DeleteTeamMemberResponse = zod.object({
-  "deleted": zod.boolean()
-})
-
+  deleted: zod.boolean(),
+});
 
 /**
  * @summary Link a Clerk account to a team member
  */
 export const LinkTeamMemberAccountParams = zod.object({
-  "memberId": zod.coerce.number()
-})
-
-
-
+  memberId: zod.coerce.number(),
+});
 
 export const LinkTeamMemberAccountBody = zod.object({
-  "accountUserId": zod.string().min(1).describe('Clerk user ID for the authenticated worker account')
-})
+  accountUserId: zod
+    .string()
+    .min(1)
+    .describe("Clerk user ID for the authenticated worker account"),
+});
 
 export const LinkTeamMemberAccountResponse = zod.object({
-  "id": zod.number(),
-  "linkedClerkUserId": zod.string().nullish(),
-  "name": zod.string(),
-  "email": zod.string().nullish(),
-  "phone": zod.string().nullish(),
-  "role": zod.string().describe('owner | employee | subcontractor'),
-  "active": zod.boolean(),
-  "accountLinked": zod.boolean(),
-  "accountUserId": zod.string().nullish(),
-  "createdAt": zod.coerce.date()
-})
-
+  id: zod.number(),
+  linkedClerkUserId: zod.string().nullish(),
+  name: zod.string(),
+  email: zod.string().nullish(),
+  phone: zod.string().nullish(),
+  role: zod.string().describe("owner | employee | subcontractor"),
+  active: zod.boolean(),
+  accountLinked: zod.boolean(),
+  accountUserId: zod.string().nullish(),
+  createdAt: zod.coerce.date(),
+});
 
 /**
  * @summary Remove a Clerk account link from a team member
  */
 export const UnlinkTeamMemberAccountParams = zod.object({
-  "memberId": zod.coerce.number()
-})
+  memberId: zod.coerce.number(),
+});
 
 export const UnlinkTeamMemberAccountResponse = zod.object({
-  "id": zod.number(),
-  "linkedClerkUserId": zod.string().nullish(),
-  "name": zod.string(),
-  "email": zod.string().nullish(),
-  "phone": zod.string().nullish(),
-  "role": zod.string().describe('owner | employee | subcontractor'),
-  "active": zod.boolean(),
-  "accountLinked": zod.boolean(),
-  "accountUserId": zod.string().nullish(),
-  "createdAt": zod.coerce.date()
-})
-
+  id: zod.number(),
+  linkedClerkUserId: zod.string().nullish(),
+  name: zod.string(),
+  email: zod.string().nullish(),
+  phone: zod.string().nullish(),
+  role: zod.string().describe("owner | employee | subcontractor"),
+  active: zod.boolean(),
+  accountLinked: zod.boolean(),
+  accountUserId: zod.string().nullish(),
+  createdAt: zod.coerce.date(),
+});
 
 export const AssignTeamMemberToJobParams = zod.object({
-  "memberId": zod.coerce.number(),
-  "jobId": zod.coerce.number()
-})
+  memberId: zod.coerce.number(),
+  jobId: zod.coerce.number(),
+});
 
 export const AssignTeamMemberToJobBody = zod.object({
-  "roleOnJob": zod.string().optional()
-})
-
+  roleOnJob: zod.string().optional(),
+});
 
 export const ListJobAssignmentsParams = zod.object({
-  "jobId": zod.coerce.number()
-})
+  jobId: zod.coerce.number(),
+});
 
 export const ListJobAssignmentsResponseItem = zod.object({
-  "id": zod.number(),
-  "jobId": zod.number(),
-  "teamMemberId": zod.number(),
-  "memberName": zod.string().nullish(),
-  "roleOnJob": zod.string().nullish(),
-  "assignedAt": zod.coerce.date()
-})
-export const ListJobAssignmentsResponse = zod.array(ListJobAssignmentsResponseItem)
-
+  id: zod.number(),
+  jobId: zod.number(),
+  teamMemberId: zod.number(),
+  memberName: zod.string().nullish(),
+  roleOnJob: zod.string().nullish(),
+  assignedAt: zod.coerce.date(),
+});
+export const ListJobAssignmentsResponse = zod.array(
+  ListJobAssignmentsResponseItem,
+);
 
 export const RemoveJobAssignmentParams = zod.object({
-  "jobId": zod.coerce.number()
-})
+  jobId: zod.coerce.number(),
+});
 
 export const RemoveJobAssignmentBody = zod.object({
-  "teamMemberId": zod.number()
-})
+  teamMemberId: zod.number(),
+});
 
 export const RemoveJobAssignmentResponse = zod.object({
-  "deleted": zod.boolean()
-})
-
+  deleted: zod.boolean(),
+});
 
 export const ClockOnBody = zod.object({
-  "teamMemberId": zod.number(),
-  "jobId": zod.number(),
-  "notes": zod.string().optional()
-})
-
+  teamMemberId: zod.number(),
+  jobId: zod.number(),
+  notes: zod.string().optional(),
+});
 
 export const ClockOffBody = zod.object({
-  "teamMemberId": zod.number(),
-  "jobId": zod.number(),
-  "notes": zod.string().optional()
-})
+  teamMemberId: zod.number(),
+  jobId: zod.number(),
+  notes: zod.string().optional(),
+});
 
 export const ClockOffResponse = zod.object({
-  "id": zod.number(),
-  "teamMemberId": zod.number(),
-  "memberName": zod.string().nullish(),
-  "jobId": zod.number(),
-  "jobTitle": zod.string().nullish(),
-  "clockOn": zod.coerce.date().nullish(),
-  "clockOff": zod.coerce.date().nullish(),
-  "durationMinutes": zod.number().nullish(),
-  "manualEntry": zod.boolean(),
-  "notes": zod.string().nullish(),
-  "createdAt": zod.coerce.date()
-})
-
+  id: zod.number(),
+  teamMemberId: zod.number(),
+  memberName: zod.string().nullish(),
+  jobId: zod.number(),
+  jobTitle: zod.string().nullish(),
+  clockOn: zod.coerce.date().nullish(),
+  clockOff: zod.coerce.date().nullish(),
+  durationMinutes: zod.number().nullish(),
+  manualEntry: zod.boolean(),
+  notes: zod.string().nullish(),
+  createdAt: zod.coerce.date(),
+});
 
 export const AddManualTimeEntryBody = zod.object({
-  "teamMemberId": zod.number(),
-  "jobId": zod.number(),
-  "durationMinutes": zod.number(),
-  "clockOn": zod.coerce.date().optional(),
-  "clockOff": zod.coerce.date().optional(),
-  "notes": zod.string().optional()
-})
-
+  teamMemberId: zod.number(),
+  jobId: zod.number(),
+  durationMinutes: zod.number(),
+  clockOn: zod.coerce.date().optional(),
+  clockOff: zod.coerce.date().optional(),
+  notes: zod.string().optional(),
+});
 
 export const ListTimeEntriesForJobParams = zod.object({
-  "jobId": zod.coerce.number()
-})
+  jobId: zod.coerce.number(),
+});
 
 export const ListTimeEntriesForJobResponseItem = zod.object({
-  "id": zod.number(),
-  "teamMemberId": zod.number(),
-  "memberName": zod.string().nullish(),
-  "jobId": zod.number(),
-  "jobTitle": zod.string().nullish(),
-  "clockOn": zod.coerce.date().nullish(),
-  "clockOff": zod.coerce.date().nullish(),
-  "durationMinutes": zod.number().nullish(),
-  "manualEntry": zod.boolean(),
-  "notes": zod.string().nullish(),
-  "createdAt": zod.coerce.date()
-})
-export const ListTimeEntriesForJobResponse = zod.array(ListTimeEntriesForJobResponseItem)
-
+  id: zod.number(),
+  teamMemberId: zod.number(),
+  memberName: zod.string().nullish(),
+  jobId: zod.number(),
+  jobTitle: zod.string().nullish(),
+  clockOn: zod.coerce.date().nullish(),
+  clockOff: zod.coerce.date().nullish(),
+  durationMinutes: zod.number().nullish(),
+  manualEntry: zod.boolean(),
+  notes: zod.string().nullish(),
+  createdAt: zod.coerce.date(),
+});
+export const ListTimeEntriesForJobResponse = zod.array(
+  ListTimeEntriesForJobResponseItem,
+);
 
 export const ListTimeEntriesForMemberParams = zod.object({
-  "memberId": zod.coerce.number()
-})
+  memberId: zod.coerce.number(),
+});
 
 export const ListTimeEntriesForMemberResponseItem = zod.object({
-  "id": zod.number(),
-  "teamMemberId": zod.number(),
-  "memberName": zod.string().nullish(),
-  "jobId": zod.number(),
-  "jobTitle": zod.string().nullish(),
-  "clockOn": zod.coerce.date().nullish(),
-  "clockOff": zod.coerce.date().nullish(),
-  "durationMinutes": zod.number().nullish(),
-  "manualEntry": zod.boolean(),
-  "notes": zod.string().nullish(),
-  "createdAt": zod.coerce.date()
-})
-export const ListTimeEntriesForMemberResponse = zod.array(ListTimeEntriesForMemberResponseItem)
-
+  id: zod.number(),
+  teamMemberId: zod.number(),
+  memberName: zod.string().nullish(),
+  jobId: zod.number(),
+  jobTitle: zod.string().nullish(),
+  clockOn: zod.coerce.date().nullish(),
+  clockOff: zod.coerce.date().nullish(),
+  durationMinutes: zod.number().nullish(),
+  manualEntry: zod.boolean(),
+  notes: zod.string().nullish(),
+  createdAt: zod.coerce.date(),
+});
+export const ListTimeEntriesForMemberResponse = zod.array(
+  ListTimeEntriesForMemberResponseItem,
+);
 
 export const ListPortfolioEntriesResponseItem = zod.object({
-  "id": zod.number(),
-  "bookingId": zod.number().nullish(),
-  "title": zod.string(),
-  "description": zod.string().nullish(),
-  "deckType": zod.string().nullish(),
-  "dimensionText": zod.string().nullish(),
-  "materialsText": zod.string().nullish(),
-  "beforePhotos": zod.array(zod.string()),
-  "afterPhotos": zod.array(zod.string()),
-  "testimonial": zod.string().nullish(),
-  "customerName": zod.string().nullish(),
-  "rating": zod.number().nullish(),
-  "isPublic": zod.boolean(),
-  "completedAt": zod.coerce.date().nullish(),
-  "createdAt": zod.coerce.date()
-})
-export const ListPortfolioEntriesResponse = zod.array(ListPortfolioEntriesResponseItem)
-
-
+  id: zod.number(),
+  bookingId: zod.number().nullish(),
+  title: zod.string(),
+  description: zod.string().nullish(),
+  deckType: zod.string().nullish(),
+  dimensionText: zod.string().nullish(),
+  materialsText: zod.string().nullish(),
+  beforePhotos: zod.array(zod.string()),
+  afterPhotos: zod.array(zod.string()),
+  testimonial: zod.string().nullish(),
+  customerName: zod.string().nullish(),
+  rating: zod.number().nullish(),
+  isPublic: zod.boolean(),
+  completedAt: zod.coerce.date().nullish(),
+  createdAt: zod.coerce.date(),
+});
+export const ListPortfolioEntriesResponse = zod.array(
+  ListPortfolioEntriesResponseItem,
+);
 
 export const createPortfolioEntryBodyRatingMax = 5;
 
-
-
 export const CreatePortfolioEntryBody = zod.object({
-  "bookingId": zod.number().optional(),
-  "title": zod.string().min(1),
-  "description": zod.string().optional(),
-  "deckType": zod.string().optional(),
-  "dimensionText": zod.string().optional(),
-  "materialsText": zod.string().optional(),
-  "testimonial": zod.string().optional(),
-  "customerName": zod.string().optional(),
-  "rating": zod.number().min(1).max(createPortfolioEntryBodyRatingMax).optional(),
-  "isPublic": zod.boolean().optional(),
-  "completedAt": zod.coerce.date().optional()
-})
-
+  bookingId: zod.number().optional(),
+  title: zod.string().min(1),
+  description: zod.string().optional(),
+  deckType: zod.string().optional(),
+  dimensionText: zod.string().optional(),
+  materialsText: zod.string().optional(),
+  testimonial: zod.string().optional(),
+  customerName: zod.string().optional(),
+  rating: zod.number().min(1).max(createPortfolioEntryBodyRatingMax).optional(),
+  isPublic: zod.boolean().optional(),
+  completedAt: zod.coerce.date().optional(),
+});
 
 export const UpdatePortfolioEntryParams = zod.object({
-  "id": zod.coerce.number()
-})
-
+  id: zod.coerce.number(),
+});
 
 export const updatePortfolioEntryBodyRatingMax = 5;
 
-
-
 export const UpdatePortfolioEntryBody = zod.object({
-  "bookingId": zod.number().optional(),
-  "title": zod.string().min(1),
-  "description": zod.string().optional(),
-  "deckType": zod.string().optional(),
-  "dimensionText": zod.string().optional(),
-  "materialsText": zod.string().optional(),
-  "testimonial": zod.string().optional(),
-  "customerName": zod.string().optional(),
-  "rating": zod.number().min(1).max(updatePortfolioEntryBodyRatingMax).optional(),
-  "isPublic": zod.boolean().optional(),
-  "completedAt": zod.coerce.date().optional()
-})
+  bookingId: zod.number().optional(),
+  title: zod.string().min(1),
+  description: zod.string().optional(),
+  deckType: zod.string().optional(),
+  dimensionText: zod.string().optional(),
+  materialsText: zod.string().optional(),
+  testimonial: zod.string().optional(),
+  customerName: zod.string().optional(),
+  rating: zod.number().min(1).max(updatePortfolioEntryBodyRatingMax).optional(),
+  isPublic: zod.boolean().optional(),
+  completedAt: zod.coerce.date().optional(),
+});
 
 export const UpdatePortfolioEntryResponse = zod.object({
-  "id": zod.number(),
-  "bookingId": zod.number().nullish(),
-  "title": zod.string(),
-  "description": zod.string().nullish(),
-  "deckType": zod.string().nullish(),
-  "dimensionText": zod.string().nullish(),
-  "materialsText": zod.string().nullish(),
-  "beforePhotos": zod.array(zod.string()),
-  "afterPhotos": zod.array(zod.string()),
-  "testimonial": zod.string().nullish(),
-  "customerName": zod.string().nullish(),
-  "rating": zod.number().nullish(),
-  "isPublic": zod.boolean(),
-  "completedAt": zod.coerce.date().nullish(),
-  "createdAt": zod.coerce.date()
-})
-
+  id: zod.number(),
+  bookingId: zod.number().nullish(),
+  title: zod.string(),
+  description: zod.string().nullish(),
+  deckType: zod.string().nullish(),
+  dimensionText: zod.string().nullish(),
+  materialsText: zod.string().nullish(),
+  beforePhotos: zod.array(zod.string()),
+  afterPhotos: zod.array(zod.string()),
+  testimonial: zod.string().nullish(),
+  customerName: zod.string().nullish(),
+  rating: zod.number().nullish(),
+  isPublic: zod.boolean(),
+  completedAt: zod.coerce.date().nullish(),
+  createdAt: zod.coerce.date(),
+});
 
 export const DeletePortfolioEntryParams = zod.object({
-  "id": zod.coerce.number()
-})
+  id: zod.coerce.number(),
+});
 
 export const DeletePortfolioEntryResponse = zod.object({
-  "deleted": zod.boolean()
-})
-
+  deleted: zod.boolean(),
+});
 
 export const AddPortfolioPhotoParams = zod.object({
-  "id": zod.coerce.number()
-})
+  id: zod.coerce.number(),
+});
 
 export const AddPortfolioPhotoBody = zod.object({
-  "objectPath": zod.string(),
-  "photoType": zod.string().describe('before | after')
-})
+  objectPath: zod.string(),
+  photoType: zod.string().describe("before | after"),
+});
 
 export const AddPortfolioPhotoResponse = zod.object({
-  "id": zod.number(),
-  "bookingId": zod.number().nullish(),
-  "title": zod.string(),
-  "description": zod.string().nullish(),
-  "deckType": zod.string().nullish(),
-  "dimensionText": zod.string().nullish(),
-  "materialsText": zod.string().nullish(),
-  "beforePhotos": zod.array(zod.string()),
-  "afterPhotos": zod.array(zod.string()),
-  "testimonial": zod.string().nullish(),
-  "customerName": zod.string().nullish(),
-  "rating": zod.number().nullish(),
-  "isPublic": zod.boolean(),
-  "completedAt": zod.coerce.date().nullish(),
-  "createdAt": zod.coerce.date()
-})
-
+  id: zod.number(),
+  bookingId: zod.number().nullish(),
+  title: zod.string(),
+  description: zod.string().nullish(),
+  deckType: zod.string().nullish(),
+  dimensionText: zod.string().nullish(),
+  materialsText: zod.string().nullish(),
+  beforePhotos: zod.array(zod.string()),
+  afterPhotos: zod.array(zod.string()),
+  testimonial: zod.string().nullish(),
+  customerName: zod.string().nullish(),
+  rating: zod.number().nullish(),
+  isPublic: zod.boolean(),
+  completedAt: zod.coerce.date().nullish(),
+  createdAt: zod.coerce.date(),
+});
 
 export const ListReferralSourcesResponseItem = zod.object({
-  "id": zod.number(),
-  "code": zod.string(),
-  "name": zod.string(),
-  "type": zod.string().describe('supplier | training | word_of_mouth | direct | other'),
-  "description": zod.string().nullish(),
-  "leadCount": zod.number().optional(),
-  "createdAt": zod.coerce.date()
-})
-export const ListReferralSourcesResponse = zod.array(ListReferralSourcesResponseItem)
-
-
-
-
-
+  id: zod.number(),
+  code: zod.string(),
+  name: zod.string(),
+  type: zod
+    .string()
+    .describe("supplier | training | word_of_mouth | direct | other"),
+  description: zod.string().nullish(),
+  leadCount: zod.number().optional(),
+  createdAt: zod.coerce.date(),
+});
+export const ListReferralSourcesResponse = zod.array(
+  ListReferralSourcesResponseItem,
+);
 
 export const CreateReferralSourceBody = zod.object({
-  "code": zod.string().min(1),
-  "name": zod.string().min(1),
-  "type": zod.string().optional(),
-  "description": zod.string().optional()
-})
-
+  code: zod.string().min(1),
+  name: zod.string().min(1),
+  type: zod.string().optional(),
+  description: zod.string().optional(),
+});
 
 export const GetReferralQrCodeParams = zod.object({
-  "code": zod.coerce.string()
-})
-
+  code: zod.coerce.string(),
+});
 
 export const ListSignUpLeadsResponseItem = zod.object({
-  "id": zod.number(),
-  "name": zod.string(),
-  "email": zod.string().nullish(),
-  "phone": zod.string().nullish(),
-  "company": zod.string().nullish(),
-  "referralCode": zod.string().nullish(),
-  "utmSource": zod.string().nullish(),
-  "utmMedium": zod.string().nullish(),
-  "utmCampaign": zod.string().nullish(),
-  "notes": zod.string().nullish(),
-  "createdAt": zod.coerce.date()
-})
-export const ListSignUpLeadsResponse = zod.array(ListSignUpLeadsResponseItem)
-
-
-
-
+  id: zod.number(),
+  name: zod.string(),
+  email: zod.string().nullish(),
+  phone: zod.string().nullish(),
+  company: zod.string().nullish(),
+  referralCode: zod.string().nullish(),
+  utmSource: zod.string().nullish(),
+  utmMedium: zod.string().nullish(),
+  utmCampaign: zod.string().nullish(),
+  notes: zod.string().nullish(),
+  createdAt: zod.coerce.date(),
+});
+export const ListSignUpLeadsResponse = zod.array(ListSignUpLeadsResponseItem);
 
 export const CreateSignUpLeadBody = zod.object({
-  "name": zod.string().min(1),
-  "email": zod.string().optional(),
-  "phone": zod.string().optional(),
-  "company": zod.string().optional(),
-  "referralCode": zod.string().optional(),
-  "utmSource": zod.string().optional(),
-  "utmMedium": zod.string().optional(),
-  "utmCampaign": zod.string().optional(),
-  "notes": zod.string().optional()
-})
-
+  name: zod.string().min(1),
+  email: zod.string().optional(),
+  phone: zod.string().optional(),
+  company: zod.string().optional(),
+  referralCode: zod.string().optional(),
+  utmSource: zod.string().optional(),
+  utmMedium: zod.string().optional(),
+  utmCampaign: zod.string().optional(),
+  notes: zod.string().optional(),
+});

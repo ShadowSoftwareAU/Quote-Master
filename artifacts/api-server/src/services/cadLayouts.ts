@@ -1,9 +1,5 @@
-import { and, eq } from "drizzle-orm";
-import {
-  cadGeneratedLayoutsTable,
-  db,
-  quotesTable,
-} from "@workspace/db";
+import { and, desc, eq } from "drizzle-orm";
+import { cadGeneratedLayoutsTable, db, quotesTable } from "@workspace/db";
 import { CadLayoutPayloadSchema } from "@workspace/api-zod";
 import { simulateCadFromText } from "./cadFromText";
 
@@ -11,6 +7,52 @@ interface CreateCadLayoutInput {
   quoteId: number;
   clerkUserId: string;
   prompt: string;
+}
+
+function formatCadLayout(layout: typeof cadGeneratedLayoutsTable.$inferSelect) {
+  return {
+    id: layout.id,
+    quoteId: layout.quoteId,
+    prompt: layout.prompt,
+    tradeCategory: layout.tradeCategory,
+    layout: CadLayoutPayloadSchema.parse(layout.layoutJson),
+    createdAt: layout.createdAt.toISOString(),
+    updatedAt: layout.updatedAt.toISOString(),
+  };
+}
+
+export async function getLatestCadLayoutForOwnedQuote({
+  quoteId,
+  clerkUserId,
+}: Omit<CreateCadLayoutInput, "prompt">) {
+  const [layout] = await db
+    .select({
+      id: cadGeneratedLayoutsTable.id,
+      quoteId: cadGeneratedLayoutsTable.quoteId,
+      prompt: cadGeneratedLayoutsTable.prompt,
+      tradeCategory: cadGeneratedLayoutsTable.tradeCategory,
+      layoutJson: cadGeneratedLayoutsTable.layoutJson,
+      createdAt: cadGeneratedLayoutsTable.createdAt,
+      updatedAt: cadGeneratedLayoutsTable.updatedAt,
+    })
+    .from(cadGeneratedLayoutsTable)
+    .innerJoin(
+      quotesTable,
+      eq(cadGeneratedLayoutsTable.quoteId, quotesTable.id),
+    )
+    .where(
+      and(
+        eq(cadGeneratedLayoutsTable.quoteId, quoteId),
+        eq(quotesTable.clerkUserId, clerkUserId),
+      ),
+    )
+    .orderBy(
+      desc(cadGeneratedLayoutsTable.createdAt),
+      desc(cadGeneratedLayoutsTable.id),
+    )
+    .limit(1);
+
+  return layout ? formatCadLayout(layout) : null;
 }
 
 export async function createCadLayoutForOwnedQuote({
@@ -54,13 +96,5 @@ export async function createCadLayoutForOwnedQuote({
     })
     .returning();
 
-  return {
-    id: created.id,
-    quoteId: created.quoteId,
-    prompt: created.prompt,
-    tradeCategory: created.tradeCategory,
-    layout: CadLayoutPayloadSchema.parse(created.layoutJson),
-    createdAt: created.createdAt.toISOString(),
-    updatedAt: created.updatedAt.toISOString(),
-  };
+  return formatCadLayout(created);
 }

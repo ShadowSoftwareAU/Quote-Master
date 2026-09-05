@@ -23,17 +23,35 @@ function roundMetres(value: number): number {
   return Math.round(value * 1000) / 1000;
 }
 
-function detectTradeCategory(
+function detectTradeCategories(
   prompt: string,
-): ValidatedCadLayoutPayload["tradeCategory"] {
+): ValidatedCadLayoutPayload["tradeCategory"][] {
   const normalised = prompt.toLowerCase();
-  if (/(electrical|electrician|wiring|cable|conduit|power|switch)/.test(normalised)) {
-    return "electrical";
-  }
-  if (/(plumbing|plumber|pipe|drain|water|tap|fixture)/.test(normalised)) {
-    return "plumbing";
-  }
-  return "carpentry";
+  const detected = [
+    {
+      trade: "carpentry" as const,
+      index: normalised.search(
+        /(carpentry|carpenter|timber|deck|beam|joist|wall|subframe)/,
+      ),
+    },
+    {
+      trade: "electrical" as const,
+      index: normalised.search(
+        /(electrical|electrician|wiring|cable|conduit|power|switch|outlet)/,
+      ),
+    },
+    {
+      trade: "plumbing" as const,
+      index: normalised.search(
+        /(plumbing|plumber|pipe|drain|water|tap|fixture)/,
+      ),
+    },
+  ]
+    .filter(({ index }) => index >= 0)
+    .sort((first, second) => first.index - second.index)
+    .map(({ trade }) => trade);
+
+  return detected.length > 0 ? detected : ["carpentry"];
 }
 
 function resolveDimensions(
@@ -43,8 +61,10 @@ function resolveDimensions(
   const match = prompt.match(DIMENSION_PATTERN);
   return {
     x: roundMetres(match ? Number(match[1]) : fallback.lengthM),
-    y: roundMetres(match ? Number(match[2]) : fallback.widthM),
-    z: roundMetres(match?.[3] ? Number(match[3]) : Math.max(fallback.heightM, 0.1)),
+    y: roundMetres(
+      match?.[3] ? Number(match[3]) : Math.max(fallback.heightM, 0.1),
+    ),
+    z: roundMetres(match ? Number(match[2]) : fallback.widthM),
   };
 }
 
@@ -53,6 +73,7 @@ function buildComponents(
   dimensions: ValidatedCadLayoutPayload["dimensions"],
 ): ValidatedCadLayoutPayload["structuralComponents"] {
   const zero = { x: 0, y: 0, z: 0 };
+  const serviceHeight = Math.min(Math.max(dimensions.y / 2, 0.1), 1.1);
 
   if (tradeCategory === "electrical") {
     return [
@@ -65,19 +86,27 @@ function buildComponents(
         materialSku: null,
         geometryId: "electrical-conduit-linear-v1",
         dimensions: { x: dimensions.x, y: 0.025, z: 0.025 },
-        position: { x: dimensions.x / 2, y: 0, z: dimensions.z / 2 },
+        position: {
+          x: dimensions.x / 2,
+          y: serviceHeight,
+          z: dimensions.z / 2,
+        },
         rotation: zero,
       },
       {
-        id: "electrical-junction-box-1",
-        name: "Junction box",
-        type: "junction-box",
+        id: "electrical-outlet-1",
+        name: "Power outlet",
+        type: "outlet",
         tradeCategory,
         material: "Weather-resistant polymer",
         materialSku: null,
-        geometryId: "electrical-junction-box-v1",
-        dimensions: { x: 0.15, y: 0.15, z: 0.08 },
-        position: { x: dimensions.x, y: 0, z: dimensions.z / 2 },
+        geometryId: "electrical-outlet-v1",
+        dimensions: { x: 0.12, y: 0.12, z: 0.06 },
+        position: {
+          x: Math.max(dimensions.x - 0.1, 0),
+          y: serviceHeight,
+          z: dimensions.z / 2,
+        },
         rotation: zero,
       },
     ];
@@ -94,7 +123,11 @@ function buildComponents(
         materialSku: null,
         geometryId: "plumbing-pipe-linear-v1",
         dimensions: { x: dimensions.x, y: 0.02, z: 0.02 },
-        position: { x: dimensions.x / 2, y: 0, z: dimensions.z / 2 },
+        position: {
+          x: dimensions.x / 2,
+          y: Math.max(serviceHeight - 0.2, 0),
+          z: dimensions.z / 2,
+        },
         rotation: zero,
       },
       {
@@ -106,7 +139,11 @@ function buildComponents(
         materialSku: null,
         geometryId: "plumbing-terminal-fitting-v1",
         dimensions: { x: 0.05, y: 0.05, z: 0.05 },
-        position: { x: dimensions.x, y: 0, z: dimensions.z / 2 },
+        position: {
+          x: dimensions.x,
+          y: Math.max(serviceHeight - 0.2, 0),
+          z: dimensions.z / 2,
+        },
         rotation: zero,
       },
     ];
@@ -122,7 +159,11 @@ function buildComponents(
       materialSku: null,
       geometryId: "carpentry-bearer-linear-v1",
       dimensions: { x: dimensions.x, y: 0.14, z: 0.045 },
-      position: { x: dimensions.x / 2, y: 0, z: dimensions.z },
+      position: {
+        x: dimensions.x / 2,
+        y: dimensions.y,
+        z: dimensions.z / 2,
+      },
       rotation: zero,
     },
     {
@@ -133,8 +174,12 @@ function buildComponents(
       material: "H3 treated pine",
       materialSku: null,
       geometryId: "carpentry-joist-linear-v1",
-      dimensions: { x: 0.09, y: dimensions.y, z: 0.045 },
-      position: { x: dimensions.x / 2, y: dimensions.y / 2, z: dimensions.z },
+      dimensions: { x: 0.09, y: 0.045, z: dimensions.z },
+      position: {
+        x: dimensions.x / 2,
+        y: dimensions.y,
+        z: dimensions.z / 2,
+      },
       rotation: zero,
     },
   ];
@@ -144,18 +189,21 @@ export function simulateCadFromText(
   prompt: string,
   quoteDimensions: QuoteDimensions,
 ): ValidatedCadLayoutPayload {
-  const tradeCategory = detectTradeCategory(prompt);
+  const tradeCategories = detectTradeCategories(prompt);
   const dimensions = resolveDimensions(prompt, quoteDimensions);
+  const structuralComponents = tradeCategories.flatMap((tradeCategory) =>
+    buildComponents(tradeCategory, dimensions),
+  );
 
   const result = CadLayoutPayloadSchema.safeParse({
     version: 1,
     units: "metres",
     coordinateSystem: "right-handed-y-up",
     rotationUnit: "radians",
-    tradeCategory,
+    tradeCategory: tradeCategories[0],
     dimensions,
     origin: { x: 0, y: 0, z: 0 },
-    structuralComponents: buildComponents(tradeCategory, dimensions),
+    structuralComponents,
   });
 
   if (!result.success) {

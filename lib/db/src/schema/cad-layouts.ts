@@ -26,10 +26,12 @@ export interface CadStructuralComponent {
     | "beam"
     | "post"
     | "joist"
+    | "wall"
     | "decking-board"
     | "handrail"
     | "conduit"
     | "cable"
+    | "outlet"
     | "junction-box"
     | "pipe"
     | "fitting"
@@ -64,7 +66,9 @@ export const cadGeneratedLayoutsTable = pgTable(
     prompt: text("prompt").notNull(),
     tradeCategory: text("trade_category").$type<CadTradeCategory>().notNull(),
     layoutJson: jsonb("layout_json").$type<CadLayoutPayload>().notNull(),
-    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true })
       .notNull()
       .defaultNow()
@@ -83,4 +87,5 @@ export const cadGeneratedLayoutsTable = pgTable(
   ],
 );
 
-export type CadGeneratedLayoutRow = typeof cadGeneratedLayoutsTable.$inferSelect;
+export type CadGeneratedLayoutRow =
+  typeof cadGeneratedLayoutsTable.$inferSelect;
