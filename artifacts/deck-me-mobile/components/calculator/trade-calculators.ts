@@ -21,9 +21,25 @@ export type TradeCalculationRule = {
 };
 
 export type TradeCalculatorDef = {
+  heading?: string;
   inputs: TradeInput[];
   outputs: (inputs: Record<string, number>) => TradeOutput[];
   rules: TradeCalculationRule[];
+};
+
+const STANDARD_DIMENSIONS_CALCULATOR: TradeCalculatorDef = {
+  heading: "Standard Dimensions",
+  inputs: [
+    { id: "lengthM", label: "Length", unit: "m", defaultValue: 1 },
+    { id: "widthM", label: "Width", unit: "m", defaultValue: 1 },
+    { id: "heightM", label: "Height", unit: "m", defaultValue: 1 },
+  ],
+  outputs: (i) => [
+    { label: "Length", value: i.lengthM, unit: "lm" },
+    { label: "Area", value: i.lengthM * i.widthM, unit: "m²" },
+    { label: "Volume", value: i.lengthM * i.widthM * i.heightM, unit: "m³" },
+  ],
+  rules: [],
 };
 
 export const TRADE_CALCULATORS: Record<string, TradeCalculatorDef> = {
@@ -118,7 +134,22 @@ export const TRADE_CALCULATORS: Record<string, TradeCalculatorDef> = {
       { keywords: ["post"], calculate: (i) => i.postSpacingM > 0 ? Math.ceil(i.lengthM / i.postSpacingM) + 1 : 0, unit: "each", unitType: "item" },
       { keywords: ["fence", "fencing", "rail", "paling", "panel", "sheet", "colorbond", "plinth"], calculate: (i) => i.lengthM, unit: "linear metre", unitType: "lm" },
     ]
-  }
+  },
+  "cabinetmaker / joinery": {
+    inputs: [
+      { id: "cabinetLengthM", label: "Total Cabinet Length", unit: "m", defaultValue: 3 },
+      { id: "benchtopLengthM", label: "Benchtop Length", unit: "m", defaultValue: 3 },
+      { id: "benchtopDepthMm", label: "Benchtop Depth", unit: "mm", defaultValue: 600, step: 10 },
+    ],
+    outputs: (i) => [
+      { label: "Cabinetry Length", value: i.cabinetLengthM, unit: "lm" },
+      { label: "Benchtop Area", value: i.benchtopLengthM * (i.benchtopDepthMm / 1000), unit: "m²" },
+    ],
+    rules: [
+      { keywords: ["benchtop", "countertop", "worktop"], calculate: (i) => i.benchtopLengthM * (i.benchtopDepthMm / 1000), unit: "square metre", unitType: "sqm" },
+      { keywords: ["cabinet", "cabinetry", "wardrobe", "joinery"], calculate: (i) => i.cabinetLengthM, unit: "linear metre", unitType: "lm" },
+    ],
+  },
 };
 
 export function normaliseTradeKey(tradeType: string | null | undefined) {
@@ -130,7 +161,45 @@ export function normaliseTradeKey(tradeType: string | null | undefined) {
   if (["bricklayer", "blocklayer", "bricklaying"].includes(t)) return "bricklayer / blocklayer";
   if (["fencing", "gates", "fencer"].includes(t)) return "fencing / gates";
   if (["concreter", "concreting"].includes(t)) return "concreter";
+  if (["cabinetmaker", "cabinet maker", "joiner", "joinery"].includes(t)) return "cabinetmaker / joinery";
   return t;
+}
+
+export function getTradeCalculator(
+  tradeType: string | null | undefined,
+): TradeCalculatorDef | undefined {
+  const tradeKey = normaliseTradeKey(tradeType);
+  if (!tradeKey || tradeKey === "trade" || tradeKey === "carpenter / joiner") {
+    return undefined;
+  }
+  return TRADE_CALCULATORS[tradeKey] ?? STANDARD_DIMENSIONS_CALCULATOR;
+}
+
+export function mapTradeDimensionsToQuote(
+  tradeType: string | null | undefined,
+  inputs: Record<string, number>,
+  fallback: { lengthM: number; widthM: number; heightM: number },
+) {
+  const tradeKey = normaliseTradeKey(tradeType);
+  if (tradeKey === "cabinetmaker / joinery") {
+    return {
+      lengthM: inputs.cabinetLengthM ?? fallback.lengthM,
+      widthM: inputs.benchtopLengthM ?? fallback.widthM,
+      heightM: (inputs.benchtopDepthMm ?? fallback.heightM * 1000) / 1000,
+    };
+  }
+  if (tradeKey === "concreter") {
+    return {
+      lengthM: inputs.lengthM ?? fallback.lengthM,
+      widthM: inputs.widthM ?? fallback.widthM,
+      heightM: (inputs.depthMm ?? fallback.heightM * 1000) / 1000,
+    };
+  }
+  return {
+    lengthM: inputs.lengthM ?? fallback.lengthM,
+    widthM: inputs.widthM ?? fallback.widthM,
+    heightM: inputs.heightM ?? fallback.heightM,
+  };
 }
 
 export function defaultTradeInputs(calculator?: TradeCalculatorDef) {

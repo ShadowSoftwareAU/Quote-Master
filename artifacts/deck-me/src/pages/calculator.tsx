@@ -62,10 +62,11 @@ import {
 import { useToast } from "@/hooks/use-toast";
 
 import {
-  TRADE_CALCULATORS,
   normaliseTradeKey,
   applyTradeRules,
   defaultTradeInputs,
+  getTradeCalculator,
+  mapTradeDimensionsToQuote,
 } from "@/components/calculator/trade-calculators";
 
 const COUNCIL_HEIGHT_M = 1.0;
@@ -402,7 +403,7 @@ export default function Calculator() {
   const [selectedTradeType, setSelectedTradeType] = useState("");
   const activeTradeType = selectedTradeType || profileTradeTypes[0] || "Trade";
   const deckCalculator = usesDeckCalculator(activeTradeType);
-  const activeTradeCalculator = TRADE_CALCULATORS[normaliseTradeKey(activeTradeType)];
+  const activeTradeCalculator = getTradeCalculator(activeTradeType);
   const calculationDimensions = useMemo(
     () => ({
       ...defaultTradeInputs(activeTradeCalculator),
@@ -671,9 +672,7 @@ export default function Calculator() {
     setSelectedTradeType(nextTradeType);
 
     setTradeDimensions(
-      defaultTradeInputs(
-        TRADE_CALCULATORS[normaliseTradeKey(nextTradeType)],
-      ),
+      defaultTradeInputs(getTradeCalculator(nextTradeType)),
     );
   };
 
@@ -873,12 +872,11 @@ export default function Calculator() {
     const quoteSpec = activeTradeCalculator
       ? {
           ...spec,
-          lengthM: calculationDimensions.lengthM ?? spec.lengthM,
-          widthM: calculationDimensions.widthM ?? 1,
-          heightM:
-            normaliseTradeKey(activeTradeType) === "concreter"
-              ? (calculationDimensions.depthMm ?? 0) / 1000
-              : (calculationDimensions.heightM ?? 0),
+          ...mapTradeDimensionsToQuote(
+            activeTradeType,
+            calculationDimensions,
+            spec,
+          ),
         }
       : spec;
     createQuote.mutate(
@@ -1635,7 +1633,7 @@ export default function Calculator() {
             <Card className="border-2 border-primary/20 bg-muted/10">
               <CardHeader className="pb-3 px-5 border-b bg-card">
                 <CardTitle className="font-black uppercase text-sm tracking-wider">
-                  Job Dimensions
+                  {activeTradeCalculator.heading ?? "Job Dimensions"}
                 </CardTitle>
                 <p className="text-xs text-muted-foreground">
                   Job measurements drive automatic quantities below.

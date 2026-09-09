@@ -40,10 +40,11 @@ import { useColors } from "@/hooks/useColors";
 import { useProfileAccess } from "@/lib/access";
 
 import {
-  TRADE_CALCULATORS,
   normaliseTradeKey,
   applyTradeRules,
   defaultTradeInputs,
+  getTradeCalculator,
+  mapTradeDimensionsToQuote,
 } from "@/components/calculator/trade-calculators";
 
 type LineItemDraft = {
@@ -168,7 +169,7 @@ function NewQuoteScreen() {
     : [];
   const [selectedTradeType, setSelectedTradeType] = useState("");
   const activeTradeType = selectedTradeType || profileTradeTypes[0] || "Trade";
-  const activeTradeCalculator = TRADE_CALCULATORS[normaliseTradeKey(activeTradeType)];
+  const activeTradeCalculator = getTradeCalculator(activeTradeType);
   const deckQuote = normaliseTradeType(activeTradeType) === "carpenter / joiner";
   const { data: tradeCatalogue } = useListTradeCatalogue();
   const activeTradeCatalogueEntry = tradeCatalogue?.find(
@@ -309,7 +310,7 @@ function NewQuoteScreen() {
     setSelectedTradeType(tradeType);
 
     setTradeDimensions(
-      defaultTradeInputs(TRADE_CALCULATORS[normaliseTradeKey(tradeType)]),
+      defaultTradeInputs(getTradeCalculator(tradeType)),
     );
   }
 
@@ -498,12 +499,11 @@ function NewQuoteScreen() {
     const quoteSpec = activeTradeCalculator
       ? {
           ...spec,
-          lengthM: calculationDimensions.lengthM ?? spec.lengthM,
-          widthM: calculationDimensions.widthM ?? 1,
-          heightM:
-            normaliseTradeKey(activeTradeType) === "concreter"
-              ? (calculationDimensions.depthMm ?? 0) / 1000
-              : (calculationDimensions.heightM ?? 0),
+          ...mapTradeDimensionsToQuote(
+            activeTradeType,
+            calculationDimensions,
+            spec,
+          ),
         }
       : spec;
     createMut.mutate(
@@ -581,7 +581,7 @@ function NewQuoteScreen() {
               marginBottom: 10,
             }}
           >
-            JOB DIMENSIONS
+            {(activeTradeCalculator.heading ?? "Job Dimensions").toUpperCase()}
           </Text>
           <View style={{ gap: 12 }}>
             {activeTradeCalculator.inputs.map((input) => (
