@@ -8,7 +8,7 @@ import { useProfileAccess } from "@/lib/access";
 
 const navItems = [
   { href: "/", label: "Dashboard", icon: Hammer },
-  { href: "/calculator", label: "Calculator", icon: Calculator },
+  { href: "/calculator", label: "Quote Builder", icon: Calculator },
   { href: "/quotes", label: "Quotes", icon: FileText },
   { href: "/customers", label: "Customers", icon: Users },
   { href: "/materials", label: "Materials", icon: Box },

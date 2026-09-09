@@ -15,6 +15,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import {
   useCreateOnboardingProfile,
   getGetProfileSettingsQueryKey,
+  useListTradeCatalogue,
   type BusinessRole,
 } from "@workspace/api-client-react";
 
@@ -25,7 +26,7 @@ type OnboardingDraft = {
   businessName: string;
   phoneNumber: string;
   role: BusinessRole | "";
-  tradeType: string;
+  tradeTypes: string[];
   licenseNumber: string;
 };
 
@@ -33,7 +34,7 @@ const EMPTY_DRAFT: OnboardingDraft = {
   businessName: "",
   phoneNumber: "",
   role: "",
-  tradeType: "",
+  tradeTypes: [],
   licenseNumber: "",
 };
 
@@ -44,6 +45,7 @@ export default function OnboardingScreen() {
   const router = useRouter();
   const queryClient = useQueryClient();
   const createProfile = useCreateOnboardingProfile();
+  const { data: tradeCatalogue } = useListTradeCatalogue();
   const draftQueryKey = ["onboardingDraft", userId] as const;
 
   const [draft, setDraft] = useState<OnboardingDraft>(
@@ -72,7 +74,8 @@ export default function OnboardingScreen() {
     if (draft.businessName.trim().length < 2) newErrors.businessName = "Business name must be at least 2 characters.";
     if (!/^\+?[0-9 ()-]+$/.test(draft.phoneNumber) || draft.phoneNumber.trim().length < 8) newErrors.phoneNumber = "Enter a valid phone number.";
     if (!draft.role) newErrors.role = "Please select a system role.";
-    if (draft.tradeType.trim().length < 2) newErrors.tradeType = "Trade type must be at least 2 characters.";
+    if (draft.tradeTypes.length === 0) newErrors.tradeTypes = "Select at least one trade.";
+    if (draft.tradeTypes.length > 3) newErrors.tradeTypes = "Select up to three trades.";
     if (draft.licenseNumber && !/^[A-Za-z0-9 ./-]+$/.test(draft.licenseNumber)) newErrors.licenseNumber = "Invalid characters in licence number.";
     
     setErrors(newErrors);
@@ -87,7 +90,8 @@ export default function OnboardingScreen() {
         businessName: draft.businessName.trim(),
         phoneNumber: draft.phoneNumber.trim(),
         role: draft.role as BusinessRole,
-        tradeType: draft.tradeType.trim(),
+        tradeType: draft.tradeTypes[0],
+        tradeTypes: draft.tradeTypes,
         licenseNumber: draft.licenseNumber.trim() || null,
       }
     }, {
@@ -103,6 +107,31 @@ export default function OnboardingScreen() {
         Alert.alert("Could not save profile", err?.message || "Please check your inputs and try again.");
       }
     });
+  }
+
+  function toggleTrade(tradeType: string) {
+    if (draft.tradeTypes.includes(tradeType)) {
+      updateDraft(
+        "tradeTypes",
+        draft.tradeTypes.filter((value) => value !== tradeType),
+      );
+      return;
+    }
+    if (draft.tradeTypes.length >= 3) {
+      setErrors((current) => ({
+        ...current,
+        tradeTypes: "Remove a trade before adding another.",
+      }));
+      return;
+    }
+    updateDraft("tradeTypes", [...draft.tradeTypes, tradeType]);
+  }
+
+  function makePrimary(tradeType: string) {
+    updateDraft("tradeTypes", [
+      tradeType,
+      ...draft.tradeTypes.filter((value) => value !== tradeType),
+    ]);
   }
 
   return (
@@ -177,14 +206,40 @@ export default function OnboardingScreen() {
           {errors.role ? <Text style={{ color: colors.destructive, fontSize: 12, fontFamily: "Inter_500Medium" }}>{errors.role}</Text> : null}
         </View>
 
-        <View style={{ gap: 6 }}>
-          <Text style={{ fontFamily: "Inter_700Bold", color: colors.foreground, fontSize: 12 }}>PRIMARY TRADE TYPE</Text>
-          <TextInputStyled
-            value={draft.tradeType}
-            onChangeText={(text) => updateDraft("tradeType", text)}
-            placeholder="e.g. Carpenter, Landscaper"
-          />
-          {errors.tradeType ? <Text style={{ color: colors.destructive, fontSize: 12, fontFamily: "Inter_500Medium" }}>{errors.tradeType}</Text> : null}
+        <View style={{ gap: 8 }}>
+          <Text style={{ fontFamily: "Inter_700Bold", color: colors.foreground, fontSize: 12 }}>TRADE TYPES</Text>
+          <Text style={{ color: colors.mutedForeground, fontFamily: "Inter_500Medium", fontSize: 12 }}>
+            Select up to three trades. The first is your primary trade.
+          </Text>
+          {draft.tradeTypes.map((tradeType, index) => (
+            <View key={tradeType} style={{ alignItems: "center", backgroundColor: colors.card, borderColor: index === 0 ? colors.primary : colors.border, borderRadius: colors.radius, borderWidth: 2, flexDirection: "row", justifyContent: "space-between", padding: 12 }}>
+              <View>
+                <Text style={{ color: colors.foreground, fontFamily: "Inter_700Bold", fontSize: 13 }}>{tradeType}</Text>
+                {index === 0 ? <Text style={{ color: colors.primary, fontFamily: "Inter_700Bold", fontSize: 10, marginTop: 2 }}>PRIMARY</Text> : null}
+              </View>
+              {index > 0 ? (
+                <Pressable onPress={() => makePrimary(tradeType)} style={{ padding: 8 }}>
+                  <Text style={{ color: colors.primary, fontFamily: "Inter_700Bold", fontSize: 11 }}>MAKE PRIMARY</Text>
+                </Pressable>
+              ) : null}
+            </View>
+          ))}
+          <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
+            {tradeCatalogue?.map((entry) => {
+              const selected = draft.tradeTypes.includes(entry.value);
+              return (
+                <Pressable
+                  key={entry.value}
+                  onPress={() => toggleTrade(entry.value)}
+                  style={{ alignItems: "center", backgroundColor: selected ? colors.primary : colors.card, borderColor: selected ? colors.primary : colors.border, borderRadius: colors.radius, borderWidth: 1, flexDirection: "row", gap: 6, paddingHorizontal: 10, paddingVertical: 9 }}
+                >
+                  <Feather color={selected ? colors.primaryForeground : colors.mutedForeground} name={selected ? "check" : "plus"} size={14} />
+                  <Text style={{ color: selected ? colors.primaryForeground : colors.foreground, fontFamily: "Inter_700Bold", fontSize: 11 }}>{entry.value}</Text>
+                </Pressable>
+              );
+            })}
+          </View>
+          {errors.tradeTypes ? <Text style={{ color: colors.destructive, fontSize: 12, fontFamily: "Inter_500Medium" }}>{errors.tradeTypes}</Text> : null}
         </View>
 
         <View style={{ gap: 6 }}>

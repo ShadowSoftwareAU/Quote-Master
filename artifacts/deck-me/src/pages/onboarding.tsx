@@ -5,7 +5,11 @@ import * as z from "zod";
 import { useLocation } from "wouter";
 import { useAuth } from "@clerk/react";
 import { useQueryClient } from "@tanstack/react-query";
-import { useCreateOnboardingProfile, getGetProfileSettingsQueryKey } from "@workspace/api-client-react";
+import {
+  useCreateOnboardingProfile,
+  getGetProfileSettingsQueryKey,
+  useListTradeCatalogue,
+} from "@workspace/api-client-react";
 
 import {
   Form,
@@ -21,12 +25,13 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Hammer } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { TradeMultiSelect } from "@/components/profile/TradeMultiSelect";
 
 const onboardingSchema = z.object({
   businessName: z.string().trim().min(2, "Business name must be at least 2 characters").max(120),
   phoneNumber: z.string().trim().min(8, "Phone number must be at least 8 characters").max(20).regex(/^\+?[0-9 ()-]+$/, "Invalid phone number format"),
   role: z.enum(["Owner", "Employee", "Subcontractor"], { required_error: "Please select a role" }),
-  tradeType: z.string().trim().min(2, "Trade type must be at least 2 characters").max(80),
+  tradeTypes: z.array(z.string().trim().min(2).max(80)).min(1, "Select at least one trade").max(3, "Select up to three trades"),
   licenseNumber: z.string().trim().regex(/^[A-Za-z0-9 ./-]+$/, "Invalid characters in license number").max(50).optional().or(z.literal("")),
 });
 
@@ -38,6 +43,7 @@ export default function Onboarding() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const createProfile = useCreateOnboardingProfile();
+  const { data: tradeCatalogue } = useListTradeCatalogue();
   const draftQueryKey = ["onboardingDraft", userId] as const;
   const cachedDraft =
     queryClient.getQueryData<Partial<OnboardingValues>>(draftQueryKey);
@@ -48,7 +54,7 @@ export default function Onboarding() {
       businessName: cachedDraft?.businessName ?? "",
       phoneNumber: cachedDraft?.phoneNumber ?? "",
       role: cachedDraft?.role,
-      tradeType: cachedDraft?.tradeType ?? "",
+      tradeTypes: cachedDraft?.tradeTypes ?? [],
       licenseNumber: cachedDraft?.licenseNumber ?? "",
     },
   });
@@ -67,7 +73,8 @@ export default function Onboarding() {
           businessName: data.businessName,
           phoneNumber: data.phoneNumber,
           role: data.role,
-          tradeType: data.tradeType,
+          tradeType: data.tradeTypes[0],
+          tradeTypes: data.tradeTypes,
           licenseNumber: data.licenseNumber || null,
         }
       },
@@ -162,13 +169,22 @@ export default function Onboarding() {
 
                 <FormField
                   control={form.control}
-                  name="tradeType"
+                  name="tradeTypes"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Primary Trade Type</FormLabel>
+                      <FormLabel className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Trade Types</FormLabel>
                       <FormControl>
-                        <Input placeholder="e.g. Carpenter, Landscaper" className="font-medium bg-card h-12" {...field} />
+                        <TradeMultiSelect
+                          entries={tradeCatalogue ?? []}
+                          selected={field.value}
+                          maxSelections={3}
+                          disabled={createProfile.isPending}
+                          onChange={field.onChange}
+                        />
                       </FormControl>
+                      <p className="text-xs font-medium text-muted-foreground/80">
+                        Select up to three trades. The first is your primary trade.
+                      </p>
                       <FormMessage />
                     </FormItem>
                   )}

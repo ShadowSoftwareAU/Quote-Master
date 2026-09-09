@@ -1,5 +1,6 @@
 import { useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@clerk/expo";
+import { Feather } from "@expo/vector-icons";
 import {
   getListQuotesQueryKey,
   getGetDashboardSummaryQueryKey,
@@ -11,11 +12,12 @@ import {
   useGetProfileSettings,
   useListTradeTemplatePresets,
   useListTradeTemplates,
+  useListTradeCatalogue,
   type TradeTemplatePreset,
   type TradeTemplate,
 } from "@workspace/api-client-react";
 import { Redirect, router, useLocalSearchParams } from "expo-router";
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import {
   Alert,
   FlatList,
@@ -51,6 +53,16 @@ type LineItemDraft = {
 };
 
 let nextLineItemId = 1;
+const GENERIC_QUOTE_SPEC = {
+  lengthM: 1,
+  widthM: 1,
+  heightM: 0,
+  boardWidthMm: 90,
+  joistSpacingMm: 450,
+  bearerSpacingMm: 1800,
+  postSpacingMm: 1800,
+  wastageFactor: 1,
+};
 
 function lineTotal(item: LineItemDraft) {
   const quantity = effectiveQuantity(item);
@@ -69,6 +81,14 @@ function effectiveQuantity(item: LineItemDraft) {
 
 function lineCost(item: LineItemDraft) {
   return Math.round(effectiveQuantity(item) * (Number(item.unitCost) || 0) * 100) / 100;
+}
+
+function normaliseTradeType(tradeType: string | null | undefined) {
+  const normalised = tradeType?.trim().toLowerCase() ?? "";
+  if (["carpenter", "carpentry", "decking"].includes(normalised)) {
+    return "carpenter / joiner";
+  }
+  return normalised;
 }
 
 const UNIT_TYPES = [
@@ -133,6 +153,18 @@ function NewQuoteScreen() {
       queryKey: [...getGetProfileSettingsQueryKey(), userId],
     },
   });
+  const profileTradeTypes = profile
+    ? profile.tradeTypes?.length > 0
+      ? profile.tradeTypes
+      : [profile.tradeType]
+    : [];
+  const [selectedTradeType, setSelectedTradeType] = useState("");
+  const activeTradeType = selectedTradeType || profileTradeTypes[0] || "Trade";
+  const { data: tradeCatalogue } = useListTradeCatalogue();
+  const activeTradeCatalogueEntry = tradeCatalogue?.find(
+    (entry) =>
+      normaliseTradeType(entry.value) === normaliseTradeType(activeTradeType),
+  );
   const {
     data: templates,
     isLoading: templatesLoading,
@@ -145,20 +177,34 @@ function NewQuoteScreen() {
     },
   });
   const { data: personalPresets, error: presetsError } =
-    useListTradeTemplatePresets({
-      query: {
-        retry: false,
-        queryKey: [...getListTradeTemplatePresetsQueryKey(), userId],
-        enabled: isLoaded && isSignedIn,
+    useListTradeTemplatePresets(
+      { tradeType: activeTradeType },
+      {
+        query: {
+          retry: false,
+          queryKey: [
+            ...getListTradeTemplatePresetsQueryKey({
+              tradeType: activeTradeType,
+            }),
+            userId,
+          ],
+          enabled:
+            isLoaded &&
+            isSignedIn &&
+            activeTradeType !== "Trade" &&
+            profileTradeTypes.includes(activeTradeType),
+        },
       },
-    });
+    );
   const createMut = useCreateQuote();
 
   const spec = useMemo(() => {
     try {
-      return params.spec ? JSON.parse(params.spec) : {};
+      return params.spec
+        ? { ...GENERIC_QUOTE_SPEC, ...JSON.parse(params.spec) }
+        : GENERIC_QUOTE_SPEC;
     } catch {
-      return {};
+      return GENERIC_QUOTE_SPEC;
     }
   }, [params.spec]);
 
@@ -167,6 +213,15 @@ function NewQuoteScreen() {
   const [siteAddress, setSiteAddress] = useState("");
   const [lineItems, setLineItems] = useState<LineItemDraft[]>([]);
   const [selectedTemplateId, setSelectedTemplateId] = useState("custom");
+
+  useEffect(() => {
+    if (
+      profileTradeTypes.length > 0 &&
+      !profileTradeTypes.includes(selectedTradeType)
+    ) {
+      setSelectedTradeType(profileTradeTypes[0]);
+    }
+  }, [profileTradeTypes.join("|"), selectedTradeType]);
 
   const additionalSubtotal = useMemo(
     () => lineItems.reduce((sum, item) => sum + lineTotal(item), 0),
@@ -193,6 +248,50 @@ function NewQuoteScreen() {
     ]);
   }
 
+  function addScopeItem(description: string) {
+    setLineItems((items) => [
+      ...items,
+      {
+        id: nextLineItemId++,
+        description,
+        quantity: "1",
+        unit: "each",
+        unitType: "item",
+        unitCost: "0",
+        markupPercentage: "0",
+        wastagePercentage: "0",
+        isBulkItem: false,
+        saveToMyPresets: false,
+      },
+    ]);
+  }
+
+  function applyTradeChange(tradeType: string) {
+    setLineItems([]);
+    setSelectedTemplateId("custom");
+    setSelectedTradeType(tradeType);
+  }
+
+  function changeTrade(tradeType: string) {
+    if (tradeType === activeTradeType) return;
+    if (lineItems.length === 0) {
+      applyTradeChange(tradeType);
+      return;
+    }
+    Alert.alert(
+      "Change quote trade?",
+      "Changing trade will clear the current quote items.",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Clear and change",
+          style: "destructive",
+          onPress: () => applyTradeChange(tradeType),
+        },
+      ],
+    );
+  }
+
   function updateLineItem(
     id: number,
     field: Exclude<keyof LineItemDraft, "id">,
@@ -205,10 +304,10 @@ function NewQuoteScreen() {
 
   const matchingTemplates = useMemo(
     () => (templates ?? []).filter((template) =>
-      profile?.tradeType
-      && template.tradeType.trim().toLowerCase() === profile.tradeType.trim().toLowerCase(),
+      activeTradeType !== "Trade"
+      && normaliseTradeType(template.tradeType) === normaliseTradeType(activeTradeType),
     ),
-    [profile?.tradeType, templates],
+    [activeTradeType, templates],
   );
 
   function applyTemplate(templateId: string) {
@@ -282,7 +381,7 @@ function NewQuoteScreen() {
         data: {
           title,
           customerId,
-           tradeType: profile?.tradeType,
+           tradeType: activeTradeType,
           siteAddress: siteAddress || undefined,
           lengthM: spec.lengthM,
           widthM: spec.widthM,
@@ -445,6 +544,54 @@ function NewQuoteScreen() {
           )}
         </View>
       </View>
+      {profileTradeTypes.length > 1 ? (
+        <View style={{ gap: 8 }}>
+          <Text style={{ fontFamily: "Inter_700Bold", fontSize: 10, letterSpacing: 1.2, color: colors.mutedForeground }}>
+            QUOTE TRADE
+          </Text>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }}>
+            {profileTradeTypes.map((tradeType) => {
+              const selected = tradeType === activeTradeType;
+              return (
+                <Pressable
+                  key={tradeType}
+                  onPress={() => changeTrade(tradeType)}
+                  style={{ backgroundColor: selected ? colors.primary : colors.card, borderColor: selected ? colors.primary : colors.border, borderRadius: colors.radius, borderWidth: 1, paddingHorizontal: 14, paddingVertical: 11 }}
+                >
+                  <Text style={{ color: selected ? colors.primaryForeground : colors.foreground, fontFamily: "Inter_700Bold", fontSize: 12 }}>
+                    {tradeType.toUpperCase()}
+                  </Text>
+                </Pressable>
+              );
+            })}
+          </ScrollView>
+        </View>
+      ) : null}
+      {activeTradeCatalogueEntry ? (
+        <View style={{ backgroundColor: colors.card, borderColor: colors.primary + "55", borderRadius: colors.radius, borderWidth: 2, gap: 10, padding: 14 }}>
+          <Text style={{ color: colors.foreground, fontFamily: "Chivo_700Bold", fontSize: 15 }}>
+            {activeTradeType.toUpperCase()} QUOTING OPTIONS
+          </Text>
+          <Text style={{ color: colors.mutedForeground, fontFamily: "Inter_500Medium", fontSize: 12 }}>
+            Tap work items to add them to this quote.
+          </Text>
+          <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
+            {activeTradeCatalogueEntry.quotingFunctions.map((item) => (
+              <Pressable
+                key={item}
+                onPress={() => addScopeItem(item)}
+                style={{ alignItems: "center", backgroundColor: colors.background, borderColor: colors.border, borderRadius: colors.radius, borderWidth: 1, flexDirection: "row", gap: 5, paddingHorizontal: 10, paddingVertical: 9 }}
+              >
+                <Feather color={colors.primary} name="plus" size={14} />
+                <Text style={{ color: colors.foreground, fontFamily: "Inter_700Bold", fontSize: 11 }}>{item}</Text>
+              </Pressable>
+            ))}
+          </View>
+          <Text style={{ color: colors.mutedForeground, fontFamily: "Inter_500Medium", fontSize: 11, lineHeight: 16 }}>
+            Common parameters: {activeTradeCatalogueEntry.quotingParameters.join(", ")}
+          </Text>
+        </View>
+      ) : null}
       <View style={{ gap: 8 }}>
         <Text style={{ fontFamily: "Inter_700Bold", fontSize: 10, letterSpacing: 1.2, color: colors.mutedForeground }}>
           SAVED TRADE TEMPLATE
@@ -501,11 +648,11 @@ function NewQuoteScreen() {
           </Text>
         ) : profileLoading || templatesLoading ? (
           <Text style={{ color: colors.mutedForeground, fontFamily: "Inter_500Medium", fontSize: 12 }}>
-            Loading templates for {profile?.tradeType || "your trade"}…
+            Loading templates for {activeTradeType}…
           </Text>
         ) : matchingTemplates.length === 0 ? (
           <Text style={{ color: colors.mutedForeground, fontFamily: "Inter_500Medium", fontSize: 12 }}>
-            No saved templates match {profile?.tradeType || "your primary trade"}. Custom lines are ready.
+            No saved templates match {activeTradeType}. Custom lines are ready.
           </Text>
         ) : (
           <Text style={{ color: colors.mutedForeground, fontFamily: "Inter_500Medium", fontSize: 12 }}>
@@ -521,7 +668,7 @@ function NewQuoteScreen() {
                     MY QUICK-ADD PRESETS
                   </Text>
                   <Text style={{ fontFamily: "Inter_500Medium", fontSize: 12, color: colors.mutedForeground, marginTop: 3 }}>
-                    Saved for {profile?.tradeType || "your trade"}
+                    Saved for {activeTradeType}
                   </Text>
                 </View>
                 <Text style={{ fontFamily: "Inter_700Bold", fontSize: 12, color: colors.mutedForeground }}>

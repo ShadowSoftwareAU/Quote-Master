@@ -3,17 +3,18 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { useAuth } from "@clerk/react";
 import { useQueryClient } from "@tanstack/react-query";
-import { 
-  useGetProfileSettings, 
-  getGetProfileSettingsQueryKey, 
+import {
+  useGetProfileSettings,
+  getGetProfileSettingsQueryKey,
   getGetDashboardSummaryQueryKey,
   getGetPnlReportQueryKey,
   getListCustomersQueryKey,
   getListMaterialsQueryKey,
   getListQuotesQueryKey,
   getListMasterProjectsQueryKey,
+  useListTradeCatalogue,
   useSeedDemoData,
-  useUpdateProfileSettings 
+  useUpdateProfileSettings,
 } from "@workspace/api-client-react";
 import { useEffect, useRef } from "react";
 
@@ -26,17 +27,30 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+} from "@/components/ui/card";
 import { Database, UserCog } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Skeleton } from "@/components/ui/skeleton";
+import { TradeMultiSelect } from "@/components/profile/TradeMultiSelect";
 
 const profileSchema = z.object({
-  role: z.enum(["Owner", "Employee", "Subcontractor"], { required_error: "Please select a role" }),
-  tradeType: z.string().trim().min(2, "Trade type must be at least 2 characters").max(80),
-  licenseNumber: z.string().trim().regex(/^[A-Za-z0-9 ./-]+$/, "Invalid characters in licence number").max(50).optional().or(z.literal("")),
+  tradeTypes: z
+    .array(z.string().trim().min(2).max(80))
+    .min(1, "Select at least one trade"),
+  licenseNumber: z
+    .string()
+    .trim()
+    .regex(/^[A-Za-z0-9 ./-]+$/, "Invalid characters in licence number")
+    .max(50)
+    .optional()
+    .or(z.literal("")),
 });
 
 type ProfileValues = z.infer<typeof profileSchema>;
@@ -47,13 +61,20 @@ export default function ProfileSettings() {
   const queryClient = useQueryClient();
 
   const profileQueryKey = [...getGetProfileSettingsQueryKey(), userId];
-  const { data: profile, isLoading, error, refetch } = useGetProfileSettings({
+  const {
+    data: profile,
+    isLoading,
+    error,
+    refetch,
+  } = useGetProfileSettings({
     query: {
       enabled: isLoaded && isSignedIn,
       retry: false,
       queryKey: profileQueryKey,
-    }
+    },
   });
+  const { data: tradeCatalogue, isLoading: isCatalogueLoading } =
+    useListTradeCatalogue();
 
   const updateProfile = useUpdateProfileSettings();
   const seedDemoData = useSeedDemoData();
@@ -61,8 +82,7 @@ export default function ProfileSettings() {
   const form = useForm<ProfileValues>({
     resolver: zodResolver(profileSchema),
     defaultValues: {
-      role: undefined,
-      tradeType: "",
+      tradeTypes: [],
       licenseNumber: "",
     },
   });
@@ -73,8 +93,10 @@ export default function ProfileSettings() {
     if (profile && initializedForId.current !== userId) {
       initializedForId.current = userId as string;
       form.reset({
-        role: profile.role,
-        tradeType: profile.tradeType,
+        tradeTypes:
+          profile.tradeTypes?.length > 0
+            ? profile.tradeTypes
+            : [profile.tradeType],
         licenseNumber: profile.licenseNumber || "",
       });
     }
@@ -82,20 +104,23 @@ export default function ProfileSettings() {
 
   function onSubmit(data: ProfileValues) {
     updateProfile.mutate(
-      { 
+      {
         data: {
-          role: data.role,
-          tradeType: data.tradeType,
+          tradeTypes: data.tradeTypes,
           licenseNumber: data.licenseNumber || null,
-        }
+        },
       },
       {
         onSuccess: (updatedProfile) => {
           queryClient.setQueryData(profileQueryKey, updatedProfile);
-          queryClient.invalidateQueries({ queryKey: getListMasterProjectsQueryKey() });
+          queryClient.invalidateQueries({
+            queryKey: getListMasterProjectsQueryKey(),
+          });
           form.reset({
-            role: updatedProfile.role,
-            tradeType: updatedProfile.tradeType,
+            tradeTypes:
+              updatedProfile.tradeTypes?.length > 0
+                ? updatedProfile.tradeTypes
+                : [updatedProfile.tradeType],
             licenseNumber: updatedProfile.licenseNumber || "",
           });
           toast({
@@ -106,11 +131,12 @@ export default function ProfileSettings() {
         onError: (err: any) => {
           toast({
             title: "Could not save profile",
-            description: err?.message || "Please check your inputs and try again.",
+            description:
+              err?.message || "Please check your inputs and try again.",
             variant: "destructive",
           });
         },
-      }
+      },
     );
   }
 
@@ -120,12 +146,24 @@ export default function ProfileSettings() {
       {
         onSuccess: (result) => {
           void Promise.all([
-            queryClient.invalidateQueries({ queryKey: getListCustomersQueryKey() }),
-            queryClient.invalidateQueries({ queryKey: getListMaterialsQueryKey() }),
-            queryClient.invalidateQueries({ queryKey: getListQuotesQueryKey() }),
-            queryClient.invalidateQueries({ queryKey: getListMasterProjectsQueryKey() }),
-            queryClient.invalidateQueries({ queryKey: getGetDashboardSummaryQueryKey() }),
-            queryClient.invalidateQueries({ queryKey: getGetPnlReportQueryKey() }),
+            queryClient.invalidateQueries({
+              queryKey: getListCustomersQueryKey(),
+            }),
+            queryClient.invalidateQueries({
+              queryKey: getListMaterialsQueryKey(),
+            }),
+            queryClient.invalidateQueries({
+              queryKey: getListQuotesQueryKey(),
+            }),
+            queryClient.invalidateQueries({
+              queryKey: getListMasterProjectsQueryKey(),
+            }),
+            queryClient.invalidateQueries({
+              queryKey: getGetDashboardSummaryQueryKey(),
+            }),
+            queryClient.invalidateQueries({
+              queryKey: getGetPnlReportQueryKey(),
+            }),
           ]);
           toast({
             title: "Demo data ready",
@@ -135,10 +173,14 @@ export default function ProfileSettings() {
         onError: (err: unknown) => {
           const apiError = err as { status?: number; message?: string };
           toast({
-            title: apiError.status === 409 ? "Demo data already exists" : "Could not seed demo data",
-            description: apiError.status === 409
-              ? "This Owner workspace has already been prepared for the presentation."
-              : apiError.message || "Please try again.",
+            title:
+              apiError.status === 409
+                ? "Demo data already exists"
+                : "Could not seed demo data",
+            description:
+              apiError.status === 409
+                ? "This Owner workspace has already been prepared for the presentation."
+                : apiError.message || "Please try again.",
             variant: apiError.status === 409 ? "default" : "destructive",
           });
         },
@@ -146,7 +188,7 @@ export default function ProfileSettings() {
     );
   }
 
-  if (isLoading) {
+  if (isLoading || isCatalogueLoading) {
     return (
       <div className="space-y-6 max-w-2xl mx-auto">
         <div className="flex items-center gap-4">
@@ -170,8 +212,12 @@ export default function ProfileSettings() {
   if (error) {
     return (
       <div className="flex flex-col items-center justify-center p-8 space-y-4 text-center max-w-md mx-auto">
-        <h2 className="font-display font-black text-2xl uppercase text-foreground">Ah, bugger</h2>
-        <p className="text-muted-foreground">We couldn't load your profile settings.</p>
+        <h2 className="font-display font-black text-2xl uppercase text-foreground">
+          Ah, bugger
+        </h2>
+        <p className="text-muted-foreground">
+          We couldn't load your profile settings.
+        </p>
         <Button onClick={() => refetch()}>Try Again</Button>
       </div>
     );
@@ -184,25 +230,37 @@ export default function ProfileSettings() {
           <UserCog className="w-6 h-6 text-primary-foreground" />
         </div>
         <div>
-          <h1 className="text-3xl font-black uppercase tracking-tight text-foreground">Profile Settings</h1>
-          <p className="text-muted-foreground font-medium">Manage your trade details and view your system role.</p>
+          <h1 className="text-3xl font-black uppercase tracking-tight text-foreground">
+            Profile Settings
+          </h1>
+          <p className="text-muted-foreground font-medium">
+            Manage your trade details and view your system role.
+          </p>
         </div>
       </div>
 
       <Card className="border-2 shadow-sm">
         <CardHeader className="bg-muted/30 border-b pb-6">
-          <CardTitle className="font-display font-black uppercase text-xl">Business Profile</CardTitle>
-          <CardDescription>Your core business contact details (read-only).</CardDescription>
+          <CardTitle className="font-display font-black uppercase text-xl">
+            Business Profile
+          </CardTitle>
+          <CardDescription>
+            Your core business contact details (read-only).
+          </CardDescription>
         </CardHeader>
         <CardContent className="pt-6 space-y-4">
           <div>
-            <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Business Name</label>
+            <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+              Business Name
+            </label>
             <div className="mt-1 p-3 bg-muted rounded-md text-foreground font-medium border border-border">
               {profile?.businessName || "Not set"}
             </div>
           </div>
           <div>
-            <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Phone Number</label>
+            <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+              Phone Number
+            </label>
             <div className="mt-1 p-3 bg-muted rounded-md text-foreground font-medium border border-border">
               {profile?.phoneNumber || "Not set"}
             </div>
@@ -212,44 +270,53 @@ export default function ProfileSettings() {
 
       <Card className="border-2 shadow-sm">
         <CardHeader className="bg-muted/30 border-b pb-6">
-          <CardTitle className="font-display font-black uppercase text-xl">Trade Settings</CardTitle>
-          <CardDescription>Your role is managed by an Owner. You can update your trade credentials.</CardDescription>
+          <CardTitle className="font-display font-black uppercase text-xl">
+            Trade Settings
+          </CardTitle>
+          <CardDescription>
+            Your role is managed by an Owner. You can update your trade
+            credentials.
+          </CardDescription>
         </CardHeader>
         <CardContent className="pt-6">
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-5">
-              <FormField
-                control={form.control}
-                name="role"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel className="text-xs font-bold uppercase tracking-wider text-muted-foreground">System Role</FormLabel>
-                      <Select onValueChange={field.onChange} value={field.value} disabled>
-                      <FormControl>
-                        <SelectTrigger className="font-medium bg-card h-12">
-                          <SelectValue placeholder="Select role..." />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        <SelectItem value="Owner">Owner</SelectItem>
-                        <SelectItem value="Employee">Employee</SelectItem>
-                        <SelectItem value="Subcontractor">Subcontractor</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+              <div>
+                <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                  System Role
+                </p>
+                <div className="mt-2 flex h-12 items-center rounded-md border border-border bg-muted px-3 font-medium text-foreground">
+                  {profile?.role || "Not assigned"}
+                </div>
+                <p className="mt-2 text-xs text-muted-foreground">
+                  Your system role is managed separately and is not required
+                  when saving trade details.
+                </p>
+              </div>
 
               <FormField
                 control={form.control}
-                name="tradeType"
+                name="tradeTypes"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Primary Trade Type</FormLabel>
+                    <FormLabel className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                      Trade Types
+                    </FormLabel>
                     <FormControl>
-                      <Input placeholder="e.g. Carpenter, Landscaper" className="font-medium bg-card h-12" {...field} />
+                      <TradeMultiSelect
+                        entries={tradeCatalogue ?? []}
+                        selected={field.value}
+                        maxSelections={profile?.isMasterBuilder ? null : 3}
+                        disabled={updateProfile.isPending}
+                        onChange={field.onChange}
+                      />
                     </FormControl>
+                    <p className="text-xs font-medium text-muted-foreground/80">
+                      The first trade is your primary trade.{" "}
+                      {profile?.isMasterBuilder
+                        ? "Master Builders can select all relevant trades."
+                        : "Select up to three trades."}
+                    </p>
                     <FormMessage />
                   </FormItem>
                 )}
@@ -260,12 +327,19 @@ export default function ProfileSettings() {
                 name="licenseNumber"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Builder / Contractor Licence Number</FormLabel>
+                    <FormLabel className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                      Builder / Contractor Licence Number
+                    </FormLabel>
                     <FormControl>
-                      <Input placeholder="Optional" className="font-medium bg-card h-12" {...field} />
+                      <Input
+                        placeholder="Optional"
+                        className="font-medium bg-card h-12"
+                        {...field}
+                      />
                     </FormControl>
                     <p className="text-xs font-medium text-muted-foreground/80 mt-2">
-                      Licence details are used to ensure quotes conform to Australian Building Codes and regulations.
+                      Licence details are used to ensure quotes conform to
+                      Australian Building Codes and regulations.
                     </p>
                     <FormMessage />
                   </FormItem>
@@ -273,8 +347,8 @@ export default function ProfileSettings() {
               />
 
               <div className="pt-4">
-                <Button 
-                  type="submit" 
+                <Button
+                  type="submit"
                   className="w-full h-14 text-base font-bold uppercase tracking-widest"
                   disabled={updateProfile.isPending || !form.formState.isDirty}
                 >
@@ -296,7 +370,8 @@ export default function ProfileSettings() {
               </CardTitle>
             </div>
             <CardDescription>
-              Development only. Creates presentation customers, materials, quotes, and one Master Project for this Owner workspace.
+              Development only. Creates presentation customers, materials,
+              quotes, and one Master Project for this Owner workspace.
             </CardDescription>
           </CardHeader>
           <CardContent className="pt-6 space-y-3">
@@ -307,7 +382,9 @@ export default function ProfileSettings() {
               disabled={seedDemoData.isPending}
               onClick={seedPresentationData}
             >
-              {seedDemoData.isPending ? "Seeding Demo Data..." : "Seed Demo Data"}
+              {seedDemoData.isPending
+                ? "Seeding Demo Data..."
+                : "Seed Demo Data"}
             </Button>
             <p className="text-xs text-muted-foreground">
               This action can only run once and is not available in production.

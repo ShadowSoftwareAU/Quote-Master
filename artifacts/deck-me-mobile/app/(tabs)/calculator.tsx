@@ -271,9 +271,98 @@ function BomLineItem({ line, colors }: { line: EnrichedLine; colors: ReturnType<
 // ─── Main screen ──────────────────────────────────────────────────────────
 
 export default function CalculatorRoute() {
-  const { isSubcontractor } = useProfileAccess();
+  const { isSubcontractor, profile } = useProfileAccess();
   if (isSubcontractor) return <Redirect href="/quotes" />;
+  const tradeTypes =
+    profile?.tradeTypes?.length
+      ? profile.tradeTypes
+      : profile?.tradeType
+        ? [profile.tradeType]
+        : [];
+  const canUseDeckCalculator = tradeTypes.some((tradeType) =>
+    ["carpenter / joiner", "carpenter", "carpentry", "decking"].includes(
+      tradeType.trim().toLowerCase(),
+    ),
+  );
+  if (profile && !canUseDeckCalculator) {
+    return <GenericTradeQuoteRoute tradeTypes={tradeTypes} />;
+  }
   return <CalculatorScreen />;
+}
+
+function GenericTradeQuoteRoute({ tradeTypes }: { tradeTypes: string[] }) {
+  const colors = useColors();
+  const insets = useSafeAreaInsets();
+  const topPad =
+    Platform.OS === "web" ? Math.max(insets.top, 67) : insets.top;
+  return (
+    <View style={{ backgroundColor: colors.background, flex: 1 }}>
+      <ScreenHeader
+        eyebrow="QUOTE MASTER"
+        title="QUOTE BUILDER"
+      />
+      <Text
+        style={{
+          color: colors.mutedForeground,
+          fontFamily: "Inter_500Medium",
+          fontSize: 13,
+          paddingHorizontal: 20,
+          paddingTop: topPad > 67 ? 8 : 0,
+        }}
+      >
+        Build quotes from work items matched to your selected trades.
+      </Text>
+      <ScrollView
+        contentContainerStyle={{
+          gap: 16,
+          padding: 20,
+          paddingBottom: insets.bottom + 32,
+        }}
+      >
+        <Card>
+          <Text
+            style={{
+              color: colors.foreground,
+              fontFamily: "Chivo_700Bold",
+              fontSize: 16,
+            }}
+          >
+            YOUR QUOTING TRADES
+          </Text>
+          <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8, marginTop: 12 }}>
+            {tradeTypes.map((tradeType) => (
+              <View
+                key={tradeType}
+                style={{
+                  backgroundColor: colors.primary + "14",
+                  borderColor: colors.primary + "66",
+                  borderRadius: colors.radius,
+                  borderWidth: 1,
+                  paddingHorizontal: 10,
+                  paddingVertical: 8,
+                }}
+              >
+                <Text
+                  style={{
+                    color: colors.primary,
+                    fontFamily: "Inter_700Bold",
+                    fontSize: 11,
+                  }}
+                >
+                  {tradeType.toUpperCase()}
+                </Text>
+              </View>
+            ))}
+          </View>
+        </Card>
+        <Button
+          icon="plus"
+          label="Start a trade quote"
+          onPress={() => router.push("/quote/new")}
+        />
+      </ScrollView>
+    </View>
+  );
 }
 
 function CalculatorScreen() {

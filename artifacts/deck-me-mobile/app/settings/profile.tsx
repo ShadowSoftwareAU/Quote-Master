@@ -16,6 +16,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import {
   useGetProfileSettings,
   useUpdateProfileSettings,
+  useListTradeCatalogue,
   useSeedDemoData,
   getGetProfileSettingsQueryKey,
   getGetDashboardSummaryQueryKey,
@@ -48,9 +49,11 @@ export default function ProfileSettingsScreen() {
 
   const updateProfile = useUpdateProfileSettings();
   const seedDemoData = useSeedDemoData();
+  const { data: tradeCatalogue, isLoading: isTradeCatalogueLoading } =
+    useListTradeCatalogue();
 
   const [role, setRole] = useState<BusinessRole | "">("");
-  const [tradeType, setTradeType] = useState("");
+  const [tradeTypes, setTradeTypes] = useState<string[]>([]);
   const [licenseNumber, setLicenseNumber] = useState("");
   
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -59,7 +62,11 @@ export default function ProfileSettingsScreen() {
   useEffect(() => {
     if (profile && !isInitialized) {
       setRole(profile.role);
-      setTradeType(profile.tradeType);
+      setTradeTypes(
+        profile.tradeTypes?.length > 0
+          ? profile.tradeTypes
+          : [profile.tradeType],
+      );
       setLicenseNumber(profile.licenseNumber || "");
       setIsInitialized(true);
     }
@@ -70,8 +77,12 @@ export default function ProfileSettingsScreen() {
 
   function validate() {
     const newErrors: Record<string, string> = {};
-    if (!role) newErrors.role = "Please select a system role.";
-    if (tradeType.trim().length < 2) newErrors.tradeType = "Trade type must be at least 2 characters.";
+    if (tradeTypes.length === 0) {
+      newErrors.tradeTypes = "Select at least one trade.";
+    }
+    if (!profile?.isMasterBuilder && tradeTypes.length > 3) {
+      newErrors.tradeTypes = "Select up to three trades.";
+    }
     if (licenseNumber && !/^[A-Za-z0-9 ./-]+$/.test(licenseNumber)) newErrors.licenseNumber = "Invalid characters in licence number.";
     
     setErrors(newErrors);
@@ -83,8 +94,7 @@ export default function ProfileSettingsScreen() {
     
     updateProfile.mutate({
       data: {
-        role: role as BusinessRole,
-        tradeType: tradeType.trim(),
+        tradeTypes,
         licenseNumber: licenseNumber.trim() || null,
       }
     }, {
@@ -92,7 +102,11 @@ export default function ProfileSettingsScreen() {
         queryClient.setQueryData(profileQueryKey, updatedProfile);
         queryClient.invalidateQueries({ queryKey: getListMasterProjectsQueryKey() });
         setRole(updatedProfile.role);
-        setTradeType(updatedProfile.tradeType);
+        setTradeTypes(
+          updatedProfile.tradeTypes?.length > 0
+            ? updatedProfile.tradeTypes
+            : [updatedProfile.tradeType],
+        );
         setLicenseNumber(updatedProfile.licenseNumber || "");
         Alert.alert("Profile Saved", "Your settings have been successfully updated.");
       },
@@ -100,6 +114,30 @@ export default function ProfileSettingsScreen() {
         Alert.alert("Could not save profile", err?.message || "Please check your inputs and try again.");
       }
     });
+  }
+
+  function toggleTrade(tradeType: string) {
+    setErrors((previous) => ({ ...previous, tradeTypes: "" }));
+    setTradeTypes((current) => {
+      if (current.includes(tradeType)) {
+        return current.filter((value) => value !== tradeType);
+      }
+      if (!profile?.isMasterBuilder && current.length >= 3) {
+        setErrors((previous) => ({
+          ...previous,
+          tradeTypes: "Remove a trade before adding another.",
+        }));
+        return current;
+      }
+      return [...current, tradeType];
+    });
+  }
+
+  function makePrimary(tradeType: string) {
+    setTradeTypes((current) => [
+      tradeType,
+      ...current.filter((value) => value !== tradeType),
+    ]);
   }
 
   function seedPresentationData() {
@@ -150,7 +188,15 @@ export default function ProfileSettingsScreen() {
     );
   }
 
-  const isDirty = tradeType !== profile?.tradeType || licenseNumber !== (profile?.licenseNumber || "");
+  const savedTradeTypes =
+    profile?.tradeTypes?.length
+      ? profile.tradeTypes
+      : profile?.tradeType
+        ? [profile.tradeType]
+        : [];
+  const isDirty =
+    JSON.stringify(tradeTypes) !== JSON.stringify(savedTradeTypes) ||
+    licenseNumber !== (profile?.licenseNumber || "");
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.background }}>
@@ -202,14 +248,50 @@ export default function ProfileSettingsScreen() {
             </Text>
           </View>
 
-          <View style={{ gap: 6 }}>
-            <Text style={{ fontFamily: "Inter_700Bold", color: colors.foreground, fontSize: 12 }}>PRIMARY TRADE TYPE</Text>
-            <TextInputStyled
-              value={tradeType}
-              onChangeText={(text) => { setTradeType(text); setErrors(prev => ({...prev, tradeType: ""})) }}
-              placeholder="e.g. Carpenter, Landscaper"
-            />
-            {errors.tradeType ? <Text style={{ color: colors.destructive, fontSize: 12, fontFamily: "Inter_500Medium" }}>{errors.tradeType}</Text> : null}
+          <View style={{ gap: 8 }}>
+            <Text style={{ fontFamily: "Inter_700Bold", color: colors.foreground, fontSize: 12 }}>TRADE TYPES</Text>
+            <Text style={{ color: colors.mutedForeground, fontSize: 12, fontFamily: "Inter_500Medium" }}>
+              The first selection is your primary trade. {profile?.isMasterBuilder ? "Select all relevant trades." : "Select up to three."}
+            </Text>
+            {tradeTypes.map((tradeType, index) => (
+              <View key={tradeType} style={{ alignItems: "center", backgroundColor: colors.card, borderColor: index === 0 ? colors.primary : colors.border, borderRadius: colors.radius, borderWidth: 2, flexDirection: "row", gap: 8, justifyContent: "space-between", padding: 12 }}>
+                <View style={{ flex: 1 }}>
+                  <Text style={{ color: colors.foreground, fontFamily: "Inter_700Bold", fontSize: 13 }}>{tradeType}</Text>
+                  {index === 0 ? <Text style={{ color: colors.primary, fontFamily: "Inter_700Bold", fontSize: 10, marginTop: 2 }}>PRIMARY</Text> : null}
+                </View>
+                {index > 0 ? (
+                  <Pressable onPress={() => makePrimary(tradeType)} style={{ padding: 8 }}>
+                    <Text style={{ color: colors.primary, fontFamily: "Inter_700Bold", fontSize: 11 }}>MAKE PRIMARY</Text>
+                  </Pressable>
+                ) : null}
+              </View>
+            ))}
+            <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
+              {isTradeCatalogueLoading ? <ActivityIndicator color={colors.primary} /> : tradeCatalogue?.map((entry) => {
+                const selected = tradeTypes.includes(entry.value);
+                return (
+                  <Pressable
+                    key={entry.value}
+                    onPress={() => toggleTrade(entry.value)}
+                    style={{
+                      alignItems: "center",
+                      backgroundColor: selected ? colors.primary : colors.card,
+                      borderColor: selected ? colors.primary : colors.border,
+                      borderRadius: colors.radius,
+                      borderWidth: 1,
+                      flexDirection: "row",
+                      gap: 6,
+                      paddingHorizontal: 10,
+                      paddingVertical: 9,
+                    }}
+                  >
+                    <Feather color={selected ? colors.primaryForeground : colors.mutedForeground} name={selected ? "check" : "plus"} size={14} />
+                    <Text style={{ color: selected ? colors.primaryForeground : colors.foreground, fontFamily: "Inter_700Bold", fontSize: 11 }}>{entry.value}</Text>
+                  </Pressable>
+                );
+              })}
+            </View>
+            {errors.tradeTypes ? <Text style={{ color: colors.destructive, fontSize: 12, fontFamily: "Inter_500Medium" }}>{errors.tradeTypes}</Text> : null}
           </View>
 
           <View style={{ gap: 6 }}>
