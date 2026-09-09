@@ -5,9 +5,17 @@
  * Quote Master API — decking quotes, materials, customers, and bookings.
  * OpenAPI spec version: 0.1.0
  */
+import type { ParametricBomRuleId } from './parametricBomRuleId';
 import type { QuoteLineItemInputUnitType } from './quoteLineItemInputUnitType';
 
 export interface QuoteLineItemInput {
+  /**
+     * @minLength 1
+     * @maxLength 80
+     */
+  lineKey?: string;
+  bomRuleId?: ParametricBomRuleId;
+  isManualQuantity?: boolean;
   /**
      * @minLength 1
      * @maxLength 200

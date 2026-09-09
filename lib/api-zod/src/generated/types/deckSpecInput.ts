@@ -5,6 +5,9 @@
  * Quote Master API — decking quotes, materials, customers, and bookings.
  * OpenAPI spec version: 0.1.0
  */
+import type { DeckSpecInputParameterValues } from './deckSpecInputParameterValues';
+import type { ParametricLineSnapshot } from './parametricLineSnapshot';
+import type { ParametricParameterDefinition } from './parametricParameterDefinition';
 
 export interface DeckSpecInput {
   /** Deck length in metres */
@@ -31,6 +34,18 @@ export interface DeckSpecInput {
   labourHours?: number;
   /** AUD per hour labour rate */
   labourRate?: number;
+  /** @nullable */
+  templateId?: number | null;
+  /** @nullable */
+  templateSlug?: string | null;
+  /** @nullable */
+  engineVersion?: number | null;
+  /** @nullable */
+  templateRevision?: number | null;
+  parameterValues?: DeckSpecInputParameterValues;
+  parameterDefinitions?: ParametricParameterDefinition[];
+  customParameterDefinitions?: ParametricParameterDefinition[];
+  lineSnapshot?: ParametricLineSnapshot[];
   /** hardwood | composite | treated_pine */
   deckBoardType?: string;
   /** stumps | concrete_slab | existing_structure */

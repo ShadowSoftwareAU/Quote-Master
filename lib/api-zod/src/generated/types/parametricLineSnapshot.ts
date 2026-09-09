@@ -5,17 +5,20 @@
  * Quote Master API — decking quotes, materials, customers, and bookings.
  * OpenAPI spec version: 0.1.0
  */
-import type { TradeTemplateLineItemUnitType } from './tradeTemplateLineItemUnitType';
+import type { ParametricBomRuleId } from './parametricBomRuleId';
 
-export interface TradeTemplateLineItem {
-  lineKey?: string;
-  description: string;
-  category: string;
+export interface ParametricLineSnapshot {
+  lineKey: string;
+  bomRuleId: ParametricBomRuleId;
   quantity: number;
-  unit: string;
-  unitType: TradeTemplateLineItemUnitType;
+  calculatedQuantity: number;
+  isManualQuantity: boolean;
   unitCost: number;
   markupPercentage: number;
+  description: string;
+  category: string;
+  unit: string;
+  unitType: string;
   wastagePercentage: number;
   isBulkItem: boolean;
 }

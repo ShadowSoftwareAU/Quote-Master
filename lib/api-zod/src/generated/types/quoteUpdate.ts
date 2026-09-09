@@ -5,8 +5,23 @@
  * Quote Master API — decking quotes, materials, customers, and bookings.
  * OpenAPI spec version: 0.1.0
  */
+import type { ParametricParameterDefinition } from './parametricParameterDefinition';
+import type { QuoteUpdateParameterValues } from './quoteUpdateParameterValues';
 
 export interface QuoteUpdate {
+  templateId?: number;
+  /**
+     * @minLength 1
+     * @maxLength 120
+     */
+  templateSlug?: string;
+  /** @minimum 1 */
+  engineVersion?: number;
+  /** @minimum 1 */
+  templateRevision?: number;
+  parameterValues?: QuoteUpdateParameterValues;
+  /** @maxItems 100 */
+  customParameterDefinitions?: ParametricParameterDefinition[];
   /** @minLength 1 */
   title?: string;
   customerId?: number;

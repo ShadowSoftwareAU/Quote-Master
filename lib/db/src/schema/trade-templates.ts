@@ -1,6 +1,7 @@
 import {
   boolean,
   index,
+  integer,
   jsonb,
   numeric,
   pgTable,
@@ -9,8 +10,13 @@ import {
   timestamp,
   uniqueIndex,
 } from "drizzle-orm/pg-core";
+import type {
+  BomRule,
+  ParameterDefinition,
+} from "../../../parametric-quotes/src/index";
 
 export type TradeTemplateLineItem = {
+  lineKey?: string;
   description: string;
   category: string;
   quantity: number;
@@ -32,14 +38,20 @@ export const tradeTemplatesTable = pgTable(
     defaultLineItems: jsonb("default_line_items")
       .$type<TradeTemplateLineItem[]>()
       .notNull(),
+    engineVersion: integer("engine_version"),
+    templateRevision: integer("template_revision"),
+    parameterDefinitions: jsonb("parameter_definitions")
+      .$type<ParameterDefinition[]>(),
+    bomRules: jsonb("bom_rules").$type<BomRule[]>(),
     createdAt: timestamp("created_at", { withTimezone: true })
       .notNull()
       .defaultNow(),
   },
   (table) => [
-    uniqueIndex("trade_templates_trade_type_slug_uidx").on(
+    uniqueIndex("trade_templates_trade_type_slug_revision_uidx").on(
       table.tradeType,
       table.slug,
+      table.templateRevision,
     ),
     index("trade_templates_trade_type_idx").on(table.tradeType),
   ],

@@ -12,6 +12,7 @@ import {
   teamMembersTable,
   bookingsTable,
   jobAssignmentsTable,
+  tradeTemplatesTable,
 } from "@workspace/db";
 import {
   CreateQuoteBody,
@@ -49,12 +50,25 @@ import {
   getBusinessRole,
   requireBusinessRole,
 } from "../middlewares/businessRoleAuth";
+import {
+  calculateTemplateBom,
+  hasParametricDefinition,
+  hasMeaningfulCustomSnapshot,
+  PARAMETRIC_ENGINE_VERSION,
+  sanitiseParameterValues,
+  validateBomRules,
+  validateParameterValues,
+  type ParametricSnapshot,
+  type ParametricLineSnapshot,
+} from "../../../../lib/parametric-quotes/src/index";
 
 const router: IRouter = Router();
 const requireQuoteManager = requireBusinessRole("Owner", "Employee");
 const DEFAULT_BUSINESS_LOGO_URL = "/quote-master-logo.jpg";
 
 type CustomQuoteLineItemInput = {
+  lineKey?: string;
+  isManualQuantity?: boolean;
   description: string;
   quantity: number;
   unitCost: number;
@@ -111,8 +125,35 @@ async function loadStoredCustomQuoteLines(quoteId: number) {
     .orderBy(quoteLineItemsTable.id);
   return rows.map((row) => ({
     materialId: null,
+    lineKey: row.lineKey,
+    bomRuleId: row.bomRuleId,
+    isManualQuantity: row.isManualQuantity,
     description: row.description,
     category: "custom",
+    quantity: Number(row.quantity),
+    unit: row.unit,
+    unitType: row.unitType,
+    unitPrice: Number(row.unitPrice),
+    markupPercentage: Number(row.markupPercentage),
+    wastagePercentage: Number(row.wastagePercentage),
+    isBulkItem: row.isBulkItem,
+    lineTotal: Number(row.lineTotal),
+  }));
+}
+
+async function loadStoredQuoteLines(quoteId: number) {
+  const rows = await db
+    .select()
+    .from(quoteLineItemsTable)
+    .where(eq(quoteLineItemsTable.quoteId, quoteId))
+    .orderBy(quoteLineItemsTable.id);
+  return rows.map((row) => ({
+    materialId: row.materialId,
+    lineKey: row.lineKey,
+    bomRuleId: row.bomRuleId,
+    isManualQuantity: row.isManualQuantity,
+    description: row.description,
+    category: row.category,
     quantity: Number(row.quantity),
     unit: row.unit,
     unitType: row.unitType,
@@ -200,8 +241,8 @@ async function ownedMaterials(userId: string | null) {
 }
 
 function specFromQuoteInput(input: {
-  lengthM: number;
-  widthM: number;
+  lengthM?: number;
+  widthM?: number;
   heightM?: number;
   boardWidthMm?: number;
   gapSpacingMm?: number;
@@ -230,8 +271,8 @@ function specFromQuoteInput(input: {
   awningLengthM?: number;
 }): DeckSpec {
   return {
-    lengthM: input.lengthM,
-    widthM: input.widthM,
+    lengthM: input.lengthM ?? 1,
+    widthM: input.widthM ?? 1,
     heightM: input.heightM ?? 0.6,
     boardWidthMm: input.boardWidthMm ?? 90,
     gapSpacingMm: input.gapSpacingMm ?? 4,
@@ -261,13 +302,42 @@ function specFromQuoteInput(input: {
   };
 }
 
-function specFromStoredQuote(row: typeof quotesTable.$inferSelect): DeckSpec {
-  const savedSpec =
-    row.specJson &&
+function storedSpecJson(
+  row: typeof quotesTable.$inferSelect,
+): Record<string, unknown> {
+  return row.specJson &&
     typeof row.specJson === "object" &&
     !Array.isArray(row.specJson)
-      ? (row.specJson as Partial<DeckSpec>)
-      : {};
+    ? (row.specJson as Record<string, unknown>)
+    : {};
+}
+
+function parametricSnapshotFromStored(
+  row: typeof quotesTable.$inferSelect,
+): ParametricSnapshot | null {
+  const stored = storedSpecJson(row);
+  if (
+    typeof stored.templateId !== "number" ||
+    typeof stored.templateSlug !== "string" ||
+    typeof stored.engineVersion !== "number" ||
+    typeof stored.templateRevision !== "number" ||
+    !stored.parameterValues ||
+    !stored.parameterDefinitions ||
+    !stored.bomRules
+  ) {
+    return null;
+  }
+  return stored as unknown as ParametricSnapshot;
+}
+
+function customSnapshotFromStored(row: typeof quotesTable.$inferSelect) {
+  const stored = storedSpecJson(row);
+  return hasMeaningfulCustomSnapshot(stored) ? stored : null;
+}
+
+function specFromStoredQuote(row: typeof quotesTable.$inferSelect): DeckSpec {
+  const savedSpec =
+    storedSpecJson(row) as Partial<DeckSpec>;
 
   return specFromQuoteInput({
     lengthM: Number(row.lengthM),
@@ -282,8 +352,21 @@ function specFromStoredQuote(row: typeof quotesTable.$inferSelect): DeckSpec {
   });
 }
 
-function serialiseSpec(spec: DeckSpec): Record<string, unknown> {
-  return { ...spec };
+function serialiseSpec(
+  spec: DeckSpec,
+  snapshot?: ParametricSnapshot | null,
+  customSnapshot?: { customParameterDefinitions: unknown; parameterValues: unknown } | null,
+): Record<string, unknown> {
+  return {
+    ...spec,
+    ...(snapshot ?? {}),
+    ...(customSnapshot
+      ? {
+          customParameterDefinitions: customSnapshot.customParameterDefinitions,
+          parameterValues: customSnapshot.parameterValues,
+        }
+      : {}),
+  };
 }
 
 function quoteSummaryRow(
@@ -360,6 +443,8 @@ async function loadQuoteJson(id: number, userId?: string) {
         .limit(1)
     : [];
   const spec = specFromStoredQuote(row.q);
+  const parametricSnapshot = parametricSnapshotFromStored(row.q);
+  const customSnapshot = customSnapshotFromStored(row.q);
   const storedLines =
     userId && !member
       ? await db
@@ -440,6 +525,8 @@ async function loadQuoteJson(id: number, userId?: string) {
     total: Number(row.q.total),
     spec: {
       ...spec,
+      ...(parametricSnapshot ?? {}),
+      ...(customSnapshot ?? {}),
       labourHours: Number(row.q.labourHours),
       labourRate: Number(row.q.labourRate),
     },
@@ -452,7 +539,13 @@ async function loadQuoteJson(id: number, userId?: string) {
       quantity: Number(l.quantity),
       unit: l.unit,
       unitType: l.unitType,
-      unitPrice: roundMoney(Number(l.lineTotal) / Number(l.quantity)),
+      lineKey: (l as { lineKey?: string | null }).lineKey ?? null,
+      bomRuleId: (l as { bomRuleId?: string | null }).bomRuleId ?? null,
+      isManualQuantity: (l as { isManualQuantity?: boolean | null }).isManualQuantity ?? null,
+      unitPrice:
+        Number(l.quantity) > 0
+          ? roundMoney(Number(l.lineTotal) / Number(l.quantity))
+          : Number(l.unitPrice),
       unitCost: Number(l.unitPrice),
       markupPercentage: Number(l.markupPercentage),
       wastagePercentage: Number(l.wastagePercentage),
@@ -479,11 +572,37 @@ function publicLineItem(line: LoadedQuote["lineItems"][number]) {
 }
 
 function publicQuoteResponse(quote: LoadedQuote) {
-  const {
-    labourHours: _labourHours,
-    labourRate: _labourRate,
-    ...publicSpec
-  } = quote.spec;
+  const spec = quote.spec;
+  const publicSpec = {
+    lengthM: spec.lengthM,
+    widthM: spec.widthM,
+    heightM: spec.heightM,
+    boardWidthMm: spec.boardWidthMm,
+    gapSpacingMm: spec.gapSpacingMm,
+    joistSpacingMm: spec.joistSpacingMm,
+    bearerSpacingMm: spec.bearerSpacingMm,
+    postSpacingMm: spec.postSpacingMm,
+    footingDepthMm: spec.footingDepthMm,
+    wastageFactor: spec.wastageFactor,
+    deckBoardType: spec.deckBoardType,
+    subframeType: spec.subframeType,
+    fastenerType: spec.fastenerType,
+    fasciaType: spec.fasciaType,
+    includeHandrails: spec.includeHandrails,
+    handrailHeightMm: spec.handrailHeightMm,
+    balustradeType: spec.balustradeType,
+    timberGapMm: spec.timberGapMm,
+    wireSpacingMm: spec.wireSpacingMm,
+    includeStairs: spec.includeStairs,
+    stairFlights: spec.stairFlights,
+    includeFencing: spec.includeFencing,
+    fencingSides: spec.fencingSides,
+    fencingHeightM: spec.fencingHeightM,
+    fencingWidthM: spec.fencingWidthM,
+    includeAwning: spec.includeAwning,
+    awningWidthM: spec.awningWidthM,
+    awningLengthM: spec.awningLengthM,
+  };
   return {
     id: quote.id,
     title: quote.title,
@@ -672,15 +791,258 @@ router.post("/quotes", requireQuoteManager, async (req, res): Promise<void> => {
   }
   const spec = specFromQuoteInput(data);
   const materials = await ownedMaterials(userId);
-  const customLines = buildCustomQuoteLines(data.lineItems);
-  const deckQuote = usesDeckEstimator(selectedTradeType);
-  const { lines, materialsSubtotal } = combineTradeEstimateAndCustomLines(
-    selectedTradeType,
-    spec,
-    materials,
-    customLines,
+  let template: typeof tradeTemplatesTable.$inferSelect | null = null;
+  if (data.templateId !== undefined || data.templateSlug !== undefined) {
+    if (data.templateId === undefined || data.templateSlug === undefined) {
+      res.status(400).json({
+        error: "Both templateId and templateSlug are required",
+      });
+      return;
+    }
+    const [selectedTemplate] = await db
+      .select()
+      .from(tradeTemplatesTable)
+      .where(
+        and(
+          eq(tradeTemplatesTable.id, data.templateId),
+          eq(tradeTemplatesTable.slug, data.templateSlug),
+          eq(tradeTemplatesTable.tradeType, selectedTradeType),
+        ),
+      )
+      .limit(1);
+    if (!selectedTemplate) {
+      res.status(400).json({ error: "Selected trade template was not found" });
+      return;
+    }
+    if (
+      !hasParametricDefinition(selectedTemplate) ||
+      data.engineVersion !== selectedTemplate.engineVersion ||
+      data.engineVersion !== PARAMETRIC_ENGINE_VERSION ||
+      data.templateRevision !== selectedTemplate.templateRevision ||
+      selectedTemplate.templateRevision === null
+    ) {
+      res.status(400).json({
+        error: "Selected trade template engine version is not supported",
+      });
+      return;
+    }
+    template = selectedTemplate;
+  }
+
+  let parameterValues: Record<string, number> = {};
+  if (template) {
+    if (!data.parameterValues) {
+      res.status(400).json({ error: "All template parameter values are required" });
+      return;
+    }
+    try {
+      validateBomRules(
+        template.bomRules ?? [],
+        template.defaultLineItems
+          .map((item) => item.lineKey)
+          .filter((key): key is string => Boolean(key)),
+      );
+      parameterValues = validateParameterValues(
+        template.parameterDefinitions ?? [],
+        data.parameterValues,
+      );
+    } catch (error) {
+      res.status(400).json({ error: String(error instanceof Error ? error.message : error) });
+      return;
+    }
+    const serverKeys = new Set(
+      template.defaultLineItems
+        .map((item) => item.lineKey)
+        .filter((key): key is string => Boolean(key)),
+    );
+    const submittedKeys = (data.lineItems ?? [])
+      .map((line) => line.lineKey)
+      .filter((key): key is string => Boolean(key));
+    if (
+      new Set(submittedKeys).size !== submittedKeys.length ||
+      submittedKeys.some((key) => !serverKeys.has(key))
+    ) {
+      res.status(400).json({ error: "Invalid or duplicate template BOM line key" });
+      return;
+    }
+    for (const submitted of data.lineItems ?? []) {
+      const rule = submitted.bomRuleId;
+      if (!submitted.lineKey && rule) {
+        res.status(400).json({ error: "BOM rule requires a server line key" });
+        return;
+      }
+      if (submitted.lineKey && (!rule || submitted.isManualQuantity === undefined)) {
+        res.status(400).json({
+          error: "Parametric lines require exact BOM identity and override state",
+        });
+        return;
+      }
+      if (
+        submitted.lineKey &&
+        rule &&
+        template.bomRules?.find((candidate) => candidate.lineKey === submitted.lineKey)
+          ?.bomRuleId !== rule
+      ) {
+        res.status(400).json({ error: "BOM rule identity does not match template" });
+        return;
+      }
+    }
+  }
+  if (
+    !template &&
+    (data.lineItems ?? []).some((line) => line.bomRuleId || line.lineKey)
+  ) {
+    res.status(400).json({ error: "BOM line metadata requires a parametric template" });
+    return;
+  }
+  if (!template && data.customParameterDefinitions) {
+    if (!data.parameterValues) {
+      res.status(400).json({ error: "Custom parameter values are required" });
+      return;
+    }
+    try {
+      parameterValues = validateParameterValues(
+        data.customParameterDefinitions,
+        data.parameterValues,
+      );
+      if (
+        data.customParameterDefinitions.some(
+          (definition) =>
+            !definition.label.trim() || !definition.unit.trim(),
+        )
+      ) {
+        throw new Error("Custom parameter labels and units are required");
+      }
+    } catch (error) {
+      res.status(400).json({ error: String(error instanceof Error ? error.message : error) });
+      return;
+    }
+  }
+  if (
+    !template &&
+    data.parameterValues &&
+    !data.customParameterDefinitions &&
+    Object.keys(data.parameterValues).length > 0
+  ) {
+    res.status(400).json({ error: "Custom values require custom definitions" });
+    return;
+  }
+  const calculatedByLineKey = new Map(
+    calculateTemplateBom(template?.bomRules, parameterValues).map((line) => [
+      line.lineKey,
+      line,
+    ]),
   );
-  const labourHours = deckQuote ? (data.labourHours ?? 0) : 0;
+  const templateKeys = new Set(calculatedByLineKey.keys());
+  const customLines = buildCustomQuoteLines(
+    (data.lineItems ?? []).filter(
+      (line) => !line.lineKey || !templateKeys.has(line.lineKey),
+    ),
+  );
+  const parametricLines = template
+    ? template.defaultLineItems.flatMap((defaultLine) => {
+        if (!defaultLine.lineKey) return [];
+        const calculation = calculatedByLineKey.get(defaultLine.lineKey);
+        if (!calculation) return [];
+        const submitted = data.lineItems?.find(
+          (line) => line.lineKey === defaultLine.lineKey,
+        );
+        const rawQuantity =
+          submitted?.isManualQuantity === true
+            ? submitted.quantity
+            : calculation.quantity;
+        const wastagePercentage = defaultLine.wastagePercentage;
+        const isBulkItem = defaultLine.isBulkItem;
+        const quantity = calculateRequiredQuantity(
+          submitted?.isManualQuantity === true ? rawQuantity : calculation.quantity,
+          wastagePercentage,
+          isBulkItem,
+        );
+        const unitCost = roundMoney(
+          submitted?.unitCost ?? defaultLine.unitCost,
+        );
+        const markupPercentage = roundMoney(
+          submitted?.markupPercentage ?? defaultLine.markupPercentage,
+        );
+        return [
+          {
+            materialId: null,
+            lineKey: defaultLine.lineKey,
+            bomRuleId: calculation.bomRuleId,
+            isManualQuantity: submitted?.isManualQuantity === true,
+            description: defaultLine.description,
+            category: defaultLine.category,
+            quantity,
+            unit: defaultLine.unit,
+            unitType: defaultLine.unitType,
+            unitPrice: unitCost,
+            markupPercentage,
+            wastagePercentage,
+            isBulkItem,
+            lineTotal: roundMoney(
+              quantity * unitCost * (1 + markupPercentage / 100),
+            ),
+          },
+        ];
+      })
+      .filter((line) => line.quantity > 0)
+    : [];
+  const parametricLineSnapshot: ParametricLineSnapshot[] | undefined = template
+    ? template.defaultLineItems.flatMap((defaultLine) => {
+        if (!defaultLine.lineKey) return [];
+        const calculation = calculatedByLineKey.get(defaultLine.lineKey);
+        if (!calculation) return [];
+        const submitted = data.lineItems?.find(
+          (line) => line.lineKey === defaultLine.lineKey,
+        );
+        const isManualQuantity = submitted?.isManualQuantity === true;
+        const quantity = calculateRequiredQuantity(
+          isManualQuantity ? (submitted?.quantity ?? 0) : calculation.quantity,
+          defaultLine.wastagePercentage,
+          defaultLine.isBulkItem,
+        );
+        return [{
+          lineKey: defaultLine.lineKey,
+          bomRuleId: calculation.bomRuleId,
+          quantity,
+          calculatedQuantity: calculation.quantity,
+          isManualQuantity,
+          unitCost: roundMoney(submitted?.unitCost ?? defaultLine.unitCost),
+          markupPercentage: roundMoney(
+            submitted?.markupPercentage ?? defaultLine.markupPercentage,
+          ),
+          description: defaultLine.description,
+          category: defaultLine.category,
+          unit: defaultLine.unit,
+          unitType: defaultLine.unitType,
+          wastagePercentage: defaultLine.wastagePercentage,
+          isBulkItem: defaultLine.isBulkItem,
+        }];
+      })
+    : undefined;
+  const deckQuote = !template && usesDeckEstimator(selectedTradeType);
+  const combined = template
+    ? {
+        lines: [...parametricLines, ...customLines],
+        materialsSubtotal: roundMoney(
+          [...parametricLines, ...customLines].reduce(
+            (sum, line) => sum + line.lineTotal,
+            0,
+          ),
+        ),
+      }
+    : combineTradeEstimateAndCustomLines(
+        selectedTradeType,
+        spec,
+        materials,
+        customLines,
+      );
+  const { lines, materialsSubtotal } = combined;
+  const labourHours = template
+    ? (data.labourHours ?? 0)
+    : deckQuote
+      ? (data.labourHours ?? 0)
+      : 0;
   const labourRate = data.labourRate ?? 85;
   const { labourCost, gst, total } = calcTotals({
     materialsSubtotal,
@@ -711,8 +1073,8 @@ router.post("/quotes", requireQuoteManager, async (req, res): Promise<void> => {
         contractorLicenseNumber: profile.licenseNumber,
         siteAddress: data.siteAddress ?? null,
         notes: data.notes ?? null,
-        lengthM: String(data.lengthM),
-        widthM: String(data.widthM),
+        lengthM: String(spec.lengthM),
+        widthM: String(spec.widthM),
         heightM: String(spec.heightM),
         boardWidthMm: spec.boardWidthMm,
         joistSpacingMm: spec.joistSpacingMm,
@@ -725,7 +1087,28 @@ router.post("/quotes", requireQuoteManager, async (req, res): Promise<void> => {
         labourCost: String(labourCost),
         gst: String(gst),
         total: String(total),
-        specJson: serialiseSpec(spec),
+        specJson: {
+          ...serialiseSpec(spec),
+          ...(template
+            ? {
+                templateId: template.id,
+                templateSlug: template.slug,
+                engineVersion: template.engineVersion!,
+                templateRevision: template.templateRevision!,
+                parameterValues,
+                parameterDefinitions: template.parameterDefinitions,
+                bomRules: template.bomRules,
+                lineSnapshot: parametricLineSnapshot,
+              }
+            : {}),
+          ...(!template &&
+          Boolean(data.customParameterDefinitions?.length)
+            ? {
+                customParameterDefinitions: data.customParameterDefinitions,
+                parameterValues,
+              }
+            : {}),
+        },
       })
       .returning();
     if (lines.length > 0) {
@@ -733,6 +1116,10 @@ router.post("/quotes", requireQuoteManager, async (req, res): Promise<void> => {
         lines.map((l) => ({
           quoteId: row.id,
           materialId: l.materialId,
+          lineKey: (l as { lineKey?: string | null }).lineKey ?? null,
+          bomRuleId: (l as { bomRuleId?: string | null }).bomRuleId ?? null,
+          isManualQuantity:
+            (l as { isManualQuantity?: boolean | null }).isManualQuantity ?? null,
           description: l.description,
           category: l.category,
           quantity: String(l.quantity),
@@ -896,6 +1283,21 @@ router.patch(
       }
       effectiveTradeType = requestedTradeType;
     }
+    const existingSnapshot = parametricSnapshotFromStored(existing);
+    if (
+      existingSnapshot &&
+      (d.templateId !== undefined ||
+        d.templateSlug !== undefined ||
+        d.templateRevision !== undefined ||
+        d.engineVersion !== undefined ||
+        d.parameterValues !== undefined)
+    ) {
+      res.status(400).json({
+        error:
+          "Parametric quote updates must include a complete template snapshot; edit the quote in the quote builder",
+      });
+      return;
+    }
     const savedSpec = specFromStoredQuote(existing);
     const spec = specFromQuoteInput({
       ...savedSpec,
@@ -904,16 +1306,34 @@ router.patch(
       widthM: d.widthM ?? savedSpec.widthM,
     });
     const materials = await ownedMaterials(userId ?? existing.clerkUserId);
-    const customLines = await loadStoredCustomQuoteLines(existing.id);
-    const { lines, materialsSubtotal } = combineTradeEstimateAndCustomLines(
-      effectiveTradeType,
-      spec,
-      materials,
-      customLines,
-    );
-    const labourHours = usesDeckEstimator(effectiveTradeType)
+    const preserveParametricSnapshot =
+      existingSnapshot &&
+      d.templateId === undefined &&
+      d.templateSlug === undefined &&
+      d.templateRevision === undefined &&
+      d.engineVersion === undefined &&
+      d.parameterValues === undefined;
+    let lines: Awaited<ReturnType<typeof loadStoredQuoteLines>>;
+    let materialsSubtotal: number;
+    if (preserveParametricSnapshot) {
+      lines = await loadStoredQuoteLines(existing.id);
+      materialsSubtotal = Number(existing.materialsSubtotal);
+    } else {
+      const customLines = await loadStoredCustomQuoteLines(existing.id);
+      const calculated = combineTradeEstimateAndCustomLines(
+        effectiveTradeType,
+        spec,
+        materials,
+        customLines,
+      );
+      lines = calculated.lines as typeof lines;
+      materialsSubtotal = calculated.materialsSubtotal;
+    }
+    const labourHours = existingSnapshot
       ? (d.labourHours ?? Number(existing.labourHours))
-      : 0;
+      : usesDeckEstimator(effectiveTradeType)
+        ? (d.labourHours ?? Number(existing.labourHours))
+        : 0;
     const labourRate = d.labourRate ?? Number(existing.labourRate);
     const { labourCost, gst, total } = calcTotals({
       materialsSubtotal,
@@ -972,7 +1392,11 @@ router.patch(
           labourCost: String(labourCost),
           gst: String(gst),
           total: String(total),
-          specJson: serialiseSpec(spec),
+          specJson: serialiseSpec(
+            spec,
+            existingSnapshot,
+            customSnapshotFromStored(existing),
+          ),
         })
         .where(
           userId
@@ -996,6 +1420,9 @@ router.patch(
           lines.map((l) => ({
             quoteId: authorisedParent.id,
             materialId: l.materialId,
+            lineKey: (l as { lineKey?: string | null }).lineKey ?? null,
+            bomRuleId: (l as { bomRuleId?: string | null }).bomRuleId ?? null,
+            isManualQuantity: (l as { isManualQuantity?: boolean | null }).isManualQuantity ?? null,
             description: l.description,
             category: l.category,
             quantity: String(l.quantity),
@@ -1114,6 +1541,16 @@ router.patch("/quote/:token", async (req, res): Promise<void> => {
     res.status(404).json({ error: "Quote not found" });
     return;
   }
+  if (
+    parametricSnapshotFromStored(existing) ||
+    customSnapshotFromStored(existing)
+  ) {
+    res.status(409).json({
+      error:
+        "Public option upgrades are not supported for parametric or custom-variable quotes",
+    });
+    return;
+  }
   const d = body.data;
   const savedSpec = specFromStoredQuote(existing);
   const spec = specFromQuoteInput({
@@ -1163,6 +1600,9 @@ router.patch("/quote/:token", async (req, res): Promise<void> => {
         lines.map((l) => ({
           quoteId: row.id,
           materialId: l.materialId,
+            lineKey: (l as { lineKey?: string | null }).lineKey ?? null,
+            bomRuleId: (l as { bomRuleId?: string | null }).bomRuleId ?? null,
+            isManualQuantity: (l as { isManualQuantity?: boolean | null }).isManualQuantity ?? null,
           description: l.description,
           category: l.category,
           quantity: String(l.quantity),
@@ -1251,6 +1691,19 @@ router.post(
     const original = await loadQuoteJson(params.data.id, userId);
     if (!original) {
       res.status(404).json({ error: "Quote not found" });
+      return;
+    }
+    if (
+      original.spec.templateId != null ||
+      Object.prototype.hasOwnProperty.call(
+        original.spec,
+        "customParameterDefinitions",
+      )
+    ) {
+      res.status(409).json({
+        error:
+          "Variations are not supported for parametric or custom-variable quotes",
+      });
       return;
     }
     const b = body.data;
@@ -1345,6 +1798,9 @@ router.post(
           lines.map((l) => ({
             quoteId: row.id,
             materialId: l.materialId,
+            lineKey: (l as { lineKey?: string | null }).lineKey ?? null,
+            bomRuleId: (l as { bomRuleId?: string | null }).bomRuleId ?? null,
+            isManualQuantity: (l as { isManualQuantity?: boolean | null }).isManualQuantity ?? null,
             description: l.description,
             category: l.category,
             quantity: String(l.quantity),

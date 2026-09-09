@@ -38,6 +38,17 @@ import {
 } from "@/components/ui";
 import { useColors } from "@/hooks/useColors";
 import { useProfileAccess } from "@/lib/access";
+import {
+  PARAMETRIC_ENGINE_VERSION,
+  calculateTemplateBom,
+  createCustomParameterDefinition,
+  defaultParameterValues,
+  hasParametricDefinition,
+  sanitiseParameterValues,
+  STANDARD_DIMENSION_FALLBACK,
+  type CustomParameterDefinition,
+  type ParameterDefinition,
+} from "@workspace/parametric-quotes";
 
 import {
   normaliseTradeKey,
@@ -59,6 +70,8 @@ type LineItemDraft = {
   isBulkItem: boolean;
   saveToMyPresets: boolean;
   isManualQuantity: boolean;
+  lineKey?: string;
+  bomRuleId?: string;
 };
 
 let nextLineItemId = 1;
@@ -224,6 +237,8 @@ function NewQuoteScreen() {
   const [siteAddress, setSiteAddress] = useState("");
   const [lineItems, setLineItems] = useState<LineItemDraft[]>([]);
   const [selectedTemplateId, setSelectedTemplateId] = useState("custom");
+  const [parameterValues, setParameterValues] = useState<Record<string, number>>({});
+  const [customParameterDefinitions, setCustomParameterDefinitions] = useState<CustomParameterDefinition[]>([]);
   const [tradeDimensions, setTradeDimensions] = useState<Record<string, number>>({});
   const calculationDimensions = useMemo(
     () => ({
@@ -268,6 +283,36 @@ function NewQuoteScreen() {
     ]);
   }
 
+  function addCustomVariable() {
+    setCustomParameterDefinitions((items) => {
+      const used = new Set(items.map((item) => item.id));
+      let ordinal = items.length + 1;
+      let definition = createCustomParameterDefinition(ordinal);
+      while (used.has(definition.id)) {
+        ordinal += 1;
+        definition = createCustomParameterDefinition(ordinal);
+      }
+      return [...items, definition];
+    });
+  }
+
+  function updateCustomVariable(id: string, field: "label" | "unit" | "value", value: string) {
+    if (field === "value") {
+      setParameterValues((values) => ({ ...values, [id]: Math.max(0, Number(value) || 0) }));
+      return;
+    }
+    setCustomParameterDefinitions((items) => items.map((item) => item.id === id ? { ...item, [field]: value } : item));
+  }
+
+  function removeCustomVariable(id: string) {
+    setCustomParameterDefinitions((items) => items.filter((item) => item.id !== id));
+    setParameterValues((values) => {
+      const next = { ...values };
+      delete next[id];
+      return next;
+    });
+  }
+
   function addScopeItem(description: string) {
     let quantity = "1";
     let unit = "each";
@@ -307,6 +352,8 @@ function NewQuoteScreen() {
   function applyTradeChange(tradeType: string) {
     setLineItems([]);
     setSelectedTemplateId("custom");
+    setParameterValues({});
+    setCustomParameterDefinitions([]);
     setSelectedTradeType(tradeType);
 
     setTradeDimensions(
@@ -341,11 +388,20 @@ function NewQuoteScreen() {
   ) {
     setLineItems((items) => items.map((item) => {
       if (item.id !== id) return item;
+      if (
+        item.lineKey &&
+        item.bomRuleId &&
+        field !== "quantity" &&
+        field !== "unitCost" &&
+        field !== "markupPercentage"
+      ) {
+        return item;
+      }
       const nextItem = { ...item, [field]: value };
 
       if (field === "quantity") {
         nextItem.isManualQuantity = true;
-      } else if (field === "description" && !nextItem.isManualQuantity) {
+      } else if (field === "description" && !nextItem.isManualQuantity && !nextItem.bomRuleId) {
         const match = applyTradeRules(
           nextItem.description,
           calculationDimensions,
@@ -367,6 +423,10 @@ function NewQuoteScreen() {
   function handleRestoreAutoQuantity(id: number) {
     setLineItems((items) => items.map((item) => {
       if (item.id !== id) return item;
+      if (item.bomRuleId) {
+        const calculated = calculatedBom.find((entry) => entry.lineKey === item.lineKey && entry.bomRuleId === item.bomRuleId);
+        return calculated ? { ...item, quantity: String(calculated.quantity), isManualQuantity: false } : item;
+      }
       const match = applyTradeRules(
         item.description,
         calculationDimensions,
@@ -408,10 +468,29 @@ function NewQuoteScreen() {
     ),
     [activeTradeType, templates],
   );
+  const selectedTemplate = useMemo(
+    () => matchingTemplates.find((entry) => String(entry.id) === selectedTemplateId),
+    [matchingTemplates, selectedTemplateId],
+  );
+  const parametricTemplate = selectedTemplate && hasParametricDefinition(selectedTemplate as any)
+    ? selectedTemplate
+    : null;
+  const templateDefinitions = parametricTemplate?.parameterDefinitions as ParameterDefinition[] | null | undefined;
+  const displayedDefinitions = templateDefinitions?.length
+    ? [...templateDefinitions, ...customParameterDefinitions]
+    : selectedTemplateId !== "custom" && selectedTemplate
+      ? STANDARD_DIMENSION_FALLBACK
+      : customParameterDefinitions;
+  const calculatedBom = useMemo(
+    () => parametricTemplate ? calculateTemplateBom(parametricTemplate.bomRules as any, parameterValues) : [],
+    [parametricTemplate, parameterValues],
+  );
 
   function applyTemplate(templateId: string) {
     setSelectedTemplateId(templateId);
+    setCustomParameterDefinitions([]);
     if (templateId === "custom") {
+      setParameterValues({});
       setLineItems([]);
       return;
     }
@@ -422,21 +501,22 @@ function NewQuoteScreen() {
       setLineItems([]);
       return;
     }
+    const parametric = hasParametricDefinition(template as any);
+    const definitions = parametric ? template.parameterDefinitions ?? [] : STANDARD_DIMENSION_FALLBACK;
+    const values = defaultParameterValues(definitions);
+    setParameterValues(values);
+    const calculated = parametric ? calculateTemplateBom(template.bomRules as any, values) : [];
     setLineItems(template.defaultLineItems.map((item) => {
       let quantity = String(item.quantity);
       let unit = item.unit;
       let unitType = item.unitType;
       let isManualQuantity = true;
 
-      const match = applyTradeRules(
-        item.description,
-        calculationDimensions,
-        activeTradeCalculator,
-      );
-      if (match) {
-        quantity = String(match.quantity);
-        unit = match.unit;
-        unitType = match.unitType as any;
+      const rule = calculated.find((entry) => entry.lineKey === item.lineKey);
+      if (rule) {
+        quantity = String(rule.quantity);
+        unit = item.unit;
+        unitType = item.unitType;
         isManualQuantity = false;
       }
 
@@ -452,6 +532,8 @@ function NewQuoteScreen() {
         isBulkItem: item.isBulkItem,
         saveToMyPresets: false,
         isManualQuantity,
+        lineKey: item.lineKey,
+        bomRuleId: rule?.bomRuleId,
       };
     }));
   }
@@ -486,7 +568,7 @@ function NewQuoteScreen() {
     }
     if (lineItems.some((item) =>
       !item.description.trim()
-      || Number(item.quantity) <= 0
+      || (item.isManualQuantity && Number(item.quantity) <= 0)
       || Number(item.unitCost) < 0
       || Number(item.markupPercentage) < 0
     )) {
@@ -494,6 +576,17 @@ function NewQuoteScreen() {
         "Check additional items",
         "Each item needs a description, a quantity above zero, and non-negative cost and mark-up values.",
       );
+      return;
+    }
+    if (selectedTemplateId === "custom" && customParameterDefinitions.some((definition) =>
+      !definition.id.trim() ||
+      !definition.label.trim() ||
+      !definition.unit.trim() ||
+      !Number.isFinite(parameterValues[definition.id]) ||
+      parameterValues[definition.id] < (definition.minimum ?? 0) ||
+      (definition.maximum !== undefined && parameterValues[definition.id] > definition.maximum)
+    )) {
+      Alert.alert("Check custom variables", "Each variable needs a label, unit and valid numeric value.");
       return;
     }
     const quoteSpec = activeTradeCalculator
@@ -513,6 +606,21 @@ function NewQuoteScreen() {
           customerId,
           tradeType: activeTradeType,
           siteAddress: siteAddress || undefined,
+          ...(parametricTemplate && parametricTemplate.id > 0 ? {
+            templateId: parametricTemplate.id,
+            templateSlug: parametricTemplate.slug,
+            templateRevision: parametricTemplate.templateRevision!,
+          } : {}),
+          engineVersion: parametricTemplate ? PARAMETRIC_ENGINE_VERSION : undefined,
+          ...(parametricTemplate
+            ? { parameterValues }
+            : selectedTemplateId === "custom" &&
+                customParameterDefinitions.length > 0
+              ? {
+                  parameterValues,
+                  customParameterDefinitions,
+                }
+              : {}),
           lengthM: quoteSpec.lengthM,
           widthM: quoteSpec.widthM,
           heightM: quoteSpec.heightM,
@@ -521,9 +629,33 @@ function NewQuoteScreen() {
           bearerSpacingMm: quoteSpec.bearerSpacingMm,
           postSpacingMm: quoteSpec.postSpacingMm,
           wastageFactor: quoteSpec.wastageFactor,
-          labourHours: Number(params.labourHours ?? 0),
-          labourRate: Number(params.labourRate ?? 85),
-          lineItems: lineItems.map((item) => ({
+          labourHours: quoteSpec.labourHours ?? Number(params.labourHours ?? 0),
+          labourRate: quoteSpec.labourRate ?? Number(params.labourRate ?? 85),
+          gapSpacingMm: spec.gapSpacingMm,
+          deckBoardType: spec.deckBoardType,
+          subframeType: spec.subframeType,
+          fastenerType: spec.fastenerType,
+          fasciaType: spec.fasciaType,
+          includeHandrails: spec.includeHandrails,
+          handrailHeightMm: spec.handrailHeightMm,
+          balustradeType: spec.balustradeType,
+          timberGapMm: spec.timberGapMm,
+          wireSpacingMm: spec.wireSpacingMm,
+          includeStairs: spec.includeStairs,
+          stairFlights: spec.stairFlights,
+          includeFencing: spec.includeFencing,
+          fencingSides: spec.fencingSides,
+          fencingHeightM: spec.fencingHeightM,
+          fencingWidthM: spec.fencingWidthM,
+          includeAwning: spec.includeAwning,
+          awningWidthM: spec.awningWidthM,
+          awningLengthM: spec.awningLengthM,
+          lineItems: lineItems
+            .filter((item) => item.isManualQuantity || Number(item.quantity) > 0)
+            .map((item) => ({
+            lineKey: item.lineKey,
+            bomRuleId: item.bomRuleId as any,
+            isManualQuantity: item.isManualQuantity,
             description: item.description.trim(),
             quantity: Number(item.quantity),
             unitCost: Number(item.unitCost),
@@ -533,7 +665,7 @@ function NewQuoteScreen() {
             wastagePercentage: Number(item.wastagePercentage),
             isBulkItem: item.isBulkItem,
             saveToMyPresets: item.saveToMyPresets,
-          })),
+            })),
         },
       },
       {
@@ -570,7 +702,7 @@ function NewQuoteScreen() {
         keyExtractor={(item) => String(item.id)}
         ListHeaderComponent={(
           <View style={{ gap: 14 }}>
-      {activeTradeCalculator ? (
+      {activeTradeCalculator && !parametricTemplate ? (
         <Card>
           <Text
             style={{
@@ -861,6 +993,82 @@ function NewQuoteScreen() {
           </Text>
         )}
       </View>
+      {displayedDefinitions.length > 0 || selectedTemplateId === "custom" ? (
+        <Card>
+          <Text style={{ fontFamily: "Inter_700Bold", fontSize: 11, letterSpacing: 1.4, color: colors.mutedForeground, marginBottom: 10 }}>
+            TEMPLATE INPUTS
+          </Text>
+          <View style={{ gap: 12 }}>
+            {displayedDefinitions.map((definition) => {
+              const isCustom = customParameterDefinitions.some((item) => item.id === definition.id);
+              const value = parameterValues[definition.id] ?? definition.defaultValue;
+              return (
+                <View key={definition.id} style={{ gap: 6 }}>
+                  {isCustom ? (
+                    <View style={{ flexDirection: "row", gap: 8 }}>
+                      <TextInputStyled
+                        value={definition.label}
+                        onChangeText={(value) => updateCustomVariable(definition.id, "label", value)}
+                        placeholder="Variable label"
+                        style={{ flex: 1 }}
+                      />
+                      <TextInputStyled
+                        value={definition.unit}
+                        onChangeText={(value) => updateCustomVariable(definition.id, "unit", value)}
+                        placeholder="Unit"
+                        style={{ width: 82 }}
+                      />
+                      <Pressable accessibilityRole="button" accessibilityLabel="Remove custom variable" onPress={() => removeCustomVariable(definition.id)} style={{ justifyContent: "center", padding: 8 }}>
+                        <Feather name="trash-2" size={16} color={colors.destructive} />
+                      </Pressable>
+                    </View>
+                  ) : (
+                    <Text style={{ fontFamily: "Inter_600SemiBold", fontSize: 13, color: colors.foreground }}>
+                      {definition.label} <Text style={{ color: colors.mutedForeground }}>({definition.unit})</Text>
+                    </Text>
+                  )}
+                  <TextInputStyled
+                    value={String(value)}
+                    onChangeText={(raw) => {
+                      const parsed = Number(raw);
+                      const minimum = definition.minimum ?? 0;
+                      const maximum = definition.maximum ?? Number.MAX_SAFE_INTEGER;
+                      setParameterValues((values) => ({
+                        ...values,
+                        [definition.id]: Number.isFinite(parsed)
+                          ? Math.min(maximum, Math.max(minimum, parsed))
+                          : minimum,
+                      }));
+                      if (parametricTemplate) {
+                        const nextValues = sanitiseParameterValues(parametricTemplate.parameterDefinitions ?? [], { ...parameterValues, [definition.id]: raw });
+                        const nextBom = calculateTemplateBom(parametricTemplate.bomRules as any, nextValues);
+                        setLineItems((items) => items.map((item) => {
+                          if (item.isManualQuantity || !item.bomRuleId) return item;
+                          const next = nextBom.find((entry) => entry.lineKey === item.lineKey && entry.bomRuleId === item.bomRuleId);
+                          return next ? { ...item, quantity: String(next.quantity) } : item;
+                        }));
+                      }
+                    }}
+                    keyboardType="decimal-pad"
+                  />
+                </View>
+              );
+            })}
+          </View>
+          {parametricTemplate ? (
+            <View style={{ marginTop: 16, paddingTop: 14, borderTopWidth: 1, borderTopColor: colors.border, gap: 8 }}>
+              <Text style={{ fontFamily: "Inter_700Bold", fontSize: 10, letterSpacing: 1.2, color: colors.primary }}>CALCULATED OUTPUTS & ASSUMPTIONS</Text>
+              {calculatedBom.map((output) => (
+                <View key={output.lineKey} style={{ flexDirection: "row", justifyContent: "space-between" }}>
+                  <Text style={{ color: colors.mutedForeground, fontFamily: "Inter_500Medium", fontSize: 12 }}>{output.lineKey}</Text>
+                  <Text style={{ color: colors.foreground, fontFamily: "Inter_700Bold", fontSize: 12 }}>{output.quantity}</Text>
+                </View>
+              ))}
+            </View>
+          ) : null}
+          <Button label="Add variable" icon="plus" onPress={addCustomVariable} />
+        </Card>
+      ) : null}
           {personalPresets?.length ? (
             <View style={{ gap: 8 }}>
               <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
@@ -942,11 +1150,19 @@ function NewQuoteScreen() {
           </View>
           <View style={{ gap: 12 }}>
             <LabeledInput label="Description">
-              <TextInputStyled
-                value={item.description}
-                onChangeText={(value) => updateLineItem(item.id, "description", value)}
-                placeholder="Skip bin hire"
-              />
+              {item.lineKey && item.bomRuleId ? (
+                <View style={{ borderWidth: 1, borderColor: colors.border, borderRadius: colors.radius, padding: 12 }}>
+                  <Text style={{ color: colors.foreground, fontFamily: "Inter_500Medium" }}>
+                    {item.description} · Template-owned
+                  </Text>
+                </View>
+              ) : (
+                <TextInputStyled
+                  value={item.description}
+                  onChangeText={(value) => updateLineItem(item.id, "description", value)}
+                  placeholder="Skip bin hire"
+                />
+              )}
             </LabeledInput>
             <View style={{ flexDirection: "row", gap: 10 }}>
               <View style={{ flex: 1 }}>
@@ -954,7 +1170,9 @@ function NewQuoteScreen() {
                   <Text style={{ fontFamily: "Inter_700Bold", fontSize: 10, letterSpacing: 1.2, color: colors.mutedForeground, marginBottom: 6 }}>
                     QUANTITY
                   </Text>
-                  {item.isManualQuantity && applyTradeRules(item.description, calculationDimensions, activeTradeCalculator) ? (
+                  {item.isManualQuantity && (item.bomRuleId
+                    ? calculatedBom.some((entry) => entry.lineKey === item.lineKey && entry.bomRuleId === item.bomRuleId)
+                    : applyTradeRules(item.description, calculationDimensions, activeTradeCalculator)) ? (
                     <Pressable
                       accessibilityLabel="Use calculated quantity"
                       accessibilityRole="button"
@@ -1009,6 +1227,11 @@ function NewQuoteScreen() {
               <Text style={{ fontFamily: "Inter_700Bold", fontSize: 10, letterSpacing: 1.2, color: colors.mutedForeground }}>
                 UNIT
               </Text>
+              {item.lineKey && item.bomRuleId ? (
+                <Text style={{ color: colors.mutedForeground, fontFamily: "Inter_700Bold", fontSize: 11 }}>
+                  {item.unit} · TEMPLATE-OWNED
+                </Text>
+              ) : (
               <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }}>
                 {unitOptions(item.unit).map((unit) => {
                   const active = item.unit === unit;
@@ -1034,11 +1257,17 @@ function NewQuoteScreen() {
                   );
                 })}
               </ScrollView>
+              )}
             </View>
             <View style={{ gap: 10 }}>
               <Text style={{ fontFamily: "Inter_700Bold", fontSize: 10, letterSpacing: 1.2, color: colors.mutedForeground }}>
                 UNIT TYPE
               </Text>
+              {item.lineKey && item.bomRuleId ? (
+                <Text style={{ color: colors.mutedForeground, fontFamily: "Inter_700Bold", fontSize: 11 }}>
+                  {item.unitType} · TEMPLATE-OWNED
+                </Text>
+              ) : (
               <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }}>
                 {UNIT_TYPES.map((unitType) => {
                   const active = item.unitType === unitType.value;
@@ -1064,7 +1293,22 @@ function NewQuoteScreen() {
                   );
                 })}
               </ScrollView>
+              )}
             </View>
+            {parametricTemplate && item.lineKey && item.bomRuleId ? (
+              <View style={{ flexDirection: "row", gap: 10 }}>
+                <View style={{ flex: 1, borderWidth: 1, borderColor: colors.border, borderRadius: colors.radius, padding: 12 }}>
+                  <Text style={{ color: colors.mutedForeground, fontFamily: "Inter_700Bold", fontSize: 11 }}>
+                    WASTAGE {item.wastagePercentage}% · TEMPLATE-OWNED
+                  </Text>
+                </View>
+                <View style={{ flex: 1, borderWidth: 1, borderColor: colors.border, borderRadius: colors.radius, padding: 12 }}>
+                  <Text style={{ color: colors.mutedForeground, fontFamily: "Inter_700Bold", fontSize: 11 }}>
+                    {item.isBulkItem ? "FULL-UNIT ROUNDING" : "NO BULK ROUNDING"} · TEMPLATE-OWNED
+                  </Text>
+                </View>
+              </View>
+            ) : (
             <View style={{ flexDirection: "row", gap: 10 }}>
               <View style={{ flex: 1 }}>
                 <LabeledInput label="Wastage %">
@@ -1096,6 +1340,7 @@ function NewQuoteScreen() {
                 </Text>
               </Pressable>
             </View>
+            )}
             <Pressable
               accessibilityRole="switch"
               accessibilityLabel="Save to My Presets"

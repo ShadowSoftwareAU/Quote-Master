@@ -5,6 +5,8 @@
  * Quote Master API — decking quotes, materials, customers, and bookings.
  * OpenAPI spec version: 0.1.0
  */
+import type { ParametricParameterDefinition } from './parametricParameterDefinition';
+import type { QuoteInputParameterValues } from './quoteInputParameterValues';
 import type { QuoteLineItemInput } from './quoteLineItemInput';
 
 export interface QuoteInput {
@@ -14,8 +16,21 @@ export interface QuoteInput {
   tradeType?: string;
   siteAddress?: string;
   notes?: string;
-  lengthM: number;
-  widthM: number;
+  templateId?: number;
+  /**
+     * @minLength 1
+     * @maxLength 120
+     */
+  templateSlug?: string;
+  /** @minimum 1 */
+  engineVersion?: number;
+  /** @minimum 1 */
+  templateRevision?: number;
+  parameterValues?: QuoteInputParameterValues;
+  /** @maxItems 100 */
+  customParameterDefinitions?: ParametricParameterDefinition[];
+  lengthM?: number;
+  widthM?: number;
   heightM?: number;
   boardWidthMm?: number;
   joistSpacingMm?: number;

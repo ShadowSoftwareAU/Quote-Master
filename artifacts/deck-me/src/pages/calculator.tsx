@@ -60,6 +60,16 @@ import {
   RefreshCcw,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import {
+  calculateTemplateBom,
+  createCustomParameterDefinition,
+  defaultParameterValues,
+  hasParametricDefinition,
+  sanitiseParameterValues,
+  STANDARD_DIMENSION_FALLBACK,
+  type ParameterDefinition,
+  type CalculatedBomQuantity,
+} from "@workspace/parametric-quotes";
 
 import {
   normaliseTradeKey,
@@ -124,6 +134,8 @@ interface CustomLineItemDraft {
   isBulkItem: boolean;
   saveToMyPresets: boolean;
   isManualQuantity: boolean;
+  lineKey?: string;
+  bomRuleId?: string;
 }
 
 let nextLineItemId = 1;
@@ -182,6 +194,10 @@ const PLUMBER_STARTER_TEMPLATES: TradeTemplate[] = [
     tradeType: "Plumber",
     name: "General Plumbing Job",
     slug: "general-plumbing-job",
+    engineVersion: null,
+    templateRevision: null,
+    parameterDefinitions: null,
+    bomRules: null,
     defaultLineItems: [
       {
         description: "Pipework",
@@ -223,6 +239,10 @@ const PLUMBER_STARTER_TEMPLATES: TradeTemplate[] = [
     tradeType: "Plumber",
     name: "Bathroom Rough-In",
     slug: "bathroom-rough-in",
+    engineVersion: null,
+    templateRevision: null,
+    parameterDefinitions: null,
+    bomRules: null,
     defaultLineItems: [
       {
         description: "Hot and cold water rough-in",
@@ -326,6 +346,10 @@ function validTemplate(template: TradeTemplate) {
   );
 }
 
+function isParametricTradeTemplate(template: TradeTemplate | null | undefined) {
+  return hasParametricDefinition(template as any);
+}
+
 const DEFAULT_SPEC = {
   lengthM: 5,
   widthM: 4,
@@ -367,6 +391,7 @@ export default function Calculator() {
   const [spec, setSpec] = useState(DEFAULT_SPEC);
   const [tradeDimensions, setTradeDimensions] = useState<Record<string, number>>({});
   const [advancedOpen, setAdvancedOpen] = useState(false);
+  const [selectedTemplateId, setSelectedTemplateId] = useState("custom");
 
   const estimate = useEstimateDeck();
   const createQuote = useCreateQuote();
@@ -402,7 +427,20 @@ export default function Calculator() {
     : [];
   const [selectedTradeType, setSelectedTradeType] = useState("");
   const activeTradeType = selectedTradeType || profileTradeTypes[0] || "Trade";
-  const deckCalculator = usesDeckCalculator(activeTradeType);
+  const modeServerTemplates = (templates ?? []).filter(
+    (template) =>
+      normaliseTradeType(template.tradeType) === normaliseTradeType(activeTradeType),
+  );
+  const modeTemplates =
+    modeServerTemplates.length > 0
+      ? modeServerTemplates
+      : fallbackTemplatesForTrade(activeTradeType);
+  const modeTemplate = modeTemplates.find(
+    (template) => String(template.id) === selectedTemplateId,
+  );
+  const deckCalculator =
+    usesDeckCalculator(activeTradeType) &&
+    !isParametricTradeTemplate(modeTemplate);
   const activeTradeCalculator = getTradeCalculator(activeTradeType);
   const calculationDimensions = useMemo(
     () => ({
@@ -440,7 +478,9 @@ export default function Calculator() {
   const [customerId, setCustomerId] = useState("");
   const [dialogOpen, setDialogOpen] = useState(false);
   const [lineItems, setLineItems] = useState<CustomLineItemDraft[]>([]);
-  const [selectedTemplateId, setSelectedTemplateId] = useState("custom");
+  const [parameterValues, setParameterValues] = useState<Record<string, number>>({});
+  const [customParameterDefinitions, setCustomParameterDefinitions] = useState<ParameterDefinition[]>([]);
+  const nextCustomVariableOrdinal = useRef(1);
   const autoAppliedTradeRef = useRef<string | null>(null);
 
   const councilWarning = deckCalculator && spec.heightM >= COUNCIL_HEIGHT_M;
@@ -594,13 +634,6 @@ export default function Calculator() {
     customSubtotal > 0
       ? Math.round((customMargin / customSubtotal) * 1000) / 10
       : 0;
-  const quoteSubtotal =
-    (estData?.materialsSubtotal ?? 0) +
-    (estData?.labourCost ?? 0) +
-    customSubtotal;
-  const quoteGst = Math.round(quoteSubtotal * 0.1 * 100) / 100;
-  const quoteTotal = Math.round((quoteSubtotal + quoteGst) * 100) / 100;
-
   const addLineItem = () => {
     setLineItems((items) => [
       ...items,
@@ -668,6 +701,8 @@ export default function Calculator() {
     }
     setLineItems([]);
     setSelectedTemplateId("custom");
+    setParameterValues({});
+    setCustomParameterDefinitions([]);
     autoAppliedTradeRef.current = null;
     setSelectedTradeType(nextTradeType);
 
@@ -684,6 +719,15 @@ export default function Calculator() {
     setLineItems((items) =>
       items.map((item) => {
         if (item.id !== id) return item;
+        if (
+          item.lineKey &&
+          item.bomRuleId &&
+          field !== "quantity" &&
+          field !== "unitCost" &&
+          field !== "markupPercentage"
+        ) {
+          return item;
+        }
 
         const nextItem = { ...item };
         if (typeof value === "boolean" || field === "description" || field === "unit" || field === "unitType") {
@@ -718,6 +762,12 @@ export default function Calculator() {
     setLineItems((items) =>
       items.map((item) => {
         if (item.id !== id) return item;
+        if (item.bomRuleId && parametricSelected) {
+          const calculated = parametricBom.find((line) => line.lineKey === item.lineKey);
+          return calculated
+            ? { ...item, quantity: calculated.quantity, isManualQuantity: false }
+            : item;
+        }
         const match = applyTradeRules(
           item.description,
           calculationDimensions,
@@ -743,10 +793,59 @@ export default function Calculator() {
       : fallbackTemplatesForTrade(activeTradeType);
   }, [activeTradeType, templates]);
 
+  const selectedTemplate = matchingTemplates.find(
+    (entry) => String(entry.id) === selectedTemplateId,
+  );
+  const parametricSelected =
+    !!selectedTemplate && isParametricTradeTemplate(selectedTemplate);
+  const previewLabourCost = parametricSelected
+    ? Math.round(spec.labourHours * spec.labourRate * 100) / 100
+    : (estData?.labourCost ?? 0);
+  const quoteSubtotal =
+    (parametricSelected ? 0 : (estData?.materialsSubtotal ?? 0)) +
+    previewLabourCost +
+    customSubtotal;
+  const quoteGst = Math.round(quoteSubtotal * 0.1 * 100) / 100;
+  const quoteTotal = Math.round((quoteSubtotal + quoteGst) * 100) / 100;
+  const parametricDefinitions = parametricSelected
+    ? (selectedTemplate?.parameterDefinitions ?? [])
+    : [];
+  const visibleParameterDefinitions =
+    parametricSelected ? parametricDefinitions : customParameterDefinitions;
+  const parametricBom = useMemo<CalculatedBomQuantity[]>(
+    () => calculateTemplateBom(selectedTemplate?.bomRules as any, parameterValues),
+    [selectedTemplate?.bomRules, parameterValues],
+  );
+
+  const setParametricValue = (id: string, value: string) => {
+    const definition = visibleParameterDefinitions.find((entry) => entry.id === id);
+    if (!definition) return;
+    const nextValues = sanitiseParameterValues(
+      visibleParameterDefinitions,
+      { ...parameterValues, [id]: value },
+    );
+    setParameterValues(nextValues);
+    if (!parametricSelected) return;
+    setLineItems((items) =>
+      items.map((item) => {
+        if (item.isManualQuantity || !item.bomRuleId) return item;
+        const calculated = calculateTemplateBom(
+          selectedTemplate?.bomRules as any,
+          nextValues,
+        ).find((line) => line.lineKey === item.lineKey);
+        return calculated
+          ? { ...item, quantity: calculated.quantity }
+          : item;
+      }),
+    );
+  };
+
   const applyTemplate = (templateId: string) => {
     setSelectedTemplateId(templateId);
     if (templateId === "custom") {
       setLineItems([]);
+      setParameterValues({});
+      setCustomParameterDefinitions([]);
       return;
     }
     const template = matchingTemplates.find(
@@ -763,6 +862,47 @@ export default function Calculator() {
       setLineItems([]);
       return;
     }
+    const isParametric = isParametricTradeTemplate(template);
+    if (isParametric) {
+      const values = defaultParameterValues(template.parameterDefinitions);
+      setParameterValues(values);
+      setCustomParameterDefinitions([]);
+      const bomByKey = new Map<string, CalculatedBomQuantity>(
+        calculateTemplateBom(template.bomRules as any, values).map((line) => [
+          line.lineKey,
+          line,
+        ]),
+      );
+      setLineItems(
+        template.defaultLineItems.map((item) => {
+          const key = item.lineKey ?? item.description;
+          const rule = template.bomRules?.find((entry) => entry.lineKey === key);
+          const calculated = bomByKey.get(key);
+          return {
+            id: nextLineItemId++,
+            description: item.description,
+            quantity: calculated?.quantity ?? item.quantity,
+            unit: item.unit,
+            unitType: item.unitType,
+            unitCost: item.unitCost,
+            markupPercentage: item.markupPercentage,
+            wastagePercentage: item.wastagePercentage,
+            isBulkItem: item.isBulkItem,
+            saveToMyPresets: false,
+            isManualQuantity: false,
+            lineKey: key,
+            bomRuleId: rule?.bomRuleId,
+          };
+        }),
+      );
+      return;
+    }
+    setParameterValues(
+      activeTradeCalculator
+        ? {}
+        : defaultParameterValues(STANDARD_DIMENSION_FALLBACK),
+    );
+    setCustomParameterDefinitions([]);
     setLineItems(
       template.defaultLineItems.map((item) => {
         let quantity = item.quantity;
@@ -794,6 +934,7 @@ export default function Calculator() {
           isBulkItem: item.isBulkItem,
           saveToMyPresets: false,
           isManualQuantity,
+          lineKey: item.lineKey,
         };
       })
     );
@@ -860,11 +1001,31 @@ export default function Calculator() {
       return;
     }
     if (
-      lineItems.some((item) => !item.description.trim() || item.quantity <= 0)
+      lineItems.some(
+        (item) =>
+          !item.description.trim() ||
+          (item.isManualQuantity && item.quantity <= 0),
+      )
     ) {
       toast({
         title: "Check additional items",
         description: "Each item needs a description and a quantity above zero.",
+        variant: "destructive",
+      });
+      return;
+    }
+    if (
+      customParameterDefinitions.some(
+        (definition) =>
+          !definition.label.trim() ||
+          !definition.unit.trim() ||
+          !Number.isFinite(parameterValues[definition.id]) ||
+          parameterValues[definition.id] < 0,
+      )
+    ) {
+      toast({
+        title: "Check custom variables",
+        description: "Each variable needs a label, unit and non-negative numeric value.",
         variant: "destructive",
       });
       return;
@@ -886,7 +1047,33 @@ export default function Calculator() {
           title: quoteTitle,
           customerId: parseInt(customerId),
           tradeType: activeTradeType,
-          lineItems: lineItems.map((item) => ({
+          ...(selectedTemplate &&
+          selectedTemplate.id > 0 &&
+          parametricSelected
+            ? {
+                templateId: selectedTemplate.id,
+                templateSlug: selectedTemplate.slug,
+                engineVersion: selectedTemplate.engineVersion!,
+                templateRevision: selectedTemplate.templateRevision!,
+                parameterValues,
+              }
+            : {}),
+          ...(selectedTemplateId === "custom" && customParameterDefinitions.length > 0
+            ? {
+                customParameterDefinitions: customParameterDefinitions.map((definition) => ({
+                  ...definition,
+                  label: definition.label.trim(),
+                  unit: definition.unit.trim(),
+                })),
+                 parameterValues,
+              }
+            : {}),
+          lineItems: lineItems
+            .filter((item) => item.isManualQuantity || item.quantity > 0)
+            .map((item) => ({
+            ...(item.lineKey ? { lineKey: item.lineKey } : {}),
+            ...(item.bomRuleId ? { bomRuleId: item.bomRuleId as any } : {}),
+            isManualQuantity: item.isManualQuantity,
             description: item.description.trim(),
             quantity: item.quantity,
             unitCost: item.unitCost,
@@ -896,7 +1083,7 @@ export default function Calculator() {
             wastagePercentage: item.wastagePercentage,
             isBulkItem: item.isBulkItem,
             saveToMyPresets: item.saveToMyPresets,
-          })),
+            })),
         },
       },
       {
@@ -1056,8 +1243,151 @@ export default function Calculator() {
         </section>
       )}
 
+      {!deckCalculator && (
+        <Card className="border-2 border-primary/25">
+          <CardHeader className="pb-3">
+            <CardTitle className="font-black uppercase text-sm tracking-wider">
+              Quote template
+            </CardTitle>
+            <p className="text-xs text-muted-foreground">
+              Select a template before entering job dimensions. Calculated quantities use the template rules.
+            </p>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {profileLoading || templatesLoading ? (
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <Loader2 className="h-4 w-4 animate-spin" /> Loading templates…
+              </div>
+            ) : templatesError && matchingTemplates.length === 0 ? (
+              <p className="text-sm text-amber-700">Templates are unavailable. You can still add custom lines.</p>
+            ) : (
+              <Select value={selectedTemplateId} onValueChange={applyTemplate}>
+                <SelectTrigger className="h-11">
+                  <SelectValue placeholder="Choose a template" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="custom">Custom lines</SelectItem>
+                  {matchingTemplates.map((template) => (
+                    <SelectItem key={template.id} value={String(template.id)} disabled={!validTemplate(template)}>
+                      {template.name}{isParametricTradeTemplate(template) ? " · calculated" : ""}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
+            {parametricSelected && (
+              <div className="space-y-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  {parametricDefinitions.map((definition) => (
+                    <div key={definition.id} className="space-y-1">
+                      <Label htmlFor={`parameter-${definition.id}`} className="text-xs font-bold uppercase">
+                        {definition.label} <span className="font-normal text-muted-foreground">({definition.unit})</span>
+                      </Label>
+                      <Input
+                        id={`parameter-${definition.id}`}
+                        type="number"
+                        min={definition.minimum}
+                        max={definition.maximum}
+                        step={definition.step ?? "any"}
+                        value={parameterValues[definition.id] ?? definition.defaultValue}
+                        onChange={(event) => setParametricValue(definition.id, event.target.value)}
+                        className="font-mono"
+                      />
+                    </div>
+                  ))}
+                </div>
+                <div className="rounded-md border bg-muted/20 p-3 space-y-1">
+                  <p className="text-xs font-black uppercase tracking-wide text-primary">Calculated quantities</p>
+                  <p className="text-xs text-muted-foreground">
+                    Based on your dimensions and fixed trade allowances. Adjust a line manually if the site differs.
+                  </p>
+                  {parametricBom.map((line) => {
+                    const item = lineItems.find((entry) => entry.lineKey === line.lineKey);
+                    return (
+                      <div key={line.lineKey} className="flex justify-between text-sm">
+                        <span>{item?.description ?? line.lineKey}</span>
+                        <span className="font-mono">{line.quantity.toLocaleString("en-AU", { maximumFractionDigits: 3 })}</span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+            {selectedTemplateId !== "custom" &&
+              !parametricSelected &&
+              !activeTradeCalculator && (
+                <div className="space-y-3 rounded-md border bg-muted/10 p-3">
+                  <p className="text-xs font-black uppercase tracking-wide">Standard Dimensions</p>
+                  <p className="text-xs text-muted-foreground">
+                    This older template has no calculation rules. Quantities keep their existing manual behaviour.
+                  </p>
+                  <div className="grid grid-cols-3 gap-2">
+                    {STANDARD_DIMENSION_FALLBACK.map((definition) => (
+                      <div key={definition.id} className="space-y-1">
+                        <Label className="text-[10px]">{definition.label} ({definition.unit})</Label>
+                        <Input
+                          type="number"
+                          min="0"
+                          value={parameterValues[definition.id] ?? definition.defaultValue}
+                          onChange={(event) => setParametricValue(definition.id, event.target.value)}
+                        />
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            {selectedTemplateId === "custom" && (
+              <div className="space-y-3 rounded-md border bg-muted/10 p-3">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-xs font-black uppercase tracking-wide">Add variables</p>
+                    <p className="text-xs text-muted-foreground">Custom variables are saved with this quote and do not calculate materials.</p>
+                  </div>
+                  <Button type="button" variant="outline" size="sm" onClick={() => {
+                    const definition = createCustomParameterDefinition(nextCustomVariableOrdinal.current++);
+                    setCustomParameterDefinitions((current) => [...current, definition]);
+                    setParameterValues((current) => ({ ...current, [definition.id]: definition.defaultValue }));
+                  }}><Plus className="mr-1 h-3.5 w-3.5" /> Add variable</Button>
+                </div>
+                {customParameterDefinitions.map((definition) => (
+                  <div key={definition.id} className="grid grid-cols-[1fr_5rem_6rem_auto] gap-2 items-end">
+                    <div className="space-y-1"><Label className="text-[10px]">Label</Label><Input value={definition.label} onChange={(e) => setCustomParameterDefinitions((all) => all.map((d) => d.id === definition.id ? { ...d, label: e.target.value } : d))} /></div>
+                    <div className="space-y-1"><Label className="text-[10px]">Unit</Label><Input value={definition.unit} onChange={(e) => setCustomParameterDefinitions((all) => all.map((d) => d.id === definition.id ? { ...d, unit: e.target.value } : d))} /></div>
+                    <div className="space-y-1"><Label className="text-[10px]">Value</Label><Input type="number" min="0" value={parameterValues[definition.id] ?? definition.defaultValue} onChange={(e) => setParametricValue(definition.id, e.target.value)} /></div>
+                    <Button type="button" variant="ghost" size="icon" aria-label="Remove variable" onClick={() => {
+                      setCustomParameterDefinitions((all) => all.filter((d) => d.id !== definition.id));
+                      setParameterValues((all) => { const next = { ...all }; delete next[definition.id]; return next; });
+                    }}><Trash2 className="h-4 w-4 text-destructive" /></Button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
+
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         {/* ── LEFT: Inputs ── */}
+        {parametricSelected && !deckCalculator && (
+          <Card className="border-2">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-sm font-black uppercase tracking-wider">
+                Labour
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label className="font-bold uppercase text-xs">Labour Hours</Label>
+                <Input type="number" name="labourHours" value={spec.labourHours} onChange={handleChange} className="font-mono h-10" />
+              </div>
+              <div className="space-y-1.5">
+                <Label className="font-bold uppercase text-xs">Labour Rate ($/hr)</Label>
+                <Input type="number" name="labourRate" value={spec.labourRate} onChange={handleChange} className="font-mono h-10" />
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
         {deckCalculator && (
           <div className="lg:col-span-5 space-y-4">
             {/* Dimensions */}
@@ -1629,7 +1959,7 @@ export default function Calculator() {
               : "lg:col-span-12 mx-auto w-full max-w-5xl space-y-4"
           }
         >
-          {!deckCalculator && activeTradeCalculator && (
+          {!deckCalculator && activeTradeCalculator && !parametricSelected && (
             <Card className="border-2 border-primary/20 bg-muted/10">
               <CardHeader className="pb-3 px-5 border-b bg-card">
                 <CardTitle className="font-black uppercase text-sm tracking-wider">
@@ -1695,22 +2025,24 @@ export default function Calculator() {
             <div className="grid grid-cols-3 divide-x divide-border bg-muted/20">
               <div className="p-3 text-center">
                 <div className="text-xs font-bold uppercase text-muted-foreground">
-                  {deckCalculator ? "Materials" : "Quoted items"}
+                  {deckCalculator || parametricSelected ? "Materials" : "Quoted items"}
                 </div>
                 <div className="font-mono font-bold mt-0.5">
                   {formatCurrency(
-                    (estData?.materialsSubtotal ?? 0) + customSubtotal,
+                    (parametricSelected
+                      ? 0
+                      : (estData?.materialsSubtotal ?? 0)) + customSubtotal,
                   )}
                 </div>
               </div>
               <div className="p-3 text-center">
                 <div className="text-xs font-bold uppercase text-muted-foreground">
-                  {deckCalculator ? "Labour" : "Estimated cost"}
+                  {deckCalculator || parametricSelected ? "Labour" : "Estimated cost"}
                 </div>
                 <div className="font-mono font-bold mt-0.5">
                   {formatCurrency(
-                    deckCalculator
-                      ? (estData?.labourCost ?? 0)
+                    deckCalculator || parametricSelected
+                      ? previewLabourCost
                       : customCostSubtotal,
                   )}
                 </div>
@@ -1897,23 +2229,30 @@ export default function Calculator() {
                         <Label htmlFor={`line-description-${item.id}`}>
                           Description
                         </Label>
-                        <Input
-                          id={`line-description-${item.id}`}
-                          value={item.description}
-                          onChange={(event) =>
-                            updateLineItem(
-                              item.id,
-                              "description",
-                              event.target.value,
-                            )
-                          }
-                          placeholder="Skip bin hire"
-                        />
+                        {item.lineKey && item.bomRuleId ? (
+                          <div className="flex h-10 items-center justify-between rounded-md border bg-muted/30 px-3 text-sm">
+                            <span>{item.description}</span>
+                            <Badge variant="secondary">Template-owned</Badge>
+                          </div>
+                        ) : (
+                          <Input
+                            id={`line-description-${item.id}`}
+                            value={item.description}
+                            onChange={(event) =>
+                              updateLineItem(
+                                item.id,
+                                "description",
+                                event.target.value,
+                              )
+                            }
+                            placeholder="Skip bin hire"
+                          />
+                        )}
                       </div>
                       <div className="space-y-1 relative">
                         <Label htmlFor={`line-quantity-${item.id}`} className="flex justify-between items-center">
                           <span>Quantity</span>
-                          {item.isManualQuantity && applyTradeRules(item.description, calculationDimensions, activeTradeCalculator) && (
+                          {item.isManualQuantity && ((item.bomRuleId && parametricSelected) || applyTradeRules(item.description, calculationDimensions, activeTradeCalculator)) && (
                             <button
                               type="button"
                               onClick={() => handleRestoreAutoQuantity(item.id)}
@@ -1988,6 +2327,9 @@ export default function Calculator() {
                       </div>
                       <div className="space-y-1">
                         <Label htmlFor={`line-unit-${item.id}`}>Unit</Label>
+                        {item.lineKey && item.bomRuleId ? (
+                          <Badge variant="secondary">{item.unit} · Template-owned</Badge>
+                        ) : (
                         <Select
                           value={item.unit}
                           onValueChange={(value) =>
@@ -2005,11 +2347,15 @@ export default function Calculator() {
                             ))}
                           </SelectContent>
                         </Select>
+                        )}
                       </div>
                       <div className="space-y-1">
                         <Label htmlFor={`line-unit-type-${item.id}`}>
                           Unit type
                         </Label>
+                        {item.lineKey && item.bomRuleId ? (
+                          <Badge variant="secondary">{item.unitType} · Template-owned</Badge>
+                        ) : (
                         <Select
                           value={item.unitType}
                           onValueChange={(value) =>
@@ -2030,45 +2376,58 @@ export default function Calculator() {
                             ))}
                           </SelectContent>
                         </Select>
+                        )}
                       </div>
                       <div className="space-y-1">
                         <Label htmlFor={`line-wastage-${item.id}`}>
                           Wastage %
                         </Label>
-                        <Input
-                          id={`line-wastage-${item.id}`}
-                          type="number"
-                          min="0"
-                          max="100"
-                          step="0.01"
-                          value={item.wastagePercentage}
-                          onChange={(event) =>
-                            updateLineItem(
-                              item.id,
-                              "wastagePercentage",
-                              event.target.value,
-                            )
-                          }
-                        />
-                      </div>
-                      <div className="flex items-end pb-1">
-                        <label
-                          htmlFor={`line-bulk-${item.id}`}
-                          className="flex items-center gap-2 text-sm font-bold cursor-pointer"
-                        >
-                          <Checkbox
-                            id={`line-bulk-${item.id}`}
-                            checked={item.isBulkItem}
-                            onCheckedChange={(checked) =>
+                        {parametricSelected && item.lineKey && item.bomRuleId ? (
+                          <Badge variant="secondary">
+                            {item.wastagePercentage}% · Template-owned
+                          </Badge>
+                        ) : (
+                          <Input
+                            id={`line-wastage-${item.id}`}
+                            type="number"
+                            min="0"
+                            max="100"
+                            step="0.01"
+                            value={item.wastagePercentage}
+                            onChange={(event) =>
                               updateLineItem(
                                 item.id,
-                                "isBulkItem",
-                                checked === true,
+                                "wastagePercentage",
+                                event.target.value,
                               )
                             }
                           />
-                          Full boxes / bulk units
-                        </label>
+                        )}
+                      </div>
+                      <div className="flex items-end pb-1">
+                        {parametricSelected && item.lineKey && item.bomRuleId ? (
+                          <Badge variant="secondary">
+                            {item.isBulkItem ? "Full-unit rounding" : "No bulk rounding"} · Template-owned
+                          </Badge>
+                        ) : (
+                          <label
+                            htmlFor={`line-bulk-${item.id}`}
+                            className="flex items-center gap-2 text-sm font-bold cursor-pointer"
+                          >
+                            <Checkbox
+                              id={`line-bulk-${item.id}`}
+                              checked={item.isBulkItem}
+                              onCheckedChange={(checked) =>
+                                updateLineItem(
+                                  item.id,
+                                  "isBulkItem",
+                                  checked === true,
+                                )
+                              }
+                            />
+                            Full boxes / bulk units
+                          </label>
+                        )}
                       </div>
                       <div className="flex items-end pb-1 sm:col-span-2">
                         <label

@@ -1708,6 +1708,22 @@ components:
           { type: number, description: "Labour hours for the job", default: 0 }
         labourRate:
           { type: number, description: "AUD per hour labour rate", default: 85 }
+        templateId: { type: ["integer", "null"] }
+        templateSlug: { type: ["string", "null"] }
+        engineVersion: { type: ["integer", "null"] }
+        templateRevision: { type: ["integer", "null"] }
+        parameterValues:
+          type: object
+          additionalProperties: { type: number }
+        parameterDefinitions:
+          type: array
+          items: { $ref: "#/components/schemas/ParametricParameterDefinition" }
+        customParameterDefinitions:
+          type: array
+          items: { $ref: "#/components/schemas/ParametricParameterDefinition" }
+        lineSnapshot:
+          type: array
+          items: { $ref: "#/components/schemas/ParametricLineSnapshot" }
         deckBoardType:
           {
             type: string,
@@ -1801,6 +1817,12 @@ components:
         id: { type: integer }
         quoteId: { type: integer }
         materialId: { type: ["integer", "null"] }
+        lineKey: { type: ["string", "null"] }
+        bomRuleId:
+          anyOf:
+            - $ref: "#/components/schemas/ParametricBomRuleId"
+            - type: "null"
+        isManualQuantity: { type: ["boolean", "null"] }
         description: { type: string }
         category: { type: string }
         quantity: { type: number }
@@ -1831,6 +1853,11 @@ components:
       required: [description, quantity, unitCost, markupPercentage]
       additionalProperties: false
       properties:
+        lineKey: { type: string, minLength: 1, maxLength: 80 }
+        bomRuleId:
+          $ref: "#/components/schemas/ParametricBomRuleId"
+        isManualQuantity:
+          type: boolean
         description: { type: string, minLength: 1, maxLength: 200 }
         quantity: { type: number, exclusiveMinimum: 0, maximum: 100000 }
         unitCost: { type: number, minimum: 0, maximum: 9000 }
@@ -1935,6 +1962,7 @@ components:
           isBulkItem,
         ]
       properties:
+        lineKey: { type: string }
         description: { type: string }
         category: { type: string }
         quantity: { type: number }
@@ -1944,6 +1972,97 @@ components:
           enum: [sqm, lm, m3, item, box]
         unitCost: { type: number }
         markupPercentage: { type: number }
+        wastagePercentage: { type: number }
+        isBulkItem: { type: boolean }
+
+    ParametricParameterDefinition:
+      type: object
+      additionalProperties: false
+      required: [id, label, unit, defaultValue]
+      properties:
+        id: { type: string, minLength: 1, maxLength: 80 }
+        label: { type: string, minLength: 1, maxLength: 120 }
+        unit: { type: string, minLength: 1, maxLength: 30 }
+        defaultValue: { type: number }
+        minimum: { type: number }
+        maximum: { type: number }
+        step: { type: number, exclusiveMinimum: 0 }
+
+    ParametricBomRuleId:
+      type: string
+      enum:
+            [
+              cabinet_melamine_area,
+              cabinet_hinges,
+              cabinet_runners,
+              cabinet_benchtop_area,
+              decking_linear_metres,
+              deck_joists_linear_metres,
+              deck_bearers_linear_metres,
+              deck_posts,
+              concrete_volume,
+              concrete_trench_mesh,
+              concrete_slab_mesh,
+              concrete_bar_chair_boxes,
+              plaster_wall_board,
+              plaster_ceiling_board,
+              plaster_cornice,
+              plaster_external_angle,
+              plaster_internal_tape,
+              plaster_compound_buckets,
+              roof_sheet_area,
+              roof_battens,
+              roof_gutter,
+              roof_downpipes,
+              roof_ridge_capping,
+              roof_screws,
+              electrical_cable_length,
+              electrical_cable_drums,
+              electrical_single_faceplates,
+              electrical_double_faceplates,
+              electrical_mounting_blocks,
+              electrical_light_fittings,
+            ]
+
+    ParametricBomRule:
+      type: object
+      additionalProperties: false
+      required: [lineKey, bomRuleId]
+      properties:
+        lineKey: { type: string, minLength: 1, maxLength: 80 }
+        bomRuleId:
+          $ref: "#/components/schemas/ParametricBomRuleId"
+
+    ParametricLineSnapshot:
+      type: object
+      required:
+        [
+          lineKey,
+          bomRuleId,
+          quantity,
+          calculatedQuantity,
+          isManualQuantity,
+          unitCost,
+          markupPercentage,
+          description,
+          category,
+          unit,
+          unitType,
+          wastagePercentage,
+          isBulkItem,
+        ]
+      properties:
+        lineKey: { type: string }
+        bomRuleId: { $ref: "#/components/schemas/ParametricBomRuleId" }
+        quantity: { type: number }
+        calculatedQuantity: { type: number }
+        isManualQuantity: { type: boolean }
+        unitCost: { type: number }
+        markupPercentage: { type: number }
+        description: { type: string }
+        category: { type: string }
+        unit: { type: string }
+        unitType: { type: string }
         wastagePercentage: { type: number }
         isBulkItem: { type: boolean }
 
@@ -1960,7 +2079,18 @@ components:
           items: { type: string }
     TradeTemplate:
       type: object
-      required: [id, tradeType, name, slug, defaultLineItems]
+      required:
+        [
+          id,
+          tradeType,
+          name,
+          slug,
+          defaultLineItems,
+          engineVersion,
+          templateRevision,
+          parameterDefinitions,
+          bomRules,
+        ]
       properties:
         id: { type: integer }
         tradeType: { type: string }
@@ -1969,6 +2099,14 @@ components:
         defaultLineItems:
           type: array
           items: { $ref: "#/components/schemas/TradeTemplateLineItem" }
+        engineVersion: { type: ["integer", "null"] }
+        templateRevision: { type: ["integer", "null"] }
+        parameterDefinitions:
+          type: [array, "null"]
+          items: { $ref: "#/components/schemas/ParametricParameterDefinition" }
+        bomRules:
+          type: [array, "null"]
+          items: { $ref: "#/components/schemas/ParametricBomRule" }
 
     QuoteEstimate:
       type: object
@@ -2552,13 +2690,27 @@ components:
         createdAt: { type: string, format: date-time }
     QuoteInput:
       type: object
-      required: [title, customerId, lengthM, widthM]
+      required: [title, customerId]
       properties:
         title: { type: string, minLength: 1 }
         customerId: { type: integer }
         tradeType: { type: string, default: decking }
         siteAddress: { type: string }
         notes: { type: string }
+        templateId: { type: integer }
+        templateSlug: { type: string, minLength: 1, maxLength: 120 }
+        engineVersion: { type: integer, minimum: 1 }
+        templateRevision: { type: integer, minimum: 1 }
+        parameterValues:
+          type: object
+          maxProperties: 100
+          additionalProperties:
+            type: number
+        customParameterDefinitions:
+          type: array
+          maxItems: 100
+          items:
+            $ref: "#/components/schemas/ParametricParameterDefinition"
         lengthM: { type: number }
         widthM: { type: number }
         heightM: { type: number }
@@ -2595,6 +2747,19 @@ components:
     QuoteUpdate:
       type: object
       properties:
+        templateId: { type: integer }
+        templateSlug: { type: string, minLength: 1, maxLength: 120 }
+        engineVersion: { type: integer, minimum: 1 }
+        templateRevision: { type: integer, minimum: 1 }
+        parameterValues:
+          type: object
+          maxProperties: 100
+          additionalProperties: { type: number }
+        customParameterDefinitions:
+          type: array
+          maxItems: 100
+          items:
+            $ref: "#/components/schemas/ParametricParameterDefinition"
         title: { type: string, minLength: 1 }
         customerId: { type: integer }
         assignedTeamMemberId: { type: ["integer", "null"] }

@@ -4,6 +4,7 @@ import { asc } from "drizzle-orm";
 import { db, businessProfilesTable, tradeTemplatesTable } from "@workspace/db";
 import {
   ListTradeTemplatePresetsResponse,
+  ListTradeTemplatesResponse,
   SaveTradeTemplatePresetBody,
 } from "@workspace/api-zod";
 import { eq } from "drizzle-orm";
@@ -46,14 +47,30 @@ router.get("/trade-templates", async (_req, res): Promise<void> => {
       asc(tradeTemplatesTable.name),
     );
 
+  const latest = Array.from(
+    templates.reduce((map, template) => {
+      const key = `${template.tradeType}\u0000${template.slug}`;
+      const current = map.get(key);
+      if (!current || (template.templateRevision ?? 0) > (current.templateRevision ?? 0)) {
+        map.set(key, template);
+      }
+      return map;
+    }, new Map<string, (typeof templates)[number]>()),
+  ).map(([, template]) => template);
   res.json(
-    templates.map((template) => ({
+    ListTradeTemplatesResponse.parse(
+      latest.map((template) => ({
       id: template.id,
       tradeType: template.tradeType,
       name: template.name,
       slug: template.slug,
       defaultLineItems: template.defaultLineItems,
-    })),
+        engineVersion: template.engineVersion,
+        templateRevision: template.templateRevision,
+        parameterDefinitions: template.parameterDefinitions,
+        bomRules: template.bomRules,
+      })),
+    ),
   );
 });
 

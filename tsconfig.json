@@ -4,6 +4,9 @@
   "files": [],
   "references": [
     {
+      "path": "./lib/parametric-quotes"
+    },
+    {
       "path": "./lib/db"
     },
     {

@@ -401,12 +401,25 @@ export const DeleteMaterialResponse = zod.object({
 /**
  * @summary List the seeded trade-specific quote templates
  */
+export const listTradeTemplatesResponseParameterDefinitionsItemIdMax = 80;
+
+export const listTradeTemplatesResponseParameterDefinitionsItemLabelMax = 120;
+
+export const listTradeTemplatesResponseParameterDefinitionsItemUnitMax = 30;
+
+export const listTradeTemplatesResponseParameterDefinitionsItemStepExclusiveMin = 0;
+
+export const listTradeTemplatesResponseBomRulesItemLineKeyMax = 80;
+
+
+
 export const ListTradeTemplatesResponseItem = zod.object({
   "id": zod.number(),
   "tradeType": zod.string(),
   "name": zod.string(),
   "slug": zod.string(),
   "defaultLineItems": zod.array(zod.object({
+  "lineKey": zod.string().optional(),
   "description": zod.string(),
   "category": zod.string(),
   "quantity": zod.number(),
@@ -416,7 +429,22 @@ export const ListTradeTemplatesResponseItem = zod.object({
   "markupPercentage": zod.number(),
   "wastagePercentage": zod.number(),
   "isBulkItem": zod.boolean()
-}))
+})),
+  "engineVersion": zod.number().nullable(),
+  "templateRevision": zod.number().nullable(),
+  "parameterDefinitions": zod.array(zod.object({
+  "id": zod.string().min(1).max(listTradeTemplatesResponseParameterDefinitionsItemIdMax),
+  "label": zod.string().min(1).max(listTradeTemplatesResponseParameterDefinitionsItemLabelMax),
+  "unit": zod.string().min(1).max(listTradeTemplatesResponseParameterDefinitionsItemUnitMax),
+  "defaultValue": zod.number(),
+  "minimum": zod.number().optional(),
+  "maximum": zod.number().optional(),
+  "step": zod.number().gt(listTradeTemplatesResponseParameterDefinitionsItemStepExclusiveMin).optional()
+})).nullable(),
+  "bomRules": zod.array(zod.object({
+  "lineKey": zod.string().min(1).max(listTradeTemplatesResponseBomRulesItemLineKeyMax),
+  "bomRuleId": zod.enum(['cabinet_melamine_area', 'cabinet_hinges', 'cabinet_runners', 'cabinet_benchtop_area', 'decking_linear_metres', 'deck_joists_linear_metres', 'deck_bearers_linear_metres', 'deck_posts', 'concrete_volume', 'concrete_trench_mesh', 'concrete_slab_mesh', 'concrete_bar_chair_boxes', 'plaster_wall_board', 'plaster_ceiling_board', 'plaster_cornice', 'plaster_external_angle', 'plaster_internal_tape', 'plaster_compound_buckets', 'roof_sheet_area', 'roof_battens', 'roof_gutter', 'roof_downpipes', 'roof_ridge_capping', 'roof_screws', 'electrical_cable_length', 'electrical_cable_drums', 'electrical_single_faceplates', 'electrical_double_faceplates', 'electrical_mounting_blocks', 'electrical_light_fittings'])
+})).nullable()
 })
 export const ListTradeTemplatesResponse = zod.array(ListTradeTemplatesResponseItem)
 
@@ -532,6 +560,22 @@ export const ListQuotesResponse = zod.array(ListQuotesResponseItem)
 
 
 export const createQuoteBodyTradeTypeDefault = `decking`;
+export const createQuoteBodyTemplateSlugMax = 120;
+
+
+
+export const createQuoteBodyCustomParameterDefinitionsItemIdMax = 80;
+
+export const createQuoteBodyCustomParameterDefinitionsItemLabelMax = 120;
+
+export const createQuoteBodyCustomParameterDefinitionsItemUnitMax = 30;
+
+export const createQuoteBodyCustomParameterDefinitionsItemStepExclusiveMin = 0;
+
+export const createQuoteBodyCustomParameterDefinitionsMax = 100;
+
+export const createQuoteBodyLineItemsItemLineKeyMax = 80;
+
 export const createQuoteBodyLineItemsItemDescriptionMax = 200;
 
 export const createQuoteBodyLineItemsItemQuantityExclusiveMin = 0;
@@ -563,8 +607,22 @@ export const CreateQuoteBody = zod.object({
   "tradeType": zod.string().default(createQuoteBodyTradeTypeDefault),
   "siteAddress": zod.string().optional(),
   "notes": zod.string().optional(),
-  "lengthM": zod.number(),
-  "widthM": zod.number(),
+  "templateId": zod.number().optional(),
+  "templateSlug": zod.string().min(1).max(createQuoteBodyTemplateSlugMax).optional(),
+  "engineVersion": zod.number().min(1).optional(),
+  "templateRevision": zod.number().min(1).optional(),
+  "parameterValues": zod.record(zod.string(), zod.number()).optional(),
+  "customParameterDefinitions": zod.array(zod.object({
+  "id": zod.string().min(1).max(createQuoteBodyCustomParameterDefinitionsItemIdMax),
+  "label": zod.string().min(1).max(createQuoteBodyCustomParameterDefinitionsItemLabelMax),
+  "unit": zod.string().min(1).max(createQuoteBodyCustomParameterDefinitionsItemUnitMax),
+  "defaultValue": zod.number(),
+  "minimum": zod.number().optional(),
+  "maximum": zod.number().optional(),
+  "step": zod.number().gt(createQuoteBodyCustomParameterDefinitionsItemStepExclusiveMin).optional()
+})).max(createQuoteBodyCustomParameterDefinitionsMax).optional(),
+  "lengthM": zod.number().optional(),
+  "widthM": zod.number().optional(),
   "heightM": zod.number().optional(),
   "boardWidthMm": zod.number().optional(),
   "joistSpacingMm": zod.number().optional(),
@@ -593,6 +651,9 @@ export const CreateQuoteBody = zod.object({
   "awningWidthM": zod.number().optional(),
   "awningLengthM": zod.number().optional(),
   "lineItems": zod.array(zod.object({
+  "lineKey": zod.string().min(1).max(createQuoteBodyLineItemsItemLineKeyMax).optional(),
+  "bomRuleId": zod.enum(['cabinet_melamine_area', 'cabinet_hinges', 'cabinet_runners', 'cabinet_benchtop_area', 'decking_linear_metres', 'deck_joists_linear_metres', 'deck_bearers_linear_metres', 'deck_posts', 'concrete_volume', 'concrete_trench_mesh', 'concrete_slab_mesh', 'concrete_bar_chair_boxes', 'plaster_wall_board', 'plaster_ceiling_board', 'plaster_cornice', 'plaster_external_angle', 'plaster_internal_tape', 'plaster_compound_buckets', 'roof_sheet_area', 'roof_battens', 'roof_gutter', 'roof_downpipes', 'roof_ridge_capping', 'roof_screws', 'electrical_cable_length', 'electrical_cable_drums', 'electrical_single_faceplates', 'electrical_double_faceplates', 'electrical_mounting_blocks', 'electrical_light_fittings']).optional(),
+  "isManualQuantity": zod.boolean().optional(),
   "description": zod.string().min(1).max(createQuoteBodyLineItemsItemDescriptionMax),
   "quantity": zod.number().gt(createQuoteBodyLineItemsItemQuantityExclusiveMin).max(createQuoteBodyLineItemsItemQuantityMax),
   "unitCost": zod.number().min(createQuoteBodyLineItemsItemUnitCostMin).max(createQuoteBodyLineItemsItemUnitCostMax),
@@ -620,6 +681,22 @@ export const getQuoteResponseSpecFootingDepthMmDefault = 450;
 export const getQuoteResponseSpecWastageFactorDefault = 1.1;
 export const getQuoteResponseSpecLabourHoursDefault = 0;
 export const getQuoteResponseSpecLabourRateDefault = 85;
+export const getQuoteResponseSpecParameterDefinitionsItemIdMax = 80;
+
+export const getQuoteResponseSpecParameterDefinitionsItemLabelMax = 120;
+
+export const getQuoteResponseSpecParameterDefinitionsItemUnitMax = 30;
+
+export const getQuoteResponseSpecParameterDefinitionsItemStepExclusiveMin = 0;
+
+export const getQuoteResponseSpecCustomParameterDefinitionsItemIdMax = 80;
+
+export const getQuoteResponseSpecCustomParameterDefinitionsItemLabelMax = 120;
+
+export const getQuoteResponseSpecCustomParameterDefinitionsItemUnitMax = 30;
+
+export const getQuoteResponseSpecCustomParameterDefinitionsItemStepExclusiveMin = 0;
+
 export const getQuoteResponseSpecDeckBoardTypeDefault = `treated_pine`;
 export const getQuoteResponseSpecSubframeTypeDefault = `stumps`;
 export const getQuoteResponseSpecFastenerTypeDefault = `screws`;
@@ -680,6 +757,44 @@ export const GetQuoteResponse = zod.object({
   "wastageFactor": zod.number().default(getQuoteResponseSpecWastageFactorDefault).describe('Multiplier for cuts and offcuts'),
   "labourHours": zod.number().default(getQuoteResponseSpecLabourHoursDefault).describe('Labour hours for the job'),
   "labourRate": zod.number().default(getQuoteResponseSpecLabourRateDefault).describe('AUD per hour labour rate'),
+  "templateId": zod.number().nullish(),
+  "templateSlug": zod.string().nullish(),
+  "engineVersion": zod.number().nullish(),
+  "templateRevision": zod.number().nullish(),
+  "parameterValues": zod.record(zod.string(), zod.number()).optional(),
+  "parameterDefinitions": zod.array(zod.object({
+  "id": zod.string().min(1).max(getQuoteResponseSpecParameterDefinitionsItemIdMax),
+  "label": zod.string().min(1).max(getQuoteResponseSpecParameterDefinitionsItemLabelMax),
+  "unit": zod.string().min(1).max(getQuoteResponseSpecParameterDefinitionsItemUnitMax),
+  "defaultValue": zod.number(),
+  "minimum": zod.number().optional(),
+  "maximum": zod.number().optional(),
+  "step": zod.number().gt(getQuoteResponseSpecParameterDefinitionsItemStepExclusiveMin).optional()
+})).optional(),
+  "customParameterDefinitions": zod.array(zod.object({
+  "id": zod.string().min(1).max(getQuoteResponseSpecCustomParameterDefinitionsItemIdMax),
+  "label": zod.string().min(1).max(getQuoteResponseSpecCustomParameterDefinitionsItemLabelMax),
+  "unit": zod.string().min(1).max(getQuoteResponseSpecCustomParameterDefinitionsItemUnitMax),
+  "defaultValue": zod.number(),
+  "minimum": zod.number().optional(),
+  "maximum": zod.number().optional(),
+  "step": zod.number().gt(getQuoteResponseSpecCustomParameterDefinitionsItemStepExclusiveMin).optional()
+})).optional(),
+  "lineSnapshot": zod.array(zod.object({
+  "lineKey": zod.string(),
+  "bomRuleId": zod.enum(['cabinet_melamine_area', 'cabinet_hinges', 'cabinet_runners', 'cabinet_benchtop_area', 'decking_linear_metres', 'deck_joists_linear_metres', 'deck_bearers_linear_metres', 'deck_posts', 'concrete_volume', 'concrete_trench_mesh', 'concrete_slab_mesh', 'concrete_bar_chair_boxes', 'plaster_wall_board', 'plaster_ceiling_board', 'plaster_cornice', 'plaster_external_angle', 'plaster_internal_tape', 'plaster_compound_buckets', 'roof_sheet_area', 'roof_battens', 'roof_gutter', 'roof_downpipes', 'roof_ridge_capping', 'roof_screws', 'electrical_cable_length', 'electrical_cable_drums', 'electrical_single_faceplates', 'electrical_double_faceplates', 'electrical_mounting_blocks', 'electrical_light_fittings']),
+  "quantity": zod.number(),
+  "calculatedQuantity": zod.number(),
+  "isManualQuantity": zod.boolean(),
+  "unitCost": zod.number(),
+  "markupPercentage": zod.number(),
+  "description": zod.string(),
+  "category": zod.string(),
+  "unit": zod.string(),
+  "unitType": zod.string(),
+  "wastagePercentage": zod.number(),
+  "isBulkItem": zod.boolean()
+})).optional(),
   "deckBoardType": zod.string().default(getQuoteResponseSpecDeckBoardTypeDefault).describe('hardwood | composite | treated_pine'),
   "subframeType": zod.string().default(getQuoteResponseSpecSubframeTypeDefault).describe('stumps | concrete_slab | existing_structure'),
   "fastenerType": zod.string().default(getQuoteResponseSpecFastenerTypeDefault).describe('screws | hidden_clips'),
@@ -703,6 +818,9 @@ export const GetQuoteResponse = zod.object({
   "id": zod.number(),
   "quoteId": zod.number(),
   "materialId": zod.number().nullish(),
+  "lineKey": zod.string().nullish(),
+  "bomRuleId": zod.union([zod.enum(['cabinet_melamine_area', 'cabinet_hinges', 'cabinet_runners', 'cabinet_benchtop_area', 'decking_linear_metres', 'deck_joists_linear_metres', 'deck_bearers_linear_metres', 'deck_posts', 'concrete_volume', 'concrete_trench_mesh', 'concrete_slab_mesh', 'concrete_bar_chair_boxes', 'plaster_wall_board', 'plaster_ceiling_board', 'plaster_cornice', 'plaster_external_angle', 'plaster_internal_tape', 'plaster_compound_buckets', 'roof_sheet_area', 'roof_battens', 'roof_gutter', 'roof_downpipes', 'roof_ridge_capping', 'roof_screws', 'electrical_cable_length', 'electrical_cable_drums', 'electrical_single_faceplates', 'electrical_double_faceplates', 'electrical_mounting_blocks', 'electrical_light_fittings']),zod.null()]).optional(),
+  "isManualQuantity": zod.boolean().nullish(),
   "description": zod.string(),
   "category": zod.string(),
   "quantity": zod.number(),
@@ -724,10 +842,38 @@ export const UpdateQuoteParams = zod.object({
   "id": zod.coerce.number()
 })
 
+export const updateQuoteBodyTemplateSlugMax = 120;
+
+
+
+export const updateQuoteBodyCustomParameterDefinitionsItemIdMax = 80;
+
+export const updateQuoteBodyCustomParameterDefinitionsItemLabelMax = 120;
+
+export const updateQuoteBodyCustomParameterDefinitionsItemUnitMax = 30;
+
+export const updateQuoteBodyCustomParameterDefinitionsItemStepExclusiveMin = 0;
+
+export const updateQuoteBodyCustomParameterDefinitionsMax = 100;
+
 
 
 
 export const UpdateQuoteBody = zod.object({
+  "templateId": zod.number().optional(),
+  "templateSlug": zod.string().min(1).max(updateQuoteBodyTemplateSlugMax).optional(),
+  "engineVersion": zod.number().min(1).optional(),
+  "templateRevision": zod.number().min(1).optional(),
+  "parameterValues": zod.record(zod.string(), zod.number()).optional(),
+  "customParameterDefinitions": zod.array(zod.object({
+  "id": zod.string().min(1).max(updateQuoteBodyCustomParameterDefinitionsItemIdMax),
+  "label": zod.string().min(1).max(updateQuoteBodyCustomParameterDefinitionsItemLabelMax),
+  "unit": zod.string().min(1).max(updateQuoteBodyCustomParameterDefinitionsItemUnitMax),
+  "defaultValue": zod.number(),
+  "minimum": zod.number().optional(),
+  "maximum": zod.number().optional(),
+  "step": zod.number().gt(updateQuoteBodyCustomParameterDefinitionsItemStepExclusiveMin).optional()
+})).max(updateQuoteBodyCustomParameterDefinitionsMax).optional(),
   "title": zod.string().min(1).optional(),
   "customerId": zod.number().optional(),
   "assignedTeamMemberId": zod.number().nullish(),
@@ -775,6 +921,22 @@ export const updateQuoteResponseSpecFootingDepthMmDefault = 450;
 export const updateQuoteResponseSpecWastageFactorDefault = 1.1;
 export const updateQuoteResponseSpecLabourHoursDefault = 0;
 export const updateQuoteResponseSpecLabourRateDefault = 85;
+export const updateQuoteResponseSpecParameterDefinitionsItemIdMax = 80;
+
+export const updateQuoteResponseSpecParameterDefinitionsItemLabelMax = 120;
+
+export const updateQuoteResponseSpecParameterDefinitionsItemUnitMax = 30;
+
+export const updateQuoteResponseSpecParameterDefinitionsItemStepExclusiveMin = 0;
+
+export const updateQuoteResponseSpecCustomParameterDefinitionsItemIdMax = 80;
+
+export const updateQuoteResponseSpecCustomParameterDefinitionsItemLabelMax = 120;
+
+export const updateQuoteResponseSpecCustomParameterDefinitionsItemUnitMax = 30;
+
+export const updateQuoteResponseSpecCustomParameterDefinitionsItemStepExclusiveMin = 0;
+
 export const updateQuoteResponseSpecDeckBoardTypeDefault = `treated_pine`;
 export const updateQuoteResponseSpecSubframeTypeDefault = `stumps`;
 export const updateQuoteResponseSpecFastenerTypeDefault = `screws`;
@@ -835,6 +997,44 @@ export const UpdateQuoteResponse = zod.object({
   "wastageFactor": zod.number().default(updateQuoteResponseSpecWastageFactorDefault).describe('Multiplier for cuts and offcuts'),
   "labourHours": zod.number().default(updateQuoteResponseSpecLabourHoursDefault).describe('Labour hours for the job'),
   "labourRate": zod.number().default(updateQuoteResponseSpecLabourRateDefault).describe('AUD per hour labour rate'),
+  "templateId": zod.number().nullish(),
+  "templateSlug": zod.string().nullish(),
+  "engineVersion": zod.number().nullish(),
+  "templateRevision": zod.number().nullish(),
+  "parameterValues": zod.record(zod.string(), zod.number()).optional(),
+  "parameterDefinitions": zod.array(zod.object({
+  "id": zod.string().min(1).max(updateQuoteResponseSpecParameterDefinitionsItemIdMax),
+  "label": zod.string().min(1).max(updateQuoteResponseSpecParameterDefinitionsItemLabelMax),
+  "unit": zod.string().min(1).max(updateQuoteResponseSpecParameterDefinitionsItemUnitMax),
+  "defaultValue": zod.number(),
+  "minimum": zod.number().optional(),
+  "maximum": zod.number().optional(),
+  "step": zod.number().gt(updateQuoteResponseSpecParameterDefinitionsItemStepExclusiveMin).optional()
+})).optional(),
+  "customParameterDefinitions": zod.array(zod.object({
+  "id": zod.string().min(1).max(updateQuoteResponseSpecCustomParameterDefinitionsItemIdMax),
+  "label": zod.string().min(1).max(updateQuoteResponseSpecCustomParameterDefinitionsItemLabelMax),
+  "unit": zod.string().min(1).max(updateQuoteResponseSpecCustomParameterDefinitionsItemUnitMax),
+  "defaultValue": zod.number(),
+  "minimum": zod.number().optional(),
+  "maximum": zod.number().optional(),
+  "step": zod.number().gt(updateQuoteResponseSpecCustomParameterDefinitionsItemStepExclusiveMin).optional()
+})).optional(),
+  "lineSnapshot": zod.array(zod.object({
+  "lineKey": zod.string(),
+  "bomRuleId": zod.enum(['cabinet_melamine_area', 'cabinet_hinges', 'cabinet_runners', 'cabinet_benchtop_area', 'decking_linear_metres', 'deck_joists_linear_metres', 'deck_bearers_linear_metres', 'deck_posts', 'concrete_volume', 'concrete_trench_mesh', 'concrete_slab_mesh', 'concrete_bar_chair_boxes', 'plaster_wall_board', 'plaster_ceiling_board', 'plaster_cornice', 'plaster_external_angle', 'plaster_internal_tape', 'plaster_compound_buckets', 'roof_sheet_area', 'roof_battens', 'roof_gutter', 'roof_downpipes', 'roof_ridge_capping', 'roof_screws', 'electrical_cable_length', 'electrical_cable_drums', 'electrical_single_faceplates', 'electrical_double_faceplates', 'electrical_mounting_blocks', 'electrical_light_fittings']),
+  "quantity": zod.number(),
+  "calculatedQuantity": zod.number(),
+  "isManualQuantity": zod.boolean(),
+  "unitCost": zod.number(),
+  "markupPercentage": zod.number(),
+  "description": zod.string(),
+  "category": zod.string(),
+  "unit": zod.string(),
+  "unitType": zod.string(),
+  "wastagePercentage": zod.number(),
+  "isBulkItem": zod.boolean()
+})).optional(),
   "deckBoardType": zod.string().default(updateQuoteResponseSpecDeckBoardTypeDefault).describe('hardwood | composite | treated_pine'),
   "subframeType": zod.string().default(updateQuoteResponseSpecSubframeTypeDefault).describe('stumps | concrete_slab | existing_structure'),
   "fastenerType": zod.string().default(updateQuoteResponseSpecFastenerTypeDefault).describe('screws | hidden_clips'),
@@ -858,6 +1058,9 @@ export const UpdateQuoteResponse = zod.object({
   "id": zod.number(),
   "quoteId": zod.number(),
   "materialId": zod.number().nullish(),
+  "lineKey": zod.string().nullish(),
+  "bomRuleId": zod.union([zod.enum(['cabinet_melamine_area', 'cabinet_hinges', 'cabinet_runners', 'cabinet_benchtop_area', 'decking_linear_metres', 'deck_joists_linear_metres', 'deck_bearers_linear_metres', 'deck_posts', 'concrete_volume', 'concrete_trench_mesh', 'concrete_slab_mesh', 'concrete_bar_chair_boxes', 'plaster_wall_board', 'plaster_ceiling_board', 'plaster_cornice', 'plaster_external_angle', 'plaster_internal_tape', 'plaster_compound_buckets', 'roof_sheet_area', 'roof_battens', 'roof_gutter', 'roof_downpipes', 'roof_ridge_capping', 'roof_screws', 'electrical_cable_length', 'electrical_cable_drums', 'electrical_single_faceplates', 'electrical_double_faceplates', 'electrical_mounting_blocks', 'electrical_light_fittings']),zod.null()]).optional(),
+  "isManualQuantity": zod.boolean().nullish(),
   "description": zod.string(),
   "category": zod.string(),
   "quantity": zod.number(),
@@ -1035,6 +1238,22 @@ export const setQuoteStatusResponseSpecFootingDepthMmDefault = 450;
 export const setQuoteStatusResponseSpecWastageFactorDefault = 1.1;
 export const setQuoteStatusResponseSpecLabourHoursDefault = 0;
 export const setQuoteStatusResponseSpecLabourRateDefault = 85;
+export const setQuoteStatusResponseSpecParameterDefinitionsItemIdMax = 80;
+
+export const setQuoteStatusResponseSpecParameterDefinitionsItemLabelMax = 120;
+
+export const setQuoteStatusResponseSpecParameterDefinitionsItemUnitMax = 30;
+
+export const setQuoteStatusResponseSpecParameterDefinitionsItemStepExclusiveMin = 0;
+
+export const setQuoteStatusResponseSpecCustomParameterDefinitionsItemIdMax = 80;
+
+export const setQuoteStatusResponseSpecCustomParameterDefinitionsItemLabelMax = 120;
+
+export const setQuoteStatusResponseSpecCustomParameterDefinitionsItemUnitMax = 30;
+
+export const setQuoteStatusResponseSpecCustomParameterDefinitionsItemStepExclusiveMin = 0;
+
 export const setQuoteStatusResponseSpecDeckBoardTypeDefault = `treated_pine`;
 export const setQuoteStatusResponseSpecSubframeTypeDefault = `stumps`;
 export const setQuoteStatusResponseSpecFastenerTypeDefault = `screws`;
@@ -1095,6 +1314,44 @@ export const SetQuoteStatusResponse = zod.object({
   "wastageFactor": zod.number().default(setQuoteStatusResponseSpecWastageFactorDefault).describe('Multiplier for cuts and offcuts'),
   "labourHours": zod.number().default(setQuoteStatusResponseSpecLabourHoursDefault).describe('Labour hours for the job'),
   "labourRate": zod.number().default(setQuoteStatusResponseSpecLabourRateDefault).describe('AUD per hour labour rate'),
+  "templateId": zod.number().nullish(),
+  "templateSlug": zod.string().nullish(),
+  "engineVersion": zod.number().nullish(),
+  "templateRevision": zod.number().nullish(),
+  "parameterValues": zod.record(zod.string(), zod.number()).optional(),
+  "parameterDefinitions": zod.array(zod.object({
+  "id": zod.string().min(1).max(setQuoteStatusResponseSpecParameterDefinitionsItemIdMax),
+  "label": zod.string().min(1).max(setQuoteStatusResponseSpecParameterDefinitionsItemLabelMax),
+  "unit": zod.string().min(1).max(setQuoteStatusResponseSpecParameterDefinitionsItemUnitMax),
+  "defaultValue": zod.number(),
+  "minimum": zod.number().optional(),
+  "maximum": zod.number().optional(),
+  "step": zod.number().gt(setQuoteStatusResponseSpecParameterDefinitionsItemStepExclusiveMin).optional()
+})).optional(),
+  "customParameterDefinitions": zod.array(zod.object({
+  "id": zod.string().min(1).max(setQuoteStatusResponseSpecCustomParameterDefinitionsItemIdMax),
+  "label": zod.string().min(1).max(setQuoteStatusResponseSpecCustomParameterDefinitionsItemLabelMax),
+  "unit": zod.string().min(1).max(setQuoteStatusResponseSpecCustomParameterDefinitionsItemUnitMax),
+  "defaultValue": zod.number(),
+  "minimum": zod.number().optional(),
+  "maximum": zod.number().optional(),
+  "step": zod.number().gt(setQuoteStatusResponseSpecCustomParameterDefinitionsItemStepExclusiveMin).optional()
+})).optional(),
+  "lineSnapshot": zod.array(zod.object({
+  "lineKey": zod.string(),
+  "bomRuleId": zod.enum(['cabinet_melamine_area', 'cabinet_hinges', 'cabinet_runners', 'cabinet_benchtop_area', 'decking_linear_metres', 'deck_joists_linear_metres', 'deck_bearers_linear_metres', 'deck_posts', 'concrete_volume', 'concrete_trench_mesh', 'concrete_slab_mesh', 'concrete_bar_chair_boxes', 'plaster_wall_board', 'plaster_ceiling_board', 'plaster_cornice', 'plaster_external_angle', 'plaster_internal_tape', 'plaster_compound_buckets', 'roof_sheet_area', 'roof_battens', 'roof_gutter', 'roof_downpipes', 'roof_ridge_capping', 'roof_screws', 'electrical_cable_length', 'electrical_cable_drums', 'electrical_single_faceplates', 'electrical_double_faceplates', 'electrical_mounting_blocks', 'electrical_light_fittings']),
+  "quantity": zod.number(),
+  "calculatedQuantity": zod.number(),
+  "isManualQuantity": zod.boolean(),
+  "unitCost": zod.number(),
+  "markupPercentage": zod.number(),
+  "description": zod.string(),
+  "category": zod.string(),
+  "unit": zod.string(),
+  "unitType": zod.string(),
+  "wastagePercentage": zod.number(),
+  "isBulkItem": zod.boolean()
+})).optional(),
   "deckBoardType": zod.string().default(setQuoteStatusResponseSpecDeckBoardTypeDefault).describe('hardwood | composite | treated_pine'),
   "subframeType": zod.string().default(setQuoteStatusResponseSpecSubframeTypeDefault).describe('stumps | concrete_slab | existing_structure'),
   "fastenerType": zod.string().default(setQuoteStatusResponseSpecFastenerTypeDefault).describe('screws | hidden_clips'),
@@ -1118,6 +1375,9 @@ export const SetQuoteStatusResponse = zod.object({
   "id": zod.number(),
   "quoteId": zod.number(),
   "materialId": zod.number().nullish(),
+  "lineKey": zod.string().nullish(),
+  "bomRuleId": zod.union([zod.enum(['cabinet_melamine_area', 'cabinet_hinges', 'cabinet_runners', 'cabinet_benchtop_area', 'decking_linear_metres', 'deck_joists_linear_metres', 'deck_bearers_linear_metres', 'deck_posts', 'concrete_volume', 'concrete_trench_mesh', 'concrete_slab_mesh', 'concrete_bar_chair_boxes', 'plaster_wall_board', 'plaster_ceiling_board', 'plaster_cornice', 'plaster_external_angle', 'plaster_internal_tape', 'plaster_compound_buckets', 'roof_sheet_area', 'roof_battens', 'roof_gutter', 'roof_downpipes', 'roof_ridge_capping', 'roof_screws', 'electrical_cable_length', 'electrical_cable_drums', 'electrical_single_faceplates', 'electrical_double_faceplates', 'electrical_mounting_blocks', 'electrical_light_fittings']),zod.null()]).optional(),
+  "isManualQuantity": zod.boolean().nullish(),
   "description": zod.string(),
   "category": zod.string(),
   "quantity": zod.number(),
@@ -1155,6 +1415,22 @@ export const getQuotePortalResponseSpecFootingDepthMmDefault = 450;
 export const getQuotePortalResponseSpecWastageFactorDefault = 1.1;
 export const getQuotePortalResponseSpecLabourHoursDefault = 0;
 export const getQuotePortalResponseSpecLabourRateDefault = 85;
+export const getQuotePortalResponseSpecParameterDefinitionsItemIdMax = 80;
+
+export const getQuotePortalResponseSpecParameterDefinitionsItemLabelMax = 120;
+
+export const getQuotePortalResponseSpecParameterDefinitionsItemUnitMax = 30;
+
+export const getQuotePortalResponseSpecParameterDefinitionsItemStepExclusiveMin = 0;
+
+export const getQuotePortalResponseSpecCustomParameterDefinitionsItemIdMax = 80;
+
+export const getQuotePortalResponseSpecCustomParameterDefinitionsItemLabelMax = 120;
+
+export const getQuotePortalResponseSpecCustomParameterDefinitionsItemUnitMax = 30;
+
+export const getQuotePortalResponseSpecCustomParameterDefinitionsItemStepExclusiveMin = 0;
+
 export const getQuotePortalResponseSpecDeckBoardTypeDefault = `treated_pine`;
 export const getQuotePortalResponseSpecSubframeTypeDefault = `stumps`;
 export const getQuotePortalResponseSpecFastenerTypeDefault = `screws`;
@@ -1200,6 +1476,44 @@ export const GetQuotePortalResponse = zod.object({
   "wastageFactor": zod.number().default(getQuotePortalResponseSpecWastageFactorDefault).describe('Multiplier for cuts and offcuts'),
   "labourHours": zod.number().default(getQuotePortalResponseSpecLabourHoursDefault).describe('Labour hours for the job'),
   "labourRate": zod.number().default(getQuotePortalResponseSpecLabourRateDefault).describe('AUD per hour labour rate'),
+  "templateId": zod.number().nullish(),
+  "templateSlug": zod.string().nullish(),
+  "engineVersion": zod.number().nullish(),
+  "templateRevision": zod.number().nullish(),
+  "parameterValues": zod.record(zod.string(), zod.number()).optional(),
+  "parameterDefinitions": zod.array(zod.object({
+  "id": zod.string().min(1).max(getQuotePortalResponseSpecParameterDefinitionsItemIdMax),
+  "label": zod.string().min(1).max(getQuotePortalResponseSpecParameterDefinitionsItemLabelMax),
+  "unit": zod.string().min(1).max(getQuotePortalResponseSpecParameterDefinitionsItemUnitMax),
+  "defaultValue": zod.number(),
+  "minimum": zod.number().optional(),
+  "maximum": zod.number().optional(),
+  "step": zod.number().gt(getQuotePortalResponseSpecParameterDefinitionsItemStepExclusiveMin).optional()
+})).optional(),
+  "customParameterDefinitions": zod.array(zod.object({
+  "id": zod.string().min(1).max(getQuotePortalResponseSpecCustomParameterDefinitionsItemIdMax),
+  "label": zod.string().min(1).max(getQuotePortalResponseSpecCustomParameterDefinitionsItemLabelMax),
+  "unit": zod.string().min(1).max(getQuotePortalResponseSpecCustomParameterDefinitionsItemUnitMax),
+  "defaultValue": zod.number(),
+  "minimum": zod.number().optional(),
+  "maximum": zod.number().optional(),
+  "step": zod.number().gt(getQuotePortalResponseSpecCustomParameterDefinitionsItemStepExclusiveMin).optional()
+})).optional(),
+  "lineSnapshot": zod.array(zod.object({
+  "lineKey": zod.string(),
+  "bomRuleId": zod.enum(['cabinet_melamine_area', 'cabinet_hinges', 'cabinet_runners', 'cabinet_benchtop_area', 'decking_linear_metres', 'deck_joists_linear_metres', 'deck_bearers_linear_metres', 'deck_posts', 'concrete_volume', 'concrete_trench_mesh', 'concrete_slab_mesh', 'concrete_bar_chair_boxes', 'plaster_wall_board', 'plaster_ceiling_board', 'plaster_cornice', 'plaster_external_angle', 'plaster_internal_tape', 'plaster_compound_buckets', 'roof_sheet_area', 'roof_battens', 'roof_gutter', 'roof_downpipes', 'roof_ridge_capping', 'roof_screws', 'electrical_cable_length', 'electrical_cable_drums', 'electrical_single_faceplates', 'electrical_double_faceplates', 'electrical_mounting_blocks', 'electrical_light_fittings']),
+  "quantity": zod.number(),
+  "calculatedQuantity": zod.number(),
+  "isManualQuantity": zod.boolean(),
+  "unitCost": zod.number(),
+  "markupPercentage": zod.number(),
+  "description": zod.string(),
+  "category": zod.string(),
+  "unit": zod.string(),
+  "unitType": zod.string(),
+  "wastagePercentage": zod.number(),
+  "isBulkItem": zod.boolean()
+})).optional(),
   "deckBoardType": zod.string().default(getQuotePortalResponseSpecDeckBoardTypeDefault).describe('hardwood | composite | treated_pine'),
   "subframeType": zod.string().default(getQuotePortalResponseSpecSubframeTypeDefault).describe('stumps | concrete_slab | existing_structure'),
   "fastenerType": zod.string().default(getQuotePortalResponseSpecFastenerTypeDefault).describe('screws | hidden_clips'),
@@ -1262,6 +1576,22 @@ export const updateQuotePortalResponseSpecFootingDepthMmDefault = 450;
 export const updateQuotePortalResponseSpecWastageFactorDefault = 1.1;
 export const updateQuotePortalResponseSpecLabourHoursDefault = 0;
 export const updateQuotePortalResponseSpecLabourRateDefault = 85;
+export const updateQuotePortalResponseSpecParameterDefinitionsItemIdMax = 80;
+
+export const updateQuotePortalResponseSpecParameterDefinitionsItemLabelMax = 120;
+
+export const updateQuotePortalResponseSpecParameterDefinitionsItemUnitMax = 30;
+
+export const updateQuotePortalResponseSpecParameterDefinitionsItemStepExclusiveMin = 0;
+
+export const updateQuotePortalResponseSpecCustomParameterDefinitionsItemIdMax = 80;
+
+export const updateQuotePortalResponseSpecCustomParameterDefinitionsItemLabelMax = 120;
+
+export const updateQuotePortalResponseSpecCustomParameterDefinitionsItemUnitMax = 30;
+
+export const updateQuotePortalResponseSpecCustomParameterDefinitionsItemStepExclusiveMin = 0;
+
 export const updateQuotePortalResponseSpecDeckBoardTypeDefault = `treated_pine`;
 export const updateQuotePortalResponseSpecSubframeTypeDefault = `stumps`;
 export const updateQuotePortalResponseSpecFastenerTypeDefault = `screws`;
@@ -1307,6 +1637,44 @@ export const UpdateQuotePortalResponse = zod.object({
   "wastageFactor": zod.number().default(updateQuotePortalResponseSpecWastageFactorDefault).describe('Multiplier for cuts and offcuts'),
   "labourHours": zod.number().default(updateQuotePortalResponseSpecLabourHoursDefault).describe('Labour hours for the job'),
   "labourRate": zod.number().default(updateQuotePortalResponseSpecLabourRateDefault).describe('AUD per hour labour rate'),
+  "templateId": zod.number().nullish(),
+  "templateSlug": zod.string().nullish(),
+  "engineVersion": zod.number().nullish(),
+  "templateRevision": zod.number().nullish(),
+  "parameterValues": zod.record(zod.string(), zod.number()).optional(),
+  "parameterDefinitions": zod.array(zod.object({
+  "id": zod.string().min(1).max(updateQuotePortalResponseSpecParameterDefinitionsItemIdMax),
+  "label": zod.string().min(1).max(updateQuotePortalResponseSpecParameterDefinitionsItemLabelMax),
+  "unit": zod.string().min(1).max(updateQuotePortalResponseSpecParameterDefinitionsItemUnitMax),
+  "defaultValue": zod.number(),
+  "minimum": zod.number().optional(),
+  "maximum": zod.number().optional(),
+  "step": zod.number().gt(updateQuotePortalResponseSpecParameterDefinitionsItemStepExclusiveMin).optional()
+})).optional(),
+  "customParameterDefinitions": zod.array(zod.object({
+  "id": zod.string().min(1).max(updateQuotePortalResponseSpecCustomParameterDefinitionsItemIdMax),
+  "label": zod.string().min(1).max(updateQuotePortalResponseSpecCustomParameterDefinitionsItemLabelMax),
+  "unit": zod.string().min(1).max(updateQuotePortalResponseSpecCustomParameterDefinitionsItemUnitMax),
+  "defaultValue": zod.number(),
+  "minimum": zod.number().optional(),
+  "maximum": zod.number().optional(),
+  "step": zod.number().gt(updateQuotePortalResponseSpecCustomParameterDefinitionsItemStepExclusiveMin).optional()
+})).optional(),
+  "lineSnapshot": zod.array(zod.object({
+  "lineKey": zod.string(),
+  "bomRuleId": zod.enum(['cabinet_melamine_area', 'cabinet_hinges', 'cabinet_runners', 'cabinet_benchtop_area', 'decking_linear_metres', 'deck_joists_linear_metres', 'deck_bearers_linear_metres', 'deck_posts', 'concrete_volume', 'concrete_trench_mesh', 'concrete_slab_mesh', 'concrete_bar_chair_boxes', 'plaster_wall_board', 'plaster_ceiling_board', 'plaster_cornice', 'plaster_external_angle', 'plaster_internal_tape', 'plaster_compound_buckets', 'roof_sheet_area', 'roof_battens', 'roof_gutter', 'roof_downpipes', 'roof_ridge_capping', 'roof_screws', 'electrical_cable_length', 'electrical_cable_drums', 'electrical_single_faceplates', 'electrical_double_faceplates', 'electrical_mounting_blocks', 'electrical_light_fittings']),
+  "quantity": zod.number(),
+  "calculatedQuantity": zod.number(),
+  "isManualQuantity": zod.boolean(),
+  "unitCost": zod.number(),
+  "markupPercentage": zod.number(),
+  "description": zod.string(),
+  "category": zod.string(),
+  "unit": zod.string(),
+  "unitType": zod.string(),
+  "wastagePercentage": zod.number(),
+  "isBulkItem": zod.boolean()
+})).optional(),
   "deckBoardType": zod.string().default(updateQuotePortalResponseSpecDeckBoardTypeDefault).describe('hardwood | composite | treated_pine'),
   "subframeType": zod.string().default(updateQuotePortalResponseSpecSubframeTypeDefault).describe('stumps | concrete_slab | existing_structure'),
   "fastenerType": zod.string().default(updateQuotePortalResponseSpecFastenerTypeDefault).describe('screws | hidden_clips'),
@@ -1368,6 +1736,22 @@ export const setQuotePortalStatusResponseSpecFootingDepthMmDefault = 450;
 export const setQuotePortalStatusResponseSpecWastageFactorDefault = 1.1;
 export const setQuotePortalStatusResponseSpecLabourHoursDefault = 0;
 export const setQuotePortalStatusResponseSpecLabourRateDefault = 85;
+export const setQuotePortalStatusResponseSpecParameterDefinitionsItemIdMax = 80;
+
+export const setQuotePortalStatusResponseSpecParameterDefinitionsItemLabelMax = 120;
+
+export const setQuotePortalStatusResponseSpecParameterDefinitionsItemUnitMax = 30;
+
+export const setQuotePortalStatusResponseSpecParameterDefinitionsItemStepExclusiveMin = 0;
+
+export const setQuotePortalStatusResponseSpecCustomParameterDefinitionsItemIdMax = 80;
+
+export const setQuotePortalStatusResponseSpecCustomParameterDefinitionsItemLabelMax = 120;
+
+export const setQuotePortalStatusResponseSpecCustomParameterDefinitionsItemUnitMax = 30;
+
+export const setQuotePortalStatusResponseSpecCustomParameterDefinitionsItemStepExclusiveMin = 0;
+
 export const setQuotePortalStatusResponseSpecDeckBoardTypeDefault = `treated_pine`;
 export const setQuotePortalStatusResponseSpecSubframeTypeDefault = `stumps`;
 export const setQuotePortalStatusResponseSpecFastenerTypeDefault = `screws`;
@@ -1413,6 +1797,44 @@ export const SetQuotePortalStatusResponse = zod.object({
   "wastageFactor": zod.number().default(setQuotePortalStatusResponseSpecWastageFactorDefault).describe('Multiplier for cuts and offcuts'),
   "labourHours": zod.number().default(setQuotePortalStatusResponseSpecLabourHoursDefault).describe('Labour hours for the job'),
   "labourRate": zod.number().default(setQuotePortalStatusResponseSpecLabourRateDefault).describe('AUD per hour labour rate'),
+  "templateId": zod.number().nullish(),
+  "templateSlug": zod.string().nullish(),
+  "engineVersion": zod.number().nullish(),
+  "templateRevision": zod.number().nullish(),
+  "parameterValues": zod.record(zod.string(), zod.number()).optional(),
+  "parameterDefinitions": zod.array(zod.object({
+  "id": zod.string().min(1).max(setQuotePortalStatusResponseSpecParameterDefinitionsItemIdMax),
+  "label": zod.string().min(1).max(setQuotePortalStatusResponseSpecParameterDefinitionsItemLabelMax),
+  "unit": zod.string().min(1).max(setQuotePortalStatusResponseSpecParameterDefinitionsItemUnitMax),
+  "defaultValue": zod.number(),
+  "minimum": zod.number().optional(),
+  "maximum": zod.number().optional(),
+  "step": zod.number().gt(setQuotePortalStatusResponseSpecParameterDefinitionsItemStepExclusiveMin).optional()
+})).optional(),
+  "customParameterDefinitions": zod.array(zod.object({
+  "id": zod.string().min(1).max(setQuotePortalStatusResponseSpecCustomParameterDefinitionsItemIdMax),
+  "label": zod.string().min(1).max(setQuotePortalStatusResponseSpecCustomParameterDefinitionsItemLabelMax),
+  "unit": zod.string().min(1).max(setQuotePortalStatusResponseSpecCustomParameterDefinitionsItemUnitMax),
+  "defaultValue": zod.number(),
+  "minimum": zod.number().optional(),
+  "maximum": zod.number().optional(),
+  "step": zod.number().gt(setQuotePortalStatusResponseSpecCustomParameterDefinitionsItemStepExclusiveMin).optional()
+})).optional(),
+  "lineSnapshot": zod.array(zod.object({
+  "lineKey": zod.string(),
+  "bomRuleId": zod.enum(['cabinet_melamine_area', 'cabinet_hinges', 'cabinet_runners', 'cabinet_benchtop_area', 'decking_linear_metres', 'deck_joists_linear_metres', 'deck_bearers_linear_metres', 'deck_posts', 'concrete_volume', 'concrete_trench_mesh', 'concrete_slab_mesh', 'concrete_bar_chair_boxes', 'plaster_wall_board', 'plaster_ceiling_board', 'plaster_cornice', 'plaster_external_angle', 'plaster_internal_tape', 'plaster_compound_buckets', 'roof_sheet_area', 'roof_battens', 'roof_gutter', 'roof_downpipes', 'roof_ridge_capping', 'roof_screws', 'electrical_cable_length', 'electrical_cable_drums', 'electrical_single_faceplates', 'electrical_double_faceplates', 'electrical_mounting_blocks', 'electrical_light_fittings']),
+  "quantity": zod.number(),
+  "calculatedQuantity": zod.number(),
+  "isManualQuantity": zod.boolean(),
+  "unitCost": zod.number(),
+  "markupPercentage": zod.number(),
+  "description": zod.string(),
+  "category": zod.string(),
+  "unit": zod.string(),
+  "unitType": zod.string(),
+  "wastagePercentage": zod.number(),
+  "isBulkItem": zod.boolean()
+})).optional(),
   "deckBoardType": zod.string().default(setQuotePortalStatusResponseSpecDeckBoardTypeDefault).describe('hardwood | composite | treated_pine'),
   "subframeType": zod.string().default(setQuotePortalStatusResponseSpecSubframeTypeDefault).describe('stumps | concrete_slab | existing_structure'),
   "fastenerType": zod.string().default(setQuotePortalStatusResponseSpecFastenerTypeDefault).describe('screws | hidden_clips'),
@@ -1495,6 +1917,22 @@ export const estimateDeckBodyFootingDepthMmDefault = 450;
 export const estimateDeckBodyWastageFactorDefault = 1.1;
 export const estimateDeckBodyLabourHoursDefault = 0;
 export const estimateDeckBodyLabourRateDefault = 85;
+export const estimateDeckBodyParameterDefinitionsItemIdMax = 80;
+
+export const estimateDeckBodyParameterDefinitionsItemLabelMax = 120;
+
+export const estimateDeckBodyParameterDefinitionsItemUnitMax = 30;
+
+export const estimateDeckBodyParameterDefinitionsItemStepExclusiveMin = 0;
+
+export const estimateDeckBodyCustomParameterDefinitionsItemIdMax = 80;
+
+export const estimateDeckBodyCustomParameterDefinitionsItemLabelMax = 120;
+
+export const estimateDeckBodyCustomParameterDefinitionsItemUnitMax = 30;
+
+export const estimateDeckBodyCustomParameterDefinitionsItemStepExclusiveMin = 0;
+
 export const estimateDeckBodyDeckBoardTypeDefault = `treated_pine`;
 export const estimateDeckBodySubframeTypeDefault = `stumps`;
 export const estimateDeckBodyFastenerTypeDefault = `screws`;
@@ -1527,6 +1965,44 @@ export const EstimateDeckBody = zod.object({
   "wastageFactor": zod.number().default(estimateDeckBodyWastageFactorDefault).describe('Multiplier for cuts and offcuts'),
   "labourHours": zod.number().default(estimateDeckBodyLabourHoursDefault).describe('Labour hours for the job'),
   "labourRate": zod.number().default(estimateDeckBodyLabourRateDefault).describe('AUD per hour labour rate'),
+  "templateId": zod.number().nullish(),
+  "templateSlug": zod.string().nullish(),
+  "engineVersion": zod.number().nullish(),
+  "templateRevision": zod.number().nullish(),
+  "parameterValues": zod.record(zod.string(), zod.number()).optional(),
+  "parameterDefinitions": zod.array(zod.object({
+  "id": zod.string().min(1).max(estimateDeckBodyParameterDefinitionsItemIdMax),
+  "label": zod.string().min(1).max(estimateDeckBodyParameterDefinitionsItemLabelMax),
+  "unit": zod.string().min(1).max(estimateDeckBodyParameterDefinitionsItemUnitMax),
+  "defaultValue": zod.number(),
+  "minimum": zod.number().optional(),
+  "maximum": zod.number().optional(),
+  "step": zod.number().gt(estimateDeckBodyParameterDefinitionsItemStepExclusiveMin).optional()
+})).optional(),
+  "customParameterDefinitions": zod.array(zod.object({
+  "id": zod.string().min(1).max(estimateDeckBodyCustomParameterDefinitionsItemIdMax),
+  "label": zod.string().min(1).max(estimateDeckBodyCustomParameterDefinitionsItemLabelMax),
+  "unit": zod.string().min(1).max(estimateDeckBodyCustomParameterDefinitionsItemUnitMax),
+  "defaultValue": zod.number(),
+  "minimum": zod.number().optional(),
+  "maximum": zod.number().optional(),
+  "step": zod.number().gt(estimateDeckBodyCustomParameterDefinitionsItemStepExclusiveMin).optional()
+})).optional(),
+  "lineSnapshot": zod.array(zod.object({
+  "lineKey": zod.string(),
+  "bomRuleId": zod.enum(['cabinet_melamine_area', 'cabinet_hinges', 'cabinet_runners', 'cabinet_benchtop_area', 'decking_linear_metres', 'deck_joists_linear_metres', 'deck_bearers_linear_metres', 'deck_posts', 'concrete_volume', 'concrete_trench_mesh', 'concrete_slab_mesh', 'concrete_bar_chair_boxes', 'plaster_wall_board', 'plaster_ceiling_board', 'plaster_cornice', 'plaster_external_angle', 'plaster_internal_tape', 'plaster_compound_buckets', 'roof_sheet_area', 'roof_battens', 'roof_gutter', 'roof_downpipes', 'roof_ridge_capping', 'roof_screws', 'electrical_cable_length', 'electrical_cable_drums', 'electrical_single_faceplates', 'electrical_double_faceplates', 'electrical_mounting_blocks', 'electrical_light_fittings']),
+  "quantity": zod.number(),
+  "calculatedQuantity": zod.number(),
+  "isManualQuantity": zod.boolean(),
+  "unitCost": zod.number(),
+  "markupPercentage": zod.number(),
+  "description": zod.string(),
+  "category": zod.string(),
+  "unit": zod.string(),
+  "unitType": zod.string(),
+  "wastagePercentage": zod.number(),
+  "isBulkItem": zod.boolean()
+})).optional(),
   "deckBoardType": zod.string().default(estimateDeckBodyDeckBoardTypeDefault).describe('hardwood | composite | treated_pine'),
   "subframeType": zod.string().default(estimateDeckBodySubframeTypeDefault).describe('stumps | concrete_slab | existing_structure'),
   "fastenerType": zod.string().default(estimateDeckBodyFastenerTypeDefault).describe('screws | hidden_clips'),
@@ -1557,6 +2033,22 @@ export const estimateDeckResponseSpecFootingDepthMmDefault = 450;
 export const estimateDeckResponseSpecWastageFactorDefault = 1.1;
 export const estimateDeckResponseSpecLabourHoursDefault = 0;
 export const estimateDeckResponseSpecLabourRateDefault = 85;
+export const estimateDeckResponseSpecParameterDefinitionsItemIdMax = 80;
+
+export const estimateDeckResponseSpecParameterDefinitionsItemLabelMax = 120;
+
+export const estimateDeckResponseSpecParameterDefinitionsItemUnitMax = 30;
+
+export const estimateDeckResponseSpecParameterDefinitionsItemStepExclusiveMin = 0;
+
+export const estimateDeckResponseSpecCustomParameterDefinitionsItemIdMax = 80;
+
+export const estimateDeckResponseSpecCustomParameterDefinitionsItemLabelMax = 120;
+
+export const estimateDeckResponseSpecCustomParameterDefinitionsItemUnitMax = 30;
+
+export const estimateDeckResponseSpecCustomParameterDefinitionsItemStepExclusiveMin = 0;
+
 export const estimateDeckResponseSpecDeckBoardTypeDefault = `treated_pine`;
 export const estimateDeckResponseSpecSubframeTypeDefault = `stumps`;
 export const estimateDeckResponseSpecFastenerTypeDefault = `screws`;
@@ -1590,6 +2082,44 @@ export const EstimateDeckResponse = zod.object({
   "wastageFactor": zod.number().default(estimateDeckResponseSpecWastageFactorDefault).describe('Multiplier for cuts and offcuts'),
   "labourHours": zod.number().default(estimateDeckResponseSpecLabourHoursDefault).describe('Labour hours for the job'),
   "labourRate": zod.number().default(estimateDeckResponseSpecLabourRateDefault).describe('AUD per hour labour rate'),
+  "templateId": zod.number().nullish(),
+  "templateSlug": zod.string().nullish(),
+  "engineVersion": zod.number().nullish(),
+  "templateRevision": zod.number().nullish(),
+  "parameterValues": zod.record(zod.string(), zod.number()).optional(),
+  "parameterDefinitions": zod.array(zod.object({
+  "id": zod.string().min(1).max(estimateDeckResponseSpecParameterDefinitionsItemIdMax),
+  "label": zod.string().min(1).max(estimateDeckResponseSpecParameterDefinitionsItemLabelMax),
+  "unit": zod.string().min(1).max(estimateDeckResponseSpecParameterDefinitionsItemUnitMax),
+  "defaultValue": zod.number(),
+  "minimum": zod.number().optional(),
+  "maximum": zod.number().optional(),
+  "step": zod.number().gt(estimateDeckResponseSpecParameterDefinitionsItemStepExclusiveMin).optional()
+})).optional(),
+  "customParameterDefinitions": zod.array(zod.object({
+  "id": zod.string().min(1).max(estimateDeckResponseSpecCustomParameterDefinitionsItemIdMax),
+  "label": zod.string().min(1).max(estimateDeckResponseSpecCustomParameterDefinitionsItemLabelMax),
+  "unit": zod.string().min(1).max(estimateDeckResponseSpecCustomParameterDefinitionsItemUnitMax),
+  "defaultValue": zod.number(),
+  "minimum": zod.number().optional(),
+  "maximum": zod.number().optional(),
+  "step": zod.number().gt(estimateDeckResponseSpecCustomParameterDefinitionsItemStepExclusiveMin).optional()
+})).optional(),
+  "lineSnapshot": zod.array(zod.object({
+  "lineKey": zod.string(),
+  "bomRuleId": zod.enum(['cabinet_melamine_area', 'cabinet_hinges', 'cabinet_runners', 'cabinet_benchtop_area', 'decking_linear_metres', 'deck_joists_linear_metres', 'deck_bearers_linear_metres', 'deck_posts', 'concrete_volume', 'concrete_trench_mesh', 'concrete_slab_mesh', 'concrete_bar_chair_boxes', 'plaster_wall_board', 'plaster_ceiling_board', 'plaster_cornice', 'plaster_external_angle', 'plaster_internal_tape', 'plaster_compound_buckets', 'roof_sheet_area', 'roof_battens', 'roof_gutter', 'roof_downpipes', 'roof_ridge_capping', 'roof_screws', 'electrical_cable_length', 'electrical_cable_drums', 'electrical_single_faceplates', 'electrical_double_faceplates', 'electrical_mounting_blocks', 'electrical_light_fittings']),
+  "quantity": zod.number(),
+  "calculatedQuantity": zod.number(),
+  "isManualQuantity": zod.boolean(),
+  "unitCost": zod.number(),
+  "markupPercentage": zod.number(),
+  "description": zod.string(),
+  "category": zod.string(),
+  "unit": zod.string(),
+  "unitType": zod.string(),
+  "wastagePercentage": zod.number(),
+  "isBulkItem": zod.boolean()
+})).optional(),
   "deckBoardType": zod.string().default(estimateDeckResponseSpecDeckBoardTypeDefault).describe('hardwood | composite | treated_pine'),
   "subframeType": zod.string().default(estimateDeckResponseSpecSubframeTypeDefault).describe('stumps | concrete_slab | existing_structure'),
   "fastenerType": zod.string().default(estimateDeckResponseSpecFastenerTypeDefault).describe('screws | hidden_clips'),
@@ -1706,6 +2236,9 @@ export const GetMasterProjectResponse = zod.object({
   "id": zod.number(),
   "quoteId": zod.number(),
   "materialId": zod.number().nullish(),
+  "lineKey": zod.string().nullish(),
+  "bomRuleId": zod.union([zod.enum(['cabinet_melamine_area', 'cabinet_hinges', 'cabinet_runners', 'cabinet_benchtop_area', 'decking_linear_metres', 'deck_joists_linear_metres', 'deck_bearers_linear_metres', 'deck_posts', 'concrete_volume', 'concrete_trench_mesh', 'concrete_slab_mesh', 'concrete_bar_chair_boxes', 'plaster_wall_board', 'plaster_ceiling_board', 'plaster_cornice', 'plaster_external_angle', 'plaster_internal_tape', 'plaster_compound_buckets', 'roof_sheet_area', 'roof_battens', 'roof_gutter', 'roof_downpipes', 'roof_ridge_capping', 'roof_screws', 'electrical_cable_length', 'electrical_cable_drums', 'electrical_single_faceplates', 'electrical_double_faceplates', 'electrical_mounting_blocks', 'electrical_light_fittings']),zod.null()]).optional(),
+  "isManualQuantity": zod.boolean().nullish(),
   "description": zod.string(),
   "category": zod.string(),
   "quantity": zod.number(),
@@ -1737,6 +2270,9 @@ export const GetMasterProjectResponse = zod.object({
   "id": zod.number(),
   "quoteId": zod.number(),
   "materialId": zod.number().nullish(),
+  "lineKey": zod.string().nullish(),
+  "bomRuleId": zod.union([zod.enum(['cabinet_melamine_area', 'cabinet_hinges', 'cabinet_runners', 'cabinet_benchtop_area', 'decking_linear_metres', 'deck_joists_linear_metres', 'deck_bearers_linear_metres', 'deck_posts', 'concrete_volume', 'concrete_trench_mesh', 'concrete_slab_mesh', 'concrete_bar_chair_boxes', 'plaster_wall_board', 'plaster_ceiling_board', 'plaster_cornice', 'plaster_external_angle', 'plaster_internal_tape', 'plaster_compound_buckets', 'roof_sheet_area', 'roof_battens', 'roof_gutter', 'roof_downpipes', 'roof_ridge_capping', 'roof_screws', 'electrical_cable_length', 'electrical_cable_drums', 'electrical_single_faceplates', 'electrical_double_faceplates', 'electrical_mounting_blocks', 'electrical_light_fittings']),zod.null()]).optional(),
+  "isManualQuantity": zod.boolean().nullish(),
   "description": zod.string(),
   "category": zod.string(),
   "quantity": zod.number(),
@@ -1886,6 +2422,9 @@ export const UpdateMasterProjectResponse = zod.object({
   "id": zod.number(),
   "quoteId": zod.number(),
   "materialId": zod.number().nullish(),
+  "lineKey": zod.string().nullish(),
+  "bomRuleId": zod.union([zod.enum(['cabinet_melamine_area', 'cabinet_hinges', 'cabinet_runners', 'cabinet_benchtop_area', 'decking_linear_metres', 'deck_joists_linear_metres', 'deck_bearers_linear_metres', 'deck_posts', 'concrete_volume', 'concrete_trench_mesh', 'concrete_slab_mesh', 'concrete_bar_chair_boxes', 'plaster_wall_board', 'plaster_ceiling_board', 'plaster_cornice', 'plaster_external_angle', 'plaster_internal_tape', 'plaster_compound_buckets', 'roof_sheet_area', 'roof_battens', 'roof_gutter', 'roof_downpipes', 'roof_ridge_capping', 'roof_screws', 'electrical_cable_length', 'electrical_cable_drums', 'electrical_single_faceplates', 'electrical_double_faceplates', 'electrical_mounting_blocks', 'electrical_light_fittings']),zod.null()]).optional(),
+  "isManualQuantity": zod.boolean().nullish(),
   "description": zod.string(),
   "category": zod.string(),
   "quantity": zod.number(),
@@ -1917,6 +2456,9 @@ export const UpdateMasterProjectResponse = zod.object({
   "id": zod.number(),
   "quoteId": zod.number(),
   "materialId": zod.number().nullish(),
+  "lineKey": zod.string().nullish(),
+  "bomRuleId": zod.union([zod.enum(['cabinet_melamine_area', 'cabinet_hinges', 'cabinet_runners', 'cabinet_benchtop_area', 'decking_linear_metres', 'deck_joists_linear_metres', 'deck_bearers_linear_metres', 'deck_posts', 'concrete_volume', 'concrete_trench_mesh', 'concrete_slab_mesh', 'concrete_bar_chair_boxes', 'plaster_wall_board', 'plaster_ceiling_board', 'plaster_cornice', 'plaster_external_angle', 'plaster_internal_tape', 'plaster_compound_buckets', 'roof_sheet_area', 'roof_battens', 'roof_gutter', 'roof_downpipes', 'roof_ridge_capping', 'roof_screws', 'electrical_cable_length', 'electrical_cable_drums', 'electrical_single_faceplates', 'electrical_double_faceplates', 'electrical_mounting_blocks', 'electrical_light_fittings']),zod.null()]).optional(),
+  "isManualQuantity": zod.boolean().nullish(),
   "description": zod.string(),
   "category": zod.string(),
   "quantity": zod.number(),
@@ -2067,6 +2609,9 @@ export const SetMasterProjectQuotesResponse = zod.object({
   "id": zod.number(),
   "quoteId": zod.number(),
   "materialId": zod.number().nullish(),
+  "lineKey": zod.string().nullish(),
+  "bomRuleId": zod.union([zod.enum(['cabinet_melamine_area', 'cabinet_hinges', 'cabinet_runners', 'cabinet_benchtop_area', 'decking_linear_metres', 'deck_joists_linear_metres', 'deck_bearers_linear_metres', 'deck_posts', 'concrete_volume', 'concrete_trench_mesh', 'concrete_slab_mesh', 'concrete_bar_chair_boxes', 'plaster_wall_board', 'plaster_ceiling_board', 'plaster_cornice', 'plaster_external_angle', 'plaster_internal_tape', 'plaster_compound_buckets', 'roof_sheet_area', 'roof_battens', 'roof_gutter', 'roof_downpipes', 'roof_ridge_capping', 'roof_screws', 'electrical_cable_length', 'electrical_cable_drums', 'electrical_single_faceplates', 'electrical_double_faceplates', 'electrical_mounting_blocks', 'electrical_light_fittings']),zod.null()]).optional(),
+  "isManualQuantity": zod.boolean().nullish(),
   "description": zod.string(),
   "category": zod.string(),
   "quantity": zod.number(),
@@ -2098,6 +2643,9 @@ export const SetMasterProjectQuotesResponse = zod.object({
   "id": zod.number(),
   "quoteId": zod.number(),
   "materialId": zod.number().nullish(),
+  "lineKey": zod.string().nullish(),
+  "bomRuleId": zod.union([zod.enum(['cabinet_melamine_area', 'cabinet_hinges', 'cabinet_runners', 'cabinet_benchtop_area', 'decking_linear_metres', 'deck_joists_linear_metres', 'deck_bearers_linear_metres', 'deck_posts', 'concrete_volume', 'concrete_trench_mesh', 'concrete_slab_mesh', 'concrete_bar_chair_boxes', 'plaster_wall_board', 'plaster_ceiling_board', 'plaster_cornice', 'plaster_external_angle', 'plaster_internal_tape', 'plaster_compound_buckets', 'roof_sheet_area', 'roof_battens', 'roof_gutter', 'roof_downpipes', 'roof_ridge_capping', 'roof_screws', 'electrical_cable_length', 'electrical_cable_drums', 'electrical_single_faceplates', 'electrical_double_faceplates', 'electrical_mounting_blocks', 'electrical_light_fittings']),zod.null()]).optional(),
+  "isManualQuantity": zod.boolean().nullish(),
   "description": zod.string(),
   "category": zod.string(),
   "quantity": zod.number(),

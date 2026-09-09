@@ -6,6 +6,9 @@
     "paths": {
       "@/*": [
         "./*"
+      ],
+      "@workspace/parametric-quotes": [
+        "../../lib/parametric-quotes/src/index.ts"
       ]
     }
   },
@@ -18,6 +21,9 @@
   "references": [
     {
       "path": "../../lib/api-client-react"
+    },
+    {
+      "path": "../../lib/parametric-quotes"
     }
   ]
 }

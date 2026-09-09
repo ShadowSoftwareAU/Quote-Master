@@ -5,6 +5,8 @@
  * Quote Master API — decking quotes, materials, customers, and bookings.
  * OpenAPI spec version: 0.1.0
  */
+import type { ParametricBomRule } from './parametricBomRule';
+import type { ParametricParameterDefinition } from './parametricParameterDefinition';
 import type { TradeTemplateLineItem } from './tradeTemplateLineItem';
 
 export interface TradeTemplate {
@@ -13,4 +15,12 @@ export interface TradeTemplate {
   name: string;
   slug: string;
   defaultLineItems: TradeTemplateLineItem[];
+  /** @nullable */
+  engineVersion: number | null;
+  /** @nullable */
+  templateRevision: number | null;
+  /** @nullable */
+  parameterDefinitions: ParametricParameterDefinition[] | null;
+  /** @nullable */
+  bomRules: ParametricBomRule[] | null;
 }

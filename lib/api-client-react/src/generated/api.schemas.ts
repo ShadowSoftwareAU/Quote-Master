@@ -239,6 +239,83 @@ export interface MaterialUpdate {
   notes?: string;
 }
 
+export type DeckSpecInputParameterValues = {[key: string]: number};
+
+export interface ParametricParameterDefinition {
+  /**
+     * @minLength 1
+     * @maxLength 80
+     */
+  id: string;
+  /**
+     * @minLength 1
+     * @maxLength 120
+     */
+  label: string;
+  /**
+     * @minLength 1
+     * @maxLength 30
+     */
+  unit: string;
+  defaultValue: number;
+  minimum?: number;
+  maximum?: number;
+  /** @exclusiveMinimum 0 */
+  step?: number;
+}
+
+export type ParametricBomRuleId = typeof ParametricBomRuleId[keyof typeof ParametricBomRuleId];
+
+
+export const ParametricBomRuleId = {
+  cabinet_melamine_area: 'cabinet_melamine_area',
+  cabinet_hinges: 'cabinet_hinges',
+  cabinet_runners: 'cabinet_runners',
+  cabinet_benchtop_area: 'cabinet_benchtop_area',
+  decking_linear_metres: 'decking_linear_metres',
+  deck_joists_linear_metres: 'deck_joists_linear_metres',
+  deck_bearers_linear_metres: 'deck_bearers_linear_metres',
+  deck_posts: 'deck_posts',
+  concrete_volume: 'concrete_volume',
+  concrete_trench_mesh: 'concrete_trench_mesh',
+  concrete_slab_mesh: 'concrete_slab_mesh',
+  concrete_bar_chair_boxes: 'concrete_bar_chair_boxes',
+  plaster_wall_board: 'plaster_wall_board',
+  plaster_ceiling_board: 'plaster_ceiling_board',
+  plaster_cornice: 'plaster_cornice',
+  plaster_external_angle: 'plaster_external_angle',
+  plaster_internal_tape: 'plaster_internal_tape',
+  plaster_compound_buckets: 'plaster_compound_buckets',
+  roof_sheet_area: 'roof_sheet_area',
+  roof_battens: 'roof_battens',
+  roof_gutter: 'roof_gutter',
+  roof_downpipes: 'roof_downpipes',
+  roof_ridge_capping: 'roof_ridge_capping',
+  roof_screws: 'roof_screws',
+  electrical_cable_length: 'electrical_cable_length',
+  electrical_cable_drums: 'electrical_cable_drums',
+  electrical_single_faceplates: 'electrical_single_faceplates',
+  electrical_double_faceplates: 'electrical_double_faceplates',
+  electrical_mounting_blocks: 'electrical_mounting_blocks',
+  electrical_light_fittings: 'electrical_light_fittings',
+} as const;
+
+export interface ParametricLineSnapshot {
+  lineKey: string;
+  bomRuleId: ParametricBomRuleId;
+  quantity: number;
+  calculatedQuantity: number;
+  isManualQuantity: boolean;
+  unitCost: number;
+  markupPercentage: number;
+  description: string;
+  category: string;
+  unit: string;
+  unitType: string;
+  wastagePercentage: number;
+  isBulkItem: boolean;
+}
+
 export interface DeckSpecInput {
   /** Deck length in metres */
   lengthM: number;
@@ -264,6 +341,18 @@ export interface DeckSpecInput {
   labourHours?: number;
   /** AUD per hour labour rate */
   labourRate?: number;
+  /** @nullable */
+  templateId?: number | null;
+  /** @nullable */
+  templateSlug?: string | null;
+  /** @nullable */
+  engineVersion?: number | null;
+  /** @nullable */
+  templateRevision?: number | null;
+  parameterValues?: DeckSpecInputParameterValues;
+  parameterDefinitions?: ParametricParameterDefinition[];
+  customParameterDefinitions?: ParametricParameterDefinition[];
+  lineSnapshot?: ParametricLineSnapshot[];
   /** hardwood | composite | treated_pine */
   deckBoardType?: string;
   /** stumps | concrete_slab | existing_structure */
@@ -303,6 +392,11 @@ export interface QuoteLineItem {
   quoteId: number;
   /** @nullable */
   materialId?: number | null;
+  /** @nullable */
+  lineKey?: string | null;
+  bomRuleId?: ParametricBomRuleId | null;
+  /** @nullable */
+  isManualQuantity?: boolean | null;
   description: string;
   category: string;
   quantity: number;
@@ -338,6 +432,13 @@ export const QuoteLineItemInputUnitType = {
 } as const;
 
 export interface QuoteLineItemInput {
+  /**
+     * @minLength 1
+     * @maxLength 80
+     */
+  lineKey?: string;
+  bomRuleId?: ParametricBomRuleId;
+  isManualQuantity?: boolean;
   /**
      * @minLength 1
      * @maxLength 200
@@ -451,6 +552,7 @@ export const TradeTemplateLineItemUnitType = {
 } as const;
 
 export interface TradeTemplateLineItem {
+  lineKey?: string;
   description: string;
   category: string;
   quantity: number;
@@ -460,6 +562,15 @@ export interface TradeTemplateLineItem {
   markupPercentage: number;
   wastagePercentage: number;
   isBulkItem: boolean;
+}
+
+export interface ParametricBomRule {
+  /**
+     * @minLength 1
+     * @maxLength 80
+     */
+  lineKey: string;
+  bomRuleId: ParametricBomRuleId;
 }
 
 export interface TradeCatalogueEntry {
@@ -474,6 +585,14 @@ export interface TradeTemplate {
   name: string;
   slug: string;
   defaultLineItems: TradeTemplateLineItem[];
+  /** @nullable */
+  engineVersion: number | null;
+  /** @nullable */
+  templateRevision: number | null;
+  /** @nullable */
+  parameterDefinitions: ParametricParameterDefinition[] | null;
+  /** @nullable */
+  bomRules: ParametricBomRule[] | null;
 }
 
 export type ComplianceWarningSeverity = typeof ComplianceWarningSeverity[keyof typeof ComplianceWarningSeverity];
@@ -895,6 +1014,8 @@ export interface QuoteSummary {
   createdAt: string;
 }
 
+export type QuoteInputParameterValues = {[key: string]: number};
+
 export interface QuoteInput {
   /** @minLength 1 */
   title: string;
@@ -902,8 +1023,21 @@ export interface QuoteInput {
   tradeType?: string;
   siteAddress?: string;
   notes?: string;
-  lengthM: number;
-  widthM: number;
+  templateId?: number;
+  /**
+     * @minLength 1
+     * @maxLength 120
+     */
+  templateSlug?: string;
+  /** @minimum 1 */
+  engineVersion?: number;
+  /** @minimum 1 */
+  templateRevision?: number;
+  parameterValues?: QuoteInputParameterValues;
+  /** @maxItems 100 */
+  customParameterDefinitions?: ParametricParameterDefinition[];
+  lengthM?: number;
+  widthM?: number;
   heightM?: number;
   boardWidthMm?: number;
   joistSpacingMm?: number;
@@ -935,7 +1069,22 @@ export interface QuoteInput {
   lineItems?: QuoteLineItemInput[];
 }
 
+export type QuoteUpdateParameterValues = {[key: string]: number};
+
 export interface QuoteUpdate {
+  templateId?: number;
+  /**
+     * @minLength 1
+     * @maxLength 120
+     */
+  templateSlug?: string;
+  /** @minimum 1 */
+  engineVersion?: number;
+  /** @minimum 1 */
+  templateRevision?: number;
+  parameterValues?: QuoteUpdateParameterValues;
+  /** @maxItems 100 */
+  customParameterDefinitions?: ParametricParameterDefinition[];
   /** @minLength 1 */
   title?: string;
   customerId?: number;
