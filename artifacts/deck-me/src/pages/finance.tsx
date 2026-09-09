@@ -2,7 +2,14 @@ import { useGetPnlReport } from "@workspace/api-client-react";
 import { formatCurrency } from "@/lib/format";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { TrendingUp, DollarSign, Hammer, BarChart2, AlertCircle } from "lucide-react";
+import {
+  TrendingUp,
+  DollarSign,
+  Hammer,
+  BarChart2,
+  AlertCircle,
+  type LucideIcon,
+} from "lucide-react";
 import {
   BarChart,
   Bar,
@@ -51,7 +58,7 @@ function Stat({
   label: string;
   value: string;
   sub?: string;
-  icon: React.ElementType;
+  icon: LucideIcon;
   accent?: boolean;
 }) {
   return (
