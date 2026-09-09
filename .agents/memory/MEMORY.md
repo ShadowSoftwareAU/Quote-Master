@@ -11,3 +11,4 @@
 - [Dashboard analytics semantics](dashboard-analytics-semantics.md) — keep pipeline, YTD revenue, and win-rate definitions stable across owner dashboards.
 - [Personal trade presets](personal-trade-presets.md) — keep learned quote items user-owned, primary-trade scoped, idempotent, and atomic with quote creation.
 - [Three.js CAD rotations](threejs-cad-rotations.md) — validate compliance bounds against Three.js itself before changing XYZ Euler transform maths.
+- [Feature branch upstreams](feature-branch-upstreams.md) — track each feature branch against its matching origin branch, not origin/main.
