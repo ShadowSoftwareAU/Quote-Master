@@ -1,0 +1,25 @@
+﻿Column A Trade,Column B Quoting functions / items,Column C Main quoting options / parameters
+Carpenter / Joiner,Decks; subframes; stairs; timber framing; cladding; internal linings; skirtings; door/window frames,"Material type (timber species, treated vs untreated); dimensions (linear m, m²); fixings (screws, brackets); labour rate (per hour or per m²); finish (paint/stain); waste factor %"
+Roofer,Roof sheeting; battens; flashings; gutters; downpipes; roof insulation; roof repairs,"Roof material (metal, tile, membrane); pitch; area m²; underlay type; fasteners; safety/access (scaffold, harness); waste factor"
+Plumber,Hot/cold water supply; sanitary fixtures; drainage; stormwater; gas fitting; roof plumbing,"Fixture types (basin, WC, shower, tapware); pipe material (copper, PEX, PVC); run length (m); connection type; compliance checks (AS/NZS 3500); pressure testing"
+Electrician,Switchboards; lighting circuits; power outlets; data/network cabling; smoke alarms; RCDs; EV charger install,"Circuit type (lighting, power, dedicated); cable runs (m); fixture type (downlight, pendant); load calculations (A); safety devices (RCD, MCB); compliance (AS/NZS 3000)"
+HVAC / Air Conditioning,Split systems; ducted systems; ventilation; refrigerant lines; commissioning,"System type (split, ducted); capacity (kW); duct length / runs; refrigerant type; commissioning & testing; clearances"
+Tiler,Floor tiling; wall tiling; waterproofing; screeds; tile removal,Tile size & type; area m²; substrate prep; grout type; tile layout pattern; waste factor
+Painter / Decorator,Internal painting; external painting; protective coatings; texture finishes,"Surface area m²; coats required; paint type (acrylic, oil); prep work; colour codes; labour rate"
+Plasterer / Gib Fixer,Internal linings; bulkheads; cornices; patch repairs; fire-rated linings,"Board type (standard, fire-rated); area m²; jointing finish; fire rating; fixing centres"
+Flooring Installer,Timber flooring; laminate; vinyl; carpet; subfloor prep,Floor type; area m²; underlay; finish; transition trims; adhesive vs floating
+Glazier,Window supply & install; shopfronts; balustrades; mirrors; splashbacks,"Glass type (toughened, laminated, double-glazed); thickness; frame type; safety rating; sealing"
+Bricklayer / Blocklayer,New walls; re-pointing; retaining walls; masonry repairs,Brick/block type; m² of wall; mortar type; reinforcement; footing requirements
+Concreter,Slabs; footings; paths; driveways; exposed aggregate,Concrete class (MPa); volume m³; reinforcement; finish; curing
+Landscape / Irrigation,Soft landscaping; paving; retaining walls; irrigation systems,Planting schedule; paving m²; irrigation zones; water source; soil prep
+Fencing / Gates,Timber fencing; metal fencing; gates; pool fencing,Fence type; linear m; post spacing; gates & hardware; compliance (pool fence heights)
+Security / Access Control,Alarm systems; CCTV; access control; intercoms,Device types; cable runs; power requirements; monitoring options
+Data / Communications,Network cabling; structured cabling; Wi-Fi access points; phone systems,"Cable type (Cat6, fibre); run length; number of outlets; testing & certification"
+Solar / Renewable Energy,PV panels; inverters; battery storage; mounting systems,Panel kW; inverter size; roof mounting type; export limits; electrical integration
+Demolition / Asbestos Removal,Strip-outs; selective demolition; asbestos testing & removal,Scope; hazard classification; licensing requirements; waste disposal
+Insulation,Ceiling insulation; wall insulation; acoustic treatments,Insulation type; R-value; area m²; installation method
+Steel Fabrication / Structural,Steel beams; columns; stairs; balustrades; connections,Section sizes; weld vs bolted; surface treatment; engineering certs
+Pool Builder / Specialist,Pool shell; tiling; filtration; fencing; landscaping,Pool type; volume; filtration system; safety compliance
+Cabinetmaker / Joinery,Kitchen cabinets; wardrobes; benchtops; custom joinery,Material; linear m; hardware; benchtop type; finish
+Fire Protection,Fire sprinklers; hydrants; fire doors; passive fire sealing,System type; coverage area; pipework runs; certification; compliance (NCC)
+Asbestos / Hazardous Materials,Testing; removal; remediation; disposal,Material type; area m²; licensing; air monitoring
