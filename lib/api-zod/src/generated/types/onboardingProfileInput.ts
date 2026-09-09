@@ -24,6 +24,8 @@ export interface OnboardingProfileInput {
      * @maxLength 80
      */
   tradeType: string;
+  /** @minItems 1 */
+  tradeTypes?: string[];
   /**
      * @minLength 2
      * @maxLength 50

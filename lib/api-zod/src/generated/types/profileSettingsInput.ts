@@ -5,14 +5,10 @@
  * Quote Master API — decking quotes, materials, customers, and bookings.
  * OpenAPI spec version: 0.1.0
  */
-import type { BusinessRole } from './businessRole';
 
 export interface ProfileSettingsInput {
-  /**
-     * @minLength 2
-     * @maxLength 80
-     */
-  tradeType: string;
+  /** @minItems 1 */
+  tradeTypes: string[];
   /**
      * @minLength 2
      * @maxLength 50
@@ -20,5 +16,4 @@ export interface ProfileSettingsInput {
      * @pattern ^[A-Za-z0-9 ./-]+$
      */
   licenseNumber?: string | null;
-  role: BusinessRole;
 }

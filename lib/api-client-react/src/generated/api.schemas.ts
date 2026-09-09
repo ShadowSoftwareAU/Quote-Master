@@ -32,6 +32,8 @@ export interface BusinessProfile {
   businessName: string;
   phoneNumber: string;
   tradeType: string;
+  /** @minItems 1 */
+  tradeTypes: string[];
   /** @nullable */
   licenseNumber?: string | null;
   role: BusinessRole;
@@ -58,6 +60,8 @@ export interface OnboardingProfileInput {
      * @maxLength 80
      */
   tradeType: string;
+  /** @minItems 1 */
+  tradeTypes?: string[];
   /**
      * @minLength 2
      * @maxLength 50
@@ -69,11 +73,8 @@ export interface OnboardingProfileInput {
 }
 
 export interface ProfileSettingsInput {
-  /**
-     * @minLength 2
-     * @maxLength 80
-     */
-  tradeType: string;
+  /** @minItems 1 */
+  tradeTypes: string[];
   /**
      * @minLength 2
      * @maxLength 50
@@ -81,7 +82,6 @@ export interface ProfileSettingsInput {
      * @pattern ^[A-Za-z0-9 ./-]+$
      */
   licenseNumber?: string | null;
-  role: BusinessRole;
 }
 
 export interface MasterBuilderFlagInput {
@@ -460,6 +460,12 @@ export interface TradeTemplateLineItem {
   markupPercentage: number;
   wastagePercentage: number;
   isBulkItem: boolean;
+}
+
+export interface TradeCatalogueEntry {
+  value: string;
+  quotingFunctions: string[];
+  quotingParameters: string[];
 }
 
 export interface TradeTemplate {
@@ -1390,4 +1396,8 @@ export interface AddPortfolioPhotoInput {
 
 export type ListMaterialsParams = {
 category?: string;
+};
+
+export type ListTradeTemplatePresetsParams = {
+tradeType?: string;
 };

@@ -41,6 +41,11 @@ import { saveSelectedTradeTemplatePresets } from "../services/tradeTemplatePrese
 import { complianceDisclaimerForTrade } from "../lib/quoteCompliance";
 import { getLinkedTeamMember } from "../lib/assignmentAccess";
 import {
+  canonicalTradeType,
+  isCarpentryTrade,
+  profileTradeTypes,
+} from "../lib/tradeCatalogue";
+import {
   getBusinessRole,
   requireBusinessRole,
 } from "../middlewares/businessRoleAuth";
@@ -132,6 +137,30 @@ function combineEstimateAndCustomLines(
       customLines.reduce((sum, line) => sum + line.lineTotal, 0),
   );
   return { lines, materialsSubtotal };
+}
+
+function usesDeckEstimator(tradeType: string | null | undefined): boolean {
+  return isCarpentryTrade(tradeType);
+}
+
+function combineTradeEstimateAndCustomLines(
+  tradeType: string | null | undefined,
+  spec: Parameters<typeof estimateDeck>[0],
+  materials: Parameters<typeof estimateDeck>[1],
+  customLines: ReturnType<typeof buildCustomQuoteLines>,
+) {
+  if (usesDeckEstimator(tradeType)) {
+    return combineEstimateAndCustomLines(
+      estimateDeck(spec, materials),
+      customLines,
+    );
+  }
+  return {
+    lines: customLines,
+    materialsSubtotal: roundMoney(
+      customLines.reduce((sum, line) => sum + line.lineTotal, 0),
+    ),
+  };
 }
 
 function generatePortalToken(): string {
@@ -627,19 +656,31 @@ router.post("/quotes", requireQuoteManager, async (req, res): Promise<void> => {
       .json({ error: "Complete onboarding before creating a quote" });
     return;
   }
+  const allowedTradeTypes = profileTradeTypes(profile);
+  const selectedTradeType = canonicalTradeType(
+    data.tradeType ?? allowedTradeTypes[0],
+  );
+  if (!selectedTradeType || !allowedTradeTypes.includes(selectedTradeType)) {
+    res.status(400).json({
+      error: "Select a trade saved on your business profile",
+    });
+    return;
+  }
   if (!(await customerBelongsToUser(data.customerId, userId))) {
     res.status(400).json({ error: "Customer not found" });
     return;
   }
   const spec = specFromQuoteInput(data);
   const materials = await ownedMaterials(userId);
-  const estimate = estimateDeck(spec, materials);
   const customLines = buildCustomQuoteLines(data.lineItems);
-  const { lines, materialsSubtotal } = combineEstimateAndCustomLines(
-    estimate,
+  const deckQuote = usesDeckEstimator(selectedTradeType);
+  const { lines, materialsSubtotal } = combineTradeEstimateAndCustomLines(
+    selectedTradeType,
+    spec,
+    materials,
     customLines,
   );
-  const labourHours = data.labourHours ?? 0;
+  const labourHours = deckQuote ? (data.labourHours ?? 0) : 0;
   const labourRate = data.labourRate ?? 85;
   const { labourCost, gst, total } = calcTotals({
     materialsSubtotal,
@@ -664,9 +705,9 @@ router.post("/quotes", requireQuoteManager, async (req, res): Promise<void> => {
         clerkUserId: userId,
         title: data.title,
         customerId: data.customerId,
-        tradeType: data.tradeType ?? "decking",
+        tradeType: selectedTradeType,
         portalToken: generatePortalToken(),
-        complianceDisclaimer: complianceDisclaimerForTrade(profile.tradeType),
+        complianceDisclaimer: complianceDisclaimerForTrade(selectedTradeType),
         contractorLicenseNumber: profile.licenseNumber,
         siteAddress: data.siteAddress ?? null,
         notes: data.notes ?? null,
@@ -707,7 +748,7 @@ router.post("/quotes", requireQuoteManager, async (req, res): Promise<void> => {
     }
     await saveSelectedTradeTemplatePresets(
       userId,
-      profile.tradeType,
+      selectedTradeType,
       data.lineItems ?? [],
       tx,
     );
@@ -835,6 +876,26 @@ router.patch(
       res.status(400).json({ error: "Customer not found" });
       return;
     }
+    let effectiveTradeType = existing.tradeType;
+    if (d.tradeType !== undefined) {
+      const [profile] = await db
+        .select()
+        .from(businessProfilesTable)
+        .where(eq(businessProfilesTable.clerkUserId, userId))
+        .limit(1);
+      const requestedTradeType = canonicalTradeType(d.tradeType);
+      if (
+        !profile ||
+        !requestedTradeType ||
+        !profileTradeTypes(profile).includes(requestedTradeType)
+      ) {
+        res.status(400).json({
+          error: "Select a trade saved on your business profile",
+        });
+        return;
+      }
+      effectiveTradeType = requestedTradeType;
+    }
     const savedSpec = specFromStoredQuote(existing);
     const spec = specFromQuoteInput({
       ...savedSpec,
@@ -844,12 +905,15 @@ router.patch(
     });
     const materials = await ownedMaterials(userId ?? existing.clerkUserId);
     const customLines = await loadStoredCustomQuoteLines(existing.id);
-    const estimate = estimateDeck(spec, materials);
-    const { lines, materialsSubtotal } = combineEstimateAndCustomLines(
-      estimate,
+    const { lines, materialsSubtotal } = combineTradeEstimateAndCustomLines(
+      effectiveTradeType,
+      spec,
+      materials,
       customLines,
     );
-    const labourHours = d.labourHours ?? Number(existing.labourHours);
+    const labourHours = usesDeckEstimator(effectiveTradeType)
+      ? (d.labourHours ?? Number(existing.labourHours))
+      : 0;
     const labourRate = d.labourRate ?? Number(existing.labourRate);
     const { labourCost, gst, total } = calcTotals({
       materialsSubtotal,
@@ -891,7 +955,7 @@ router.patch(
               ? existing.assignedTeamMemberId
               : d.assignedTeamMemberId,
           customerId: d.customerId ?? existing.customerId,
-          tradeType: d.tradeType ?? existing.tradeType,
+          tradeType: effectiveTradeType,
           siteAddress: d.siteAddress ?? existing.siteAddress,
           notes: d.notes ?? existing.notes,
           lengthM: String(spec.lengthM),
@@ -1019,11 +1083,9 @@ router.patch(
       )
       .returning();
     if (!row) {
-      res
-        .status(409)
-        .json({
-          error: "Quote was accepted before the status change completed",
-        });
+      res.status(409).json({
+        error: "Quote was accepted before the status change completed",
+      });
       return;
     }
     const json = await loadQuoteJson(params.data.id, userId ?? undefined);
@@ -1062,9 +1124,10 @@ router.patch("/quote/:token", async (req, res): Promise<void> => {
   });
   const materials = await ownedMaterials(existing.clerkUserId);
   const customLines = await loadStoredCustomQuoteLines(existing.id);
-  const estimate = estimateDeck(spec, materials);
-  const { lines, materialsSubtotal } = combineEstimateAndCustomLines(
-    estimate,
+  const { lines, materialsSubtotal } = combineTradeEstimateAndCustomLines(
+    existing.tradeType,
+    spec,
+    materials,
     customLines,
   );
   const labourHours = Number(existing.labourHours);
@@ -1223,9 +1286,10 @@ router.post(
         isBulkItem: line.isBulkItem ?? false,
         lineTotal: line.lineTotal,
       }));
-    const estimate = estimateDeck(spec, materials);
-    const { lines, materialsSubtotal } = combineEstimateAndCustomLines(
-      estimate,
+    const { lines, materialsSubtotal } = combineTradeEstimateAndCustomLines(
+      original.tradeType,
+      spec,
+      materials,
       customLines,
     );
     const labourHours = b.labourHours ?? original.labourHours;

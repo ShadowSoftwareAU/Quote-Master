@@ -8,6 +8,7 @@ import {
   timestamp,
   uniqueIndex,
 } from "drizzle-orm/pg-core";
+import { sql } from "drizzle-orm";
 
 export const businessProfilesTable = pgTable(
   "business_profiles",
@@ -17,6 +18,10 @@ export const businessProfilesTable = pgTable(
     businessName: text("business_name").notNull(),
     phoneNumber: text("phone_number").notNull(),
     tradeType: text("trade_type").notNull(),
+    tradeTypes: text("trade_types")
+      .array()
+      .notNull()
+      .default(sql`ARRAY[]::text[]`),
     licenseNumber: text("license_number"),
     role: text("role").notNull(),
     isMasterBuilder: boolean("is_master_builder").notNull().default(false),

@@ -1,5 +1,6 @@
-import { and, asc, eq } from "drizzle-orm";
+import { and, asc, eq, inArray } from "drizzle-orm";
 import { db, tradeTemplatePresetsTable } from "@workspace/db";
+import { tradeTypeStorageAliases } from "../lib/tradeCatalogue";
 
 export type TradeTemplatePresetInput = {
   description: string;
@@ -52,7 +53,10 @@ export async function listTradeTemplatePresets(
     .where(
       and(
         eq(tradeTemplatePresetsTable.clerkUserId, clerkUserId),
-        eq(tradeTemplatePresetsTable.tradeType, tradeType),
+        inArray(
+          tradeTemplatePresetsTable.tradeType,
+          tradeTypeStorageAliases(tradeType),
+        ),
       ),
     )
     .orderBy(asc(tradeTemplatePresetsTable.description));

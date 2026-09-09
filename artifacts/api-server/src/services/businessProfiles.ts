@@ -6,6 +6,7 @@ import {
   profileMetadataOutboxTable,
   type BusinessProfileRow,
 } from "@workspace/db";
+import { profileTradeTypes } from "../lib/tradeCatalogue";
 
 export const BUSINESS_ROLES = ["Owner", "Employee", "Subcontractor"] as const;
 export type BusinessRole = (typeof BUSINESS_ROLES)[number];
@@ -14,18 +15,23 @@ export interface OnboardingProfileInput {
   businessName: string;
   phoneNumber: string;
   tradeType: string;
+  tradeTypes?: string[];
   licenseNumber?: string | null;
   role: BusinessRole;
 }
 
 export interface ProfileSettingsInput {
-  tradeType: string;
+  tradeTypes: string[];
   licenseNumber?: string | null;
-  role: BusinessRole;
 }
 
 export interface ClerkMetadataGateway {
-  sync(userId: string, role: BusinessRole, tradeType: string): Promise<void>;
+  sync(
+    userId: string,
+    role: BusinessRole,
+    tradeType: string,
+    tradeTypes: string[],
+  ): Promise<void>;
 }
 
 export class ProfileMetadataSyncError extends Error {
@@ -50,6 +56,7 @@ export function buildClerkPublicMetadata(
   current: Record<string, unknown>,
   role: BusinessRole,
   tradeType: string,
+  tradeTypes: string[] = [tradeType],
 ): Record<string, unknown> {
   const accessRole =
     current.accessRole ??
@@ -60,16 +67,22 @@ export function buildClerkPublicMetadata(
     ...(accessRole ? { accessRole } : {}),
     role,
     tradeType,
+    tradeTypes,
   };
 }
 
 const defaultClerkGateway: ClerkMetadataGateway = {
-  async sync(userId, role, tradeType) {
+  async sync(userId, role, tradeType, tradeTypes) {
     const user = await clerkClient.users.getUser(userId);
     const current = user.publicMetadata as Record<string, unknown>;
 
     await clerkClient.users.updateUserMetadata(userId, {
-      publicMetadata: buildClerkPublicMetadata(current, role, tradeType),
+      publicMetadata: buildClerkPublicMetadata(
+        current,
+        role,
+        tradeType,
+        tradeTypes,
+      ),
     });
   },
 };
@@ -108,11 +121,14 @@ async function processProfileMetadataJob(
     if (!job || !profile) throw new Error("Profile metadata job is orphaned");
 
     if (job.profileVersion !== profile.metadataSyncVersion) {
-      await tx.update(profileMetadataOutboxTable).set({
-        status: "superseded",
-        processedAt: new Date(),
-        updatedAt: new Date(),
-      }).where(eq(profileMetadataOutboxTable.id, job.id));
+      await tx
+        .update(profileMetadataOutboxTable)
+        .set({
+          status: "superseded",
+          processedAt: new Date(),
+          updatedAt: new Date(),
+        })
+        .where(eq(profileMetadataOutboxTable.id, job.id));
       return { profile, error: null };
     }
     if (job.status === "completed") return { profile, error: null };
@@ -122,60 +138,88 @@ async function processProfileMetadataJob(
         profile.clerkUserId,
         profile.role as BusinessRole,
         profile.tradeType,
+        profileTradeTypes(profile),
       );
       const now = new Date();
-      const [synced] = await tx.update(businessProfilesTable).set({
-        metadataSyncStatus: "synced",
-        metadataSyncError: null,
-        metadataSyncedAt: now,
-        updatedAt: now,
-      }).where(and(
-        eq(businessProfilesTable.clerkUserId, profile.clerkUserId),
-        eq(businessProfilesTable.metadataSyncVersion, job.profileVersion),
-      )).returning();
-      if (!synced) {
-        const [current] = await tx.select().from(businessProfilesTable)
-          .where(eq(businessProfilesTable.clerkUserId, profile.clerkUserId));
-        await tx.update(profileMetadataOutboxTable).set({
-          status: "superseded",
-          attempts: job.attempts + 1,
-          processedAt: now,
+      const [synced] = await tx
+        .update(businessProfilesTable)
+        .set({
+          metadataSyncStatus: "synced",
+          metadataSyncError: null,
+          metadataSyncedAt: now,
           updatedAt: now,
-        }).where(eq(profileMetadataOutboxTable.id, job.id));
+        })
+        .where(
+          and(
+            eq(businessProfilesTable.clerkUserId, profile.clerkUserId),
+            eq(businessProfilesTable.metadataSyncVersion, job.profileVersion),
+          ),
+        )
+        .returning();
+      if (!synced) {
+        const [current] = await tx
+          .select()
+          .from(businessProfilesTable)
+          .where(eq(businessProfilesTable.clerkUserId, profile.clerkUserId));
+        await tx
+          .update(profileMetadataOutboxTable)
+          .set({
+            status: "superseded",
+            attempts: job.attempts + 1,
+            processedAt: now,
+            updatedAt: now,
+          })
+          .where(eq(profileMetadataOutboxTable.id, job.id));
         return {
           profile: current ?? profile,
           error: new ProfileMetadataSupersededError(current ?? profile),
         };
       }
-      await tx.update(profileMetadataOutboxTable).set({
-        status: "completed",
-        attempts: job.attempts + 1,
-        lastError: null,
-        processedAt: now,
-        updatedAt: now,
-      }).where(eq(profileMetadataOutboxTable.id, job.id));
+      await tx
+        .update(profileMetadataOutboxTable)
+        .set({
+          status: "completed",
+          attempts: job.attempts + 1,
+          lastError: null,
+          processedAt: now,
+          updatedAt: now,
+        })
+        .where(eq(profileMetadataOutboxTable.id, job.id));
       return { profile: synced, error: null };
     } catch (error) {
       const message =
-        error instanceof Error ? error.message.slice(0, 500) : "Unknown Clerk error";
+        error instanceof Error
+          ? error.message.slice(0, 500)
+          : "Unknown Clerk error";
       const attempts = job.attempts + 1;
-      const retryAt = new Date(Date.now() + Math.min(300_000, 1_000 * 2 ** attempts));
-      const [failed] = await tx.update(businessProfilesTable).set({
-        metadataSyncStatus: "failed",
-        metadataSyncError: message,
-        metadataSyncedAt: null,
-        updatedAt: new Date(),
-      }).where(and(
-        eq(businessProfilesTable.clerkUserId, profile.clerkUserId),
-        eq(businessProfilesTable.metadataSyncVersion, job.profileVersion),
-      )).returning();
-      await tx.update(profileMetadataOutboxTable).set({
-        status: "failed",
-        attempts,
-        availableAt: retryAt,
-        lastError: message,
-        updatedAt: new Date(),
-      }).where(eq(profileMetadataOutboxTable.id, job.id));
+      const retryAt = new Date(
+        Date.now() + Math.min(300_000, 1_000 * 2 ** attempts),
+      );
+      const [failed] = await tx
+        .update(businessProfilesTable)
+        .set({
+          metadataSyncStatus: "failed",
+          metadataSyncError: message,
+          metadataSyncedAt: null,
+          updatedAt: new Date(),
+        })
+        .where(
+          and(
+            eq(businessProfilesTable.clerkUserId, profile.clerkUserId),
+            eq(businessProfilesTable.metadataSyncVersion, job.profileVersion),
+          ),
+        )
+        .returning();
+      await tx
+        .update(profileMetadataOutboxTable)
+        .set({
+          status: "failed",
+          attempts,
+          availableAt: retryAt,
+          lastError: message,
+          updatedAt: new Date(),
+        })
+        .where(eq(profileMetadataOutboxTable.id, job.id));
       return { profile: failed ?? profile, error };
     }
   });
@@ -197,12 +241,15 @@ export async function processDueProfileMetadataJobs(
   database: BusinessProfileDb = db,
   clerkGateway: ClerkMetadataGateway = defaultClerkGateway,
 ): Promise<void> {
-  const jobs = await database.select({ id: profileMetadataOutboxTable.id })
+  const jobs = await database
+    .select({ id: profileMetadataOutboxTable.id })
     .from(profileMetadataOutboxTable)
-    .where(and(
-      inArray(profileMetadataOutboxTable.status, ["pending", "failed"]),
-      lte(profileMetadataOutboxTable.availableAt, new Date()),
-    ))
+    .where(
+      and(
+        inArray(profileMetadataOutboxTable.status, ["pending", "failed"]),
+        lte(profileMetadataOutboxTable.availableAt, new Date()),
+      ),
+    )
     .orderBy(asc(profileMetadataOutboxTable.availableAt))
     .limit(20);
   for (const job of jobs) {
@@ -241,42 +288,57 @@ export async function onboardBusinessProfile(
   database: BusinessProfileDb = db,
   clerkGateway: ClerkMetadataGateway = defaultClerkGateway,
 ): Promise<BusinessProfileRow> {
+  const tradeTypes =
+    input.tradeTypes && input.tradeTypes.length > 0
+      ? input.tradeTypes
+      : [input.tradeType.trim()];
   const { profile, jobId } = await database.transaction(async (tx) => {
-    const [profile] = await tx.insert(businessProfilesTable)
-    .values({
-      clerkUserId,
-      businessName: input.businessName.trim(),
-      phoneNumber: input.phoneNumber.trim(),
-      tradeType: input.tradeType.trim(),
-      licenseNumber: cleanOptional(input.licenseNumber),
-      role: input.role,
-      metadataSyncStatus: "pending",
-    })
-    .onConflictDoUpdate({
-      target: businessProfilesTable.clerkUserId,
-      set: {
+    const [profile] = await tx
+      .insert(businessProfilesTable)
+      .values({
+        clerkUserId,
         businessName: input.businessName.trim(),
         phoneNumber: input.phoneNumber.trim(),
-        tradeType: input.tradeType.trim(),
+        tradeType: tradeTypes[0],
+        tradeTypes,
         licenseNumber: cleanOptional(input.licenseNumber),
+        role: input.role,
         metadataSyncStatus: "pending",
-        metadataSyncError: null,
-        metadataSyncedAt: null,
-        metadataSyncVersion: sql`${businessProfilesTable.metadataSyncVersion} + 1`,
-        updatedAt: new Date(),
-      },
-    })
+      })
+      .onConflictDoUpdate({
+        target: businessProfilesTable.clerkUserId,
+        set: {
+          businessName: input.businessName.trim(),
+          phoneNumber: input.phoneNumber.trim(),
+          tradeType: tradeTypes[0],
+          tradeTypes,
+          licenseNumber: cleanOptional(input.licenseNumber),
+          metadataSyncStatus: "pending",
+          metadataSyncError: null,
+          metadataSyncedAt: null,
+          metadataSyncVersion: sql`${businessProfilesTable.metadataSyncVersion} + 1`,
+          updatedAt: new Date(),
+        },
+      })
       .returning();
-    const [job] = await tx.insert(profileMetadataOutboxTable).values({
-      clerkUserId,
-      profileVersion: profile.metadataSyncVersion,
-    }).onConflictDoUpdate({
-      target: [
-        profileMetadataOutboxTable.clerkUserId,
-        profileMetadataOutboxTable.profileVersion,
-      ],
-      set: { status: "pending", availableAt: new Date(), updatedAt: new Date() },
-    }).returning({ id: profileMetadataOutboxTable.id });
+    const [job] = await tx
+      .insert(profileMetadataOutboxTable)
+      .values({
+        clerkUserId,
+        profileVersion: profile.metadataSyncVersion,
+      })
+      .onConflictDoUpdate({
+        target: [
+          profileMetadataOutboxTable.clerkUserId,
+          profileMetadataOutboxTable.profileVersion,
+        ],
+        set: {
+          status: "pending",
+          availableAt: new Date(),
+          updatedAt: new Date(),
+        },
+      })
+      .returning({ id: profileMetadataOutboxTable.id });
     return { profile, jobId: job.id };
   });
   return processProfileMetadataJob(jobId, database, clerkGateway, true);
@@ -289,29 +351,39 @@ export async function updateBusinessProfileSettings(
   clerkGateway: ClerkMetadataGateway = defaultClerkGateway,
 ): Promise<BusinessProfileRow | null> {
   const queued = await database.transaction(async (tx) => {
-    const [profile] = await tx.update(businessProfilesTable)
-    .set({
-      tradeType: input.tradeType.trim(),
-      licenseNumber: cleanOptional(input.licenseNumber),
-      metadataSyncStatus: "pending",
-      metadataSyncError: null,
-      metadataSyncedAt: null,
-      metadataSyncVersion: sql`${businessProfilesTable.metadataSyncVersion} + 1`,
-      updatedAt: new Date(),
-    })
-    .where(eq(businessProfilesTable.clerkUserId, clerkUserId))
+    const [profile] = await tx
+      .update(businessProfilesTable)
+      .set({
+        tradeType: input.tradeTypes[0],
+        tradeTypes: input.tradeTypes,
+        licenseNumber: cleanOptional(input.licenseNumber),
+        metadataSyncStatus: "pending",
+        metadataSyncError: null,
+        metadataSyncedAt: null,
+        metadataSyncVersion: sql`${businessProfilesTable.metadataSyncVersion} + 1`,
+        updatedAt: new Date(),
+      })
+      .where(eq(businessProfilesTable.clerkUserId, clerkUserId))
       .returning();
     if (!profile) return null;
-    const [job] = await tx.insert(profileMetadataOutboxTable).values({
-      clerkUserId,
-      profileVersion: profile.metadataSyncVersion,
-    }).onConflictDoUpdate({
-      target: [
-        profileMetadataOutboxTable.clerkUserId,
-        profileMetadataOutboxTable.profileVersion,
-      ],
-      set: { status: "pending", availableAt: new Date(), updatedAt: new Date() },
-    }).returning({ id: profileMetadataOutboxTable.id });
+    const [job] = await tx
+      .insert(profileMetadataOutboxTable)
+      .values({
+        clerkUserId,
+        profileVersion: profile.metadataSyncVersion,
+      })
+      .onConflictDoUpdate({
+        target: [
+          profileMetadataOutboxTable.clerkUserId,
+          profileMetadataOutboxTable.profileVersion,
+        ],
+        set: {
+          status: "pending",
+          availableAt: new Date(),
+          updatedAt: new Date(),
+        },
+      })
+      .returning({ id: profileMetadataOutboxTable.id });
     return { jobId: job.id };
   });
 

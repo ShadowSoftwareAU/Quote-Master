@@ -10,6 +10,9 @@ let tempDir;
 let buildClerkPublicMetadata;
 let CreateOnboardingProfileBody;
 let UpdateProfileSettingsBody;
+let normaliseTradeTypes;
+let isCarpentryTrade;
+let tradeTypeStorageAliases;
 
 before(async () => {
   tempDir = await mkdtemp(path.join(os.tmpdir(), "profile-regression-"));
@@ -19,31 +22,46 @@ before(async () => {
     bundle: true,
     platform: "node",
     format: "esm",
-    plugins: [{
-      name: "fixture-clerk-and-db",
-      setup(buildContext) {
-        buildContext.onResolve({ filter: /^@clerk\/express$/ }, () => ({
-          path: "fixture-clerk",
-          namespace: "fixture",
-        }));
-        buildContext.onResolve({ filter: /^@workspace\/db$/ }, () => ({
-          path: "fixture-db",
-          namespace: "fixture",
-        }));
-        buildContext.onLoad({ filter: /fixture-clerk/, namespace: "fixture" }, () => ({
-          contents: "export const clerkClient = { users: {} };",
-          loader: "js",
-        }));
-        buildContext.onLoad({ filter: /fixture-db/, namespace: "fixture" }, () => ({
-          contents: `
+    plugins: [
+      {
+        name: "fixture-clerk-and-db",
+        setup(buildContext) {
+          buildContext.onResolve({ filter: /^@clerk\/express$/ }, () => ({
+            path: "fixture-clerk",
+            namespace: "fixture",
+          }));
+          buildContext.onResolve({ filter: /^@workspace\/db$/ }, () => ({
+            path: "fixture-db",
+            namespace: "fixture",
+          }));
+          buildContext.onLoad(
+            { filter: /fixture-clerk/, namespace: "fixture" },
+            () => ({
+              contents: "export const clerkClient = { users: {} };",
+              loader: "js",
+            }),
+          );
+          buildContext.onLoad(
+            { filter: /fixture-db/, namespace: "fixture" },
+            () => ({
+              contents: `
             export const businessProfilesTable = {};
             export const profileMetadataOutboxTable = {};
             export const db = {};
           `,
-          loader: "js",
-        }));
+              loader: "js",
+            }),
+          );
+        },
       },
-    }],
+    ],
+  });
+  await build({
+    entryPoints: [path.resolve("src/lib/tradeCatalogue.ts")],
+    outfile: path.join(tempDir, "trade-catalogue.mjs"),
+    bundle: true,
+    platform: "node",
+    format: "esm",
   });
   await build({
     entryPoints: [path.resolve("../../lib/api-zod/src/generated/api.ts")],
@@ -58,6 +76,9 @@ before(async () => {
   ({ CreateOnboardingProfileBody, UpdateProfileSettingsBody } = await import(
     pathToFileURL(path.join(tempDir, "api-zod.mjs")).href
   ));
+  ({ normaliseTradeTypes, isCarpentryTrade, tradeTypeStorageAliases } = await import(
+    pathToFileURL(path.join(tempDir, "trade-catalogue.mjs")).href
+  ));
 });
 
 after(async () => {
@@ -69,6 +90,7 @@ test("onboarding accepts AU business details and rejects malformed contact data"
     businessName: "Northside Carpentry Pty Ltd",
     phoneNumber: "+61 412 345 678",
     tradeType: "Carpenter",
+    tradeTypes: ["Carpenter / Joiner", "Plumber"],
     licenseNumber: "QBCC 1234567",
     role: "Owner",
   });
@@ -83,21 +105,27 @@ test("onboarding accepts AU business details and rejects malformed contact data"
   assert.equal(malformed.success, false);
 });
 
-test("profile settings restrict role and licence formats", () => {
-  assert.equal(UpdateProfileSettingsBody.safeParse({
-    tradeType: "Builder",
-    role: "Subcontractor",
-    licenseNumber: "NSW 123C",
-  }).success, true);
-  assert.equal(UpdateProfileSettingsBody.safeParse({
-    tradeType: "Builder",
-    role: "Administrator",
-  }).success, false);
-  assert.equal(UpdateProfileSettingsBody.safeParse({
-    tradeType: "Builder",
+test("profile settings accept editable trade details and strip role changes", () => {
+  assert.equal(
+    UpdateProfileSettingsBody.safeParse({
+      tradeTypes: ["Carpenter / Joiner", "Plumber"],
+      licenseNumber: "NSW 123C",
+    }).success,
+    true,
+  );
+  const attemptedRoleChange = UpdateProfileSettingsBody.safeParse({
+    tradeTypes: ["Plumber"],
     role: "Owner",
-    licenseNumber: "<script>",
-  }).success, false);
+  });
+  assert.equal(attemptedRoleChange.success, true);
+  assert.equal("role" in attemptedRoleChange.data, false);
+  assert.equal(
+    UpdateProfileSettingsBody.safeParse({
+      tradeTypes: ["Plumber"],
+      licenseNumber: "<script>",
+    }).success,
+    false,
+  );
 });
 
 test("business role metadata preserves privileged access separately", () => {
@@ -105,13 +133,32 @@ test("business role metadata preserves privileged access separately", () => {
     buildClerkPublicMetadata(
       { role: "MASTER_BUILDER", unrelated: "keep" },
       "Owner",
-      "Builder",
+      "Carpenter / Joiner",
+      ["Carpenter / Joiner", "Plumber"],
     ),
     {
       role: "Owner",
       accessRole: "MASTER_BUILDER",
-      tradeType: "Builder",
+      tradeType: "Carpenter / Joiner",
+      tradeTypes: ["Carpenter / Joiner", "Plumber"],
       unrelated: "keep",
     },
   );
+});
+
+test("trade catalogue canonicalises legacy values and gates decking exactly", () => {
+  assert.deepEqual(
+    normaliseTradeTypes(["Carpenter", "Plumber", "carpentry"]),
+    ["Carpenter / Joiner", "Plumber"],
+  );
+  assert.equal(normaliseTradeTypes(["Unknown trade"]), null);
+  assert.equal(isCarpentryTrade("Carpenter / Joiner"), true);
+  assert.equal(isCarpentryTrade("Deck painter"), false);
+  assert.equal(isCarpentryTrade("Plumber"), false);
+  assert.deepEqual(tradeTypeStorageAliases("Carpenter / Joiner"), [
+    "Carpenter / Joiner",
+    "Carpenter",
+    "Carpentry",
+    "decking",
+  ]);
 });

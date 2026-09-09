@@ -14,6 +14,8 @@ import * as zod from 'zod';
 export const HealthCheckResponse = zod.object({
   "status": zod.string()
 })
+
+
 /**
  * @summary Create or safely retry the authenticated user's business profile
  */
@@ -28,6 +30,10 @@ export const createOnboardingProfileBodyPhoneNumberRegExp = new RegExp('^\\+?[0-
 export const createOnboardingProfileBodyTradeTypeMin = 2;
 export const createOnboardingProfileBodyTradeTypeMax = 80;
 
+export const createOnboardingProfileBodyTradeTypesItemMin = 2;
+export const createOnboardingProfileBodyTradeTypesItemMax = 80;
+
+
 export const createOnboardingProfileBodyLicenseNumberMin = 2;
 export const createOnboardingProfileBodyLicenseNumberMax = 50;
 
@@ -39,6 +45,7 @@ export const CreateOnboardingProfileBody = zod.object({
   "businessName": zod.string().min(createOnboardingProfileBodyBusinessNameMin).max(createOnboardingProfileBodyBusinessNameMax),
   "phoneNumber": zod.string().min(createOnboardingProfileBodyPhoneNumberMin).max(createOnboardingProfileBodyPhoneNumberMax).regex(createOnboardingProfileBodyPhoneNumberRegExp),
   "tradeType": zod.string().min(createOnboardingProfileBodyTradeTypeMin).max(createOnboardingProfileBodyTradeTypeMax),
+  "tradeTypes": zod.array(zod.string().min(createOnboardingProfileBodyTradeTypesItemMin).max(createOnboardingProfileBodyTradeTypesItemMax)).min(1).optional(),
   "licenseNumber": zod.string().min(createOnboardingProfileBodyLicenseNumberMin).max(createOnboardingProfileBodyLicenseNumberMax).regex(createOnboardingProfileBodyLicenseNumberRegExp).nullish(),
   "role": zod.enum(['Owner', 'Employee', 'Subcontractor'])
 })
@@ -47,11 +54,15 @@ export const CreateOnboardingProfileBody = zod.object({
 /**
  * @summary Get the authenticated user's business profile
  */
+
+
+
 export const GetProfileSettingsResponse = zod.object({
   "id": zod.number(),
   "businessName": zod.string(),
   "phoneNumber": zod.string(),
   "tradeType": zod.string(),
+  "tradeTypes": zod.array(zod.string()).min(1),
   "licenseNumber": zod.string().nullish(),
   "role": zod.enum(['Owner', 'Employee', 'Subcontractor']),
   "isMasterBuilder": zod.boolean(),
@@ -62,10 +73,11 @@ export const GetProfileSettingsResponse = zod.object({
 
 
 /**
- * @summary Update the authenticated user's trade and role details
+ * @summary Update the authenticated user's editable trade details
  */
-export const updateProfileSettingsBodyTradeTypeMin = 2;
-export const updateProfileSettingsBodyTradeTypeMax = 80;
+export const updateProfileSettingsBodyTradeTypesItemMin = 2;
+export const updateProfileSettingsBodyTradeTypesItemMax = 80;
+
 
 export const updateProfileSettingsBodyLicenseNumberMin = 2;
 export const updateProfileSettingsBodyLicenseNumberMax = 50;
@@ -75,16 +87,19 @@ export const updateProfileSettingsBodyLicenseNumberRegExp = new RegExp('^[A-Za-z
 
 
 export const UpdateProfileSettingsBody = zod.object({
-  "tradeType": zod.string().min(updateProfileSettingsBodyTradeTypeMin).max(updateProfileSettingsBodyTradeTypeMax),
-  "licenseNumber": zod.string().min(updateProfileSettingsBodyLicenseNumberMin).max(updateProfileSettingsBodyLicenseNumberMax).regex(updateProfileSettingsBodyLicenseNumberRegExp).nullish(),
-  "role": zod.enum(['Owner', 'Employee', 'Subcontractor'])
+  "tradeTypes": zod.array(zod.string().min(updateProfileSettingsBodyTradeTypesItemMin).max(updateProfileSettingsBodyTradeTypesItemMax)).min(1),
+  "licenseNumber": zod.string().min(updateProfileSettingsBodyLicenseNumberMin).max(updateProfileSettingsBodyLicenseNumberMax).regex(updateProfileSettingsBodyLicenseNumberRegExp).nullish()
 })
+
+
+
 
 export const UpdateProfileSettingsResponse = zod.object({
   "id": zod.number(),
   "businessName": zod.string(),
   "phoneNumber": zod.string(),
   "tradeType": zod.string(),
+  "tradeTypes": zod.array(zod.string()).min(1),
   "licenseNumber": zod.string().nullish(),
   "role": zod.enum(['Owner', 'Employee', 'Subcontractor']),
   "isMasterBuilder": zod.boolean(),
@@ -110,11 +125,15 @@ export const SetMasterBuilderFlagBody = zod.object({
   "isMasterBuilder": zod.boolean()
 })
 
+
+
+
 export const SetMasterBuilderFlagResponse = zod.object({
   "id": zod.number(),
   "businessName": zod.string(),
   "phoneNumber": zod.string(),
   "tradeType": zod.string(),
+  "tradeTypes": zod.array(zod.string()).min(1),
   "licenseNumber": zod.string().nullish(),
   "role": zod.enum(['Owner', 'Employee', 'Subcontractor']),
   "isMasterBuilder": zod.boolean(),
@@ -237,6 +256,7 @@ export const CreateCustomerBody = zod.object({
   "address": zod.string().optional(),
   "notes": zod.string().optional()
 })
+
 
 export const GetCustomerParams = zod.object({
   "id": zod.coerce.number()
@@ -402,8 +422,23 @@ export const ListTradeTemplatesResponse = zod.array(ListTradeTemplatesResponseIt
 
 
 /**
- * @summary List the authenticated builder's presets for their primary trade
+ * @summary List supported trades and their quoting foundations
  */
+export const ListTradeCatalogueResponseItem = zod.object({
+  "value": zod.string(),
+  "quotingFunctions": zod.array(zod.string()),
+  "quotingParameters": zod.array(zod.string())
+})
+export const ListTradeCatalogueResponse = zod.array(ListTradeCatalogueResponseItem)
+
+
+/**
+ * @summary List the authenticated builder's presets for a selected trade
+ */
+export const ListTradeTemplatePresetsQueryParams = zod.object({
+  "tradeType": zod.coerce.string().optional()
+})
+
 export const listTradeTemplatePresetsResponseOneDescriptionMax = 200;
 
 export const listTradeTemplatePresetsResponseOneQuantityExclusiveMin = 0;

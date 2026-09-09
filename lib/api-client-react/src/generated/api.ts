@@ -43,6 +43,7 @@ import type {
   HealthStatus,
   JobAssignment,
   ListMaterialsParams,
+  ListTradeTemplatePresetsParams,
   ManualTimeEntryInput,
   MasterBuilderFlagInput,
   MasterProject,
@@ -88,6 +89,7 @@ import type {
   TeamMemberInput,
   TeamMemberUpdate,
   TimeEntry,
+  TradeCatalogueEntry,
   TradeTemplate,
   TradeTemplatePreset,
   TradeTemplatePresetInput
@@ -339,7 +341,7 @@ export const getUpdateProfileSettingsUrl = () => {
 }
 
 /**
- * @summary Update the authenticated user's trade and role details
+ * @summary Update the authenticated user's editable trade details
  */
 export const updateProfileSettings = async (profileSettingsInput: ProfileSettingsInput, options?: RequestInit): Promise<BusinessProfile> => {
 
@@ -388,7 +390,7 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
     export type UpdateProfileSettingsMutationError = ErrorType<void>
 
     /**
- * @summary Update the authenticated user's trade and role details
+ * @summary Update the authenticated user's editable trade details
  */
 export const useUpdateProfileSettings = <TError = ErrorType<void>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateProfileSettings>>, TError,{data: BodyType<ProfileSettingsInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
@@ -1462,20 +1464,20 @@ export function useListTradeTemplates<TData = Awaited<ReturnType<typeof listTrad
 
 
 
-export const getListTradeTemplatePresetsUrl = () => {
+export const getListTradeCatalogueUrl = () => {
 
 
 
 
-  return `/api/trade-template-presets`
+  return `/api/trade-catalogue`
 }
 
 /**
- * @summary List the authenticated builder's presets for their primary trade
+ * @summary List supported trades and their quoting foundations
  */
-export const listTradeTemplatePresets = async ( options?: RequestInit): Promise<TradeTemplatePreset[]> => {
+export const listTradeCatalogue = async ( options?: RequestInit): Promise<TradeCatalogueEntry[]> => {
 
-  return customFetch<TradeTemplatePreset[]>(getListTradeTemplatePresetsUrl(),
+  return customFetch<TradeCatalogueEntry[]>(getListTradeCatalogueUrl(),
   {
     ...options,
     method: 'GET'
@@ -1488,23 +1490,107 @@ export const listTradeTemplatePresets = async ( options?: RequestInit): Promise<
 
 
 
-export const getListTradeTemplatePresetsQueryKey = () => {
+export const getListTradeCatalogueQueryKey = () => {
     return [
-    `/api/trade-template-presets`
+    `/api/trade-catalogue`
     ] as const;
     }
 
 
-export const getListTradeTemplatePresetsQueryOptions = <TData = Awaited<ReturnType<typeof listTradeTemplatePresets>>, TError = ErrorType<void>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listTradeTemplatePresets>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+export const getListTradeCatalogueQueryOptions = <TData = Awaited<ReturnType<typeof listTradeCatalogue>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listTradeCatalogue>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
 ) => {
 
 const {query: queryOptions, request: requestOptions} = options ?? {};
 
-  const queryKey =  queryOptions?.queryKey ?? getListTradeTemplatePresetsQueryKey();
+  const queryKey =  queryOptions?.queryKey ?? getListTradeCatalogueQueryKey();
 
 
 
-    const queryFn: QueryFunction<Awaited<ReturnType<typeof listTradeTemplatePresets>>> = ({ signal }) => listTradeTemplatePresets({ signal, ...requestOptions });
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listTradeCatalogue>>> = ({ signal }) => listTradeCatalogue({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listTradeCatalogue>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListTradeCatalogueQueryResult = NonNullable<Awaited<ReturnType<typeof listTradeCatalogue>>>
+export type ListTradeCatalogueQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary List supported trades and their quoting foundations
+ */
+
+export function useListTradeCatalogue<TData = Awaited<ReturnType<typeof listTradeCatalogue>>, TError = ErrorType<unknown>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listTradeCatalogue>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListTradeCatalogueQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
+
+export const getListTradeTemplatePresetsUrl = (params?: ListTradeTemplatePresetsParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : value.toString())
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/trade-template-presets?${stringifiedParams}` : `/api/trade-template-presets`
+}
+
+/**
+ * @summary List the authenticated builder's presets for a selected trade
+ */
+export const listTradeTemplatePresets = async (params?: ListTradeTemplatePresetsParams, options?: RequestInit): Promise<TradeTemplatePreset[]> => {
+
+  return customFetch<TradeTemplatePreset[]>(getListTradeTemplatePresetsUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListTradeTemplatePresetsQueryKey = (params?: ListTradeTemplatePresetsParams,) => {
+    return [
+    `/api/trade-template-presets`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getListTradeTemplatePresetsQueryOptions = <TData = Awaited<ReturnType<typeof listTradeTemplatePresets>>, TError = ErrorType<void>>(params?: ListTradeTemplatePresetsParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listTradeTemplatePresets>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListTradeTemplatePresetsQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listTradeTemplatePresets>>> = ({ signal }) => listTradeTemplatePresets(params, { signal, ...requestOptions });
 
 
 
@@ -1518,15 +1604,15 @@ export type ListTradeTemplatePresetsQueryError = ErrorType<void>
 
 
 /**
- * @summary List the authenticated builder's presets for their primary trade
+ * @summary List the authenticated builder's presets for a selected trade
  */
 
 export function useListTradeTemplatePresets<TData = Awaited<ReturnType<typeof listTradeTemplatePresets>>, TError = ErrorType<void>>(
-  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listTradeTemplatePresets>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+ params?: ListTradeTemplatePresetsParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listTradeTemplatePresets>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
 
  ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
 
-  const queryOptions = getListTradeTemplatePresetsQueryOptions(options)
+  const queryOptions = getListTradeTemplatePresetsQueryOptions(params,options)
 
   const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
 

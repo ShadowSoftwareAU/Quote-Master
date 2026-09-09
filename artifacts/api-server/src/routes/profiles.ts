@@ -14,6 +14,10 @@ import {
   setMasterBuilderFlag,
   updateBusinessProfileSettings,
 } from "../services/businessProfiles";
+import {
+  normaliseTradeTypes,
+  profileTradeTypes,
+} from "../lib/tradeCatalogue";
 
 const router: IRouter = Router();
 
@@ -23,13 +27,16 @@ function normaliseProfileBody(body: unknown): unknown {
   const trim = (value: unknown) =>
     typeof value === "string" ? value.trim() : value;
   const licence = trim(values.licenseNumber);
+  const tradeTypes = Array.isArray(values.tradeTypes)
+    ? values.tradeTypes.map(trim)
+    : undefined;
   return {
     ...values,
     businessName: trim(values.businessName),
     phoneNumber: trim(values.phoneNumber),
     tradeType: trim(values.tradeType),
+    tradeTypes,
     licenseNumber: licence === "" ? null : licence,
-    role: trim(values.role),
   };
 }
 
@@ -38,6 +45,7 @@ function publicProfile(profile: {
   businessName: string;
   phoneNumber: string;
   tradeType: string;
+  tradeTypes?: string[] | null;
   licenseNumber: string | null;
   role: string;
   isMasterBuilder: boolean;
@@ -50,6 +58,7 @@ function publicProfile(profile: {
     businessName: profile.businessName,
     phoneNumber: profile.phoneNumber,
     tradeType: profile.tradeType,
+    tradeTypes: profileTradeTypes(profile),
     licenseNumber: profile.licenseNumber,
     role: profile.role,
     isMasterBuilder: profile.isMasterBuilder,
@@ -60,17 +69,22 @@ function publicProfile(profile: {
 }
 
 function requestFailure(req: Request, res: Response, error: unknown): void {
-  req.log?.error({ err: error }, "Clerk profile metadata synchronisation failed");
+  req.log?.error(
+    { err: error },
+    "Clerk profile metadata synchronisation failed",
+  );
   if (error instanceof ProfileMetadataSupersededError) {
     res.status(409).json({
-      error: "A newer profile update was saved; retry to refresh the latest profile",
+      error:
+        "A newer profile update was saved; retry to refresh the latest profile",
       retryable: true,
     });
     return;
   }
   if (error instanceof ProfileMetadataSyncError) {
     res.status(502).json({
-      error: "Profile was saved, but account metadata could not be synchronised",
+      error:
+        "Profile was saved, but account metadata could not be synchronised",
       retryable: true,
     });
     return;
@@ -79,7 +93,9 @@ function requestFailure(req: Request, res: Response, error: unknown): void {
 }
 
 router.post("/onboarding", async (req: Request, res: Response) => {
-  const parsed = CreateOnboardingProfileBody.safeParse(normaliseProfileBody(req.body));
+  const parsed = CreateOnboardingProfileBody.safeParse(
+    normaliseProfileBody(req.body),
+  );
   if (!parsed.success) {
     res.status(400).json({ error: parsed.error.message });
     return;
@@ -91,10 +107,20 @@ router.post("/onboarding", async (req: Request, res: Response) => {
       res.status(409).json({ error: "Onboarding is already complete" });
       return;
     }
-    const profile = await onboardBusinessProfile(
-      userId,
-      parsed.data,
+    const tradeTypes = normaliseTradeTypes(
+      parsed.data.tradeTypes ?? [parsed.data.tradeType],
     );
+    if (!tradeTypes || tradeTypes.length === 0 || tradeTypes.length > 3) {
+      res.status(400).json({
+        error: "Select between one and three supported trades",
+      });
+      return;
+    }
+    const profile = await onboardBusinessProfile(userId, {
+      ...parsed.data,
+      tradeType: tradeTypes[0],
+      tradeTypes,
+    });
     res.status(201).json(publicProfile(profile));
   } catch (error) {
     requestFailure(req, res, error);
@@ -111,7 +137,9 @@ router.get("/settings/profile", async (req: Request, res: Response) => {
 });
 
 router.put("/settings/profile", async (req: Request, res: Response) => {
-  const parsed = UpdateProfileSettingsBody.safeParse(normaliseProfileBody(req.body));
+  const parsed = UpdateProfileSettingsBody.safeParse(
+    normaliseProfileBody(req.body),
+  );
   if (!parsed.success) {
     res.status(400).json({ error: parsed.error.message });
     return;
@@ -121,19 +149,30 @@ router.put("/settings/profile", async (req: Request, res: Response) => {
     const userId = getAuthenticatedClerkUserId(req);
     const existing = await getBusinessProfile(userId);
     if (!existing) {
-      res.status(404).json({ error: "Complete onboarding before updating your profile" });
+      res
+        .status(404)
+        .json({ error: "Complete onboarding before updating your profile" });
       return;
     }
-    if (parsed.data.role !== existing.role) {
-      res.status(403).json({ error: "Business roles can only be changed by an Owner or administrator" });
+    const tradeTypes = normaliseTradeTypes(parsed.data.tradeTypes);
+    if (!tradeTypes || tradeTypes.length === 0) {
+      res.status(400).json({ error: "Select at least one supported trade" });
       return;
     }
-    const profile = await updateBusinessProfileSettings(
-      userId,
-      parsed.data,
-    );
+    if (!existing.isMasterBuilder && tradeTypes.length > 3) {
+      res.status(400).json({
+        error: "Select up to three trades, or enable Master Builder access",
+      });
+      return;
+    }
+    const profile = await updateBusinessProfileSettings(userId, {
+      ...parsed.data,
+      tradeTypes,
+    });
     if (!profile) {
-      res.status(404).json({ error: "Complete onboarding before updating your profile" });
+      res
+        .status(404)
+        .json({ error: "Complete onboarding before updating your profile" });
       return;
     }
     res.json(publicProfile(profile));
@@ -152,12 +191,26 @@ router.patch(
       return;
     }
     const userId = getAuthenticatedClerkUserId(req);
+    const existing = await getBusinessProfile(userId);
+    if (
+      existing &&
+      !parsed.data.isMasterBuilder &&
+      profileTradeTypes(existing).length > 3
+    ) {
+      res.status(409).json({
+        error:
+          "Reduce the profile to three trades before removing Master Builder access",
+      });
+      return;
+    }
     const updated = await setMasterBuilderFlag(
       userId,
       parsed.data.isMasterBuilder,
     );
     if (!updated) {
-      res.status(404).json({ error: "Complete onboarding before updating your profile" });
+      res
+        .status(404)
+        .json({ error: "Complete onboarding before updating your profile" });
       return;
     }
     req.log?.info(

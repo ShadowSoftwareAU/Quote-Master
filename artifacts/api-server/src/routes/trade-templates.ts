@@ -12,17 +12,29 @@ import {
   listTradeTemplatePresets,
   saveTradeTemplatePreset,
 } from "../services/tradeTemplatePresets";
+import {
+  canonicalTradeType,
+  profileTradeTypes,
+  TRADE_CATALOGUE,
+} from "../lib/tradeCatalogue";
 
 const router: IRouter = Router();
 const requireQuoteManager = requireBusinessRole("Owner", "Employee");
 
-async function getTradeType(clerkUserId: string): Promise<string | null> {
+router.get("/trade-catalogue", (_req, res): void => {
+  res.json(TRADE_CATALOGUE);
+});
+
+async function getTradeTypes(clerkUserId: string): Promise<string[]> {
   const [profile] = await db
-    .select({ tradeType: businessProfilesTable.tradeType })
+    .select({
+      tradeType: businessProfilesTable.tradeType,
+      tradeTypes: businessProfilesTable.tradeTypes,
+    })
     .from(businessProfilesTable)
     .where(eq(businessProfilesTable.clerkUserId, clerkUserId))
     .limit(1);
-  return profile?.tradeType ?? null;
+  return profile ? profileTradeTypes(profile) : [];
 }
 
 router.get("/trade-templates", async (_req, res): Promise<void> => {
@@ -54,12 +66,20 @@ router.get(
       res.status(401).json({ error: "Unauthorized" });
       return;
     }
-    const tradeType = await getTradeType(clerkUserId);
-    if (!tradeType) {
+    const tradeTypes = await getTradeTypes(clerkUserId);
+    if (tradeTypes.length === 0) {
       res.status(409).json({ error: "Complete onboarding before loading presets" });
       return;
     }
-    const presets = await listTradeTemplatePresets(clerkUserId, tradeType);
+    const requestedTrade =
+      typeof req.query.tradeType === "string"
+        ? canonicalTradeType(req.query.tradeType)
+        : tradeTypes[0];
+    if (!requestedTrade || !tradeTypes.includes(requestedTrade)) {
+      res.status(403).json({ error: "Trade is not selected on this profile" });
+      return;
+    }
+    const presets = await listTradeTemplatePresets(clerkUserId, requestedTrade);
     res.json(ListTradeTemplatePresetsResponse.parse(presets));
   },
 );
@@ -78,14 +98,14 @@ router.post(
       res.status(400).json({ error: parsed.error.message });
       return;
     }
-    const tradeType = await getTradeType(clerkUserId);
-    if (!tradeType) {
+    const tradeTypes = await getTradeTypes(clerkUserId);
+    if (tradeTypes.length === 0) {
       res.status(409).json({ error: "Complete onboarding before saving presets" });
       return;
     }
     const preset = await saveTradeTemplatePreset(
       clerkUserId,
-      tradeType,
+      tradeTypes[0],
       parsed.data,
     );
     res.status(201).json(preset);

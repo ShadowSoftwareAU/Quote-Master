@@ -13,6 +13,8 @@ export interface BusinessProfile {
   businessName: string;
   phoneNumber: string;
   tradeType: string;
+  /** @minItems 1 */
+  tradeTypes: string[];
   /** @nullable */
   licenseNumber?: string | null;
   role: BusinessRole;
