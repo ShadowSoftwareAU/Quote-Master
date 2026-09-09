@@ -1,0 +1,51 @@
+we need to perform a major Lean Six Sigma 'Improve' phase on the Quote Builder architecture. The current dimensional engine is built like a developer's spreadsheet (relying on generic linear metres or simple length/width), which is impractical for actual tradespeople. A tradie quotes based on physical assemblies and structural components.
+
+We must upgrade the 'Job Dimensions' block to a Template-Specific Parametric Engine. The input fields must dynamically change based on the specific template selected, capturing the true physical realities of the job to generate an accurate Bill of Materials (BOM).
+
+Please implement this architectural shift and apply the following specific logic models to the respective trades:
+
+1. Architectural Shift (Improve & Control):
+Refactor calculator.tsx and the underlying trade data models. The dimension inputs should no longer be a generic global state. Instead, each template in the database must define its required parametric inputs. When a template is selected, map these inputs directly to the BOM line items.
+
+2. Trade-Specific Parametric Models to Implement:
+
+Cabinetmaker (Kitchens / Custom):
+
+Inputs: Total Cabinet Run (m), Base Cabinet Height (mm), Overhead Cabinet Height (mm), Benchtop Depth (mm), Drawer Bank Count (qty), Door Count (qty).
+
+BOM Outputs: Calculate Melamine m² based on total cabinet volume. Calculate Hardware (hinges = Door Count * 2; runners = Drawer Bank Count * standard drawers per bank). Calculate Benchtop area.
+
+Carpenter (Decks & Subframes):
+
+Inputs: Deck Length (m), Deck Width (m), Elevation from Ground (mm), Joist Spacing (mm), Bearer Span (mm).
+
+BOM Outputs: Calculate Decking linear metres (Area / board width). Calculate exact joist and bearer linear meterage based on the selected spacing/spans. Calculate Stump/Post count based on span grids.
+
+Concreter (Slabs / Footings):
+
+Inputs: Length (m), Width (m), Slab Thickness (mm), Edge Beam Depth (mm), Edge Beam Width (mm).
+
+BOM Outputs: Calculate core Slab Volume + Edge Beam Volume for total cubic metres of concrete. Calculate Trench Mesh (linear metres of edge beam) and SL Slab Mesh (Area). Calculate Bar Chair boxes (Area / coverage).
+
+Plasterer / Gyprocker:
+
+Inputs: Total Wall Length (m), Ceiling Height (m), Ceiling Area (m²), Number of External Corners (qty), Number of Internal Corners (qty).
+
+BOM Outputs: Calculate Wall Plasterboard (m²) and Ceiling Plasterboard (m²). Calculate exact linear metres of Cornice (Wall Length). Calculate External Angle beads (External Corners * Ceiling Height). Calculate Base Coat and Top Coat buckets based on total m².
+
+Roofer (Corrugated / Metal):
+
+Inputs: Roof Pitch (degrees), Roof Area (m²), Total Gutter Length (m), Number of Downpipes (qty), Ridge Capping Length (m).
+
+BOM Outputs: Calculate Metal Roof Sheets (m² + pitch wastage). Calculate standard Batten linear metres. Map guttering and capping lengths. Calculate required roofing screws (Area * screws per m²).
+
+Electrician (Rough-in & Fit-out):
+
+Inputs: Single GPO Count, Double GPO Count, Light Fitting Count, Average Cable Run per Point (m).
+
+BOM Outputs: Calculate total Twin & Earth cable drums needed. Map specific faceplate counts and mounting blocks.
+
+3. Defect Prevention (Control):
+Build a fallback mechanism. If a user creates a 'Custom' template that lacks predefined parameters, it should provide a robust fallback builder allowing the tradie to define their own custom variable inputs (e.g., 'Add a variable: [Picket Spacing]').
+
+Please execute this refactor and update the default templates so the Quote Builder operates like a practical, on-site construction tool rather than a generic calculator.
