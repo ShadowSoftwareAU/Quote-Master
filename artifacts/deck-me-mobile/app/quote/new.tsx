@@ -39,6 +39,13 @@ import {
 import { useColors } from "@/hooks/useColors";
 import { useProfileAccess } from "@/lib/access";
 
+import {
+  TRADE_CALCULATORS,
+  normaliseTradeKey,
+  applyTradeRules,
+  defaultTradeInputs,
+} from "@/components/calculator/trade-calculators";
+
 type LineItemDraft = {
   id: number;
   description: string;
@@ -50,6 +57,7 @@ type LineItemDraft = {
   wastagePercentage: string;
   isBulkItem: boolean;
   saveToMyPresets: boolean;
+  isManualQuantity: boolean;
 };
 
 let nextLineItemId = 1;
@@ -99,7 +107,7 @@ const UNIT_TYPES = [
   { value: "box", label: "Box" },
 ] as const;
 
-const UNITS = ["each", "metre", "linear metre", "square metre", "cubic metre", "pack", "box", "bag", "sheet"];
+const UNITS = ["each", "metre", "linear metre", "square metre", "cubic metre", "litre", "pack", "box", "bag", "sheet"];
 
 function unitOptions(currentUnit: string) {
   return Array.from(new Set([...UNITS, currentUnit].filter(Boolean)));
@@ -160,6 +168,8 @@ function NewQuoteScreen() {
     : [];
   const [selectedTradeType, setSelectedTradeType] = useState("");
   const activeTradeType = selectedTradeType || profileTradeTypes[0] || "Trade";
+  const activeTradeCalculator = TRADE_CALCULATORS[normaliseTradeKey(activeTradeType)];
+  const deckQuote = normaliseTradeType(activeTradeType) === "carpenter / joiner";
   const { data: tradeCatalogue } = useListTradeCatalogue();
   const activeTradeCatalogueEntry = tradeCatalogue?.find(
     (entry) =>
@@ -213,6 +223,14 @@ function NewQuoteScreen() {
   const [siteAddress, setSiteAddress] = useState("");
   const [lineItems, setLineItems] = useState<LineItemDraft[]>([]);
   const [selectedTemplateId, setSelectedTemplateId] = useState("custom");
+  const [tradeDimensions, setTradeDimensions] = useState<Record<string, number>>({});
+  const calculationDimensions = useMemo(
+    () => ({
+      ...defaultTradeInputs(activeTradeCalculator),
+      ...tradeDimensions,
+    }),
+    [activeTradeCalculator, tradeDimensions],
+  );
 
   useEffect(() => {
     if (
@@ -244,24 +262,43 @@ function NewQuoteScreen() {
         wastagePercentage: "0",
         isBulkItem: false,
         saveToMyPresets: false,
+        isManualQuantity: true,
       },
     ]);
   }
 
   function addScopeItem(description: string) {
+    let quantity = "1";
+    let unit = "each";
+    let unitType = "item";
+    let isManualQuantity = true;
+
+    const match = applyTradeRules(
+      description,
+      calculationDimensions,
+      activeTradeCalculator,
+    );
+    if (match) {
+      quantity = String(match.quantity);
+      unit = match.unit;
+      unitType = match.unitType;
+      isManualQuantity = false;
+    }
+
     setLineItems((items) => [
       ...items,
       {
         id: nextLineItemId++,
         description,
-        quantity: "1",
-        unit: "each",
-        unitType: "item",
+        quantity,
+        unit,
+        unitType,
         unitCost: "0",
         markupPercentage: "0",
         wastagePercentage: "0",
         isBulkItem: false,
         saveToMyPresets: false,
+        isManualQuantity,
       },
     ]);
   }
@@ -270,6 +307,10 @@ function NewQuoteScreen() {
     setLineItems([]);
     setSelectedTemplateId("custom");
     setSelectedTradeType(tradeType);
+
+    setTradeDimensions(
+      defaultTradeInputs(TRADE_CALCULATORS[normaliseTradeKey(tradeType)]),
+    );
   }
 
   function changeTrade(tradeType: string) {
@@ -297,9 +338,66 @@ function NewQuoteScreen() {
     field: Exclude<keyof LineItemDraft, "id">,
     value: string | boolean,
   ) {
-    setLineItems((items) => items.map((item) =>
-      item.id === id ? { ...item, [field]: value } : item,
-    ));
+    setLineItems((items) => items.map((item) => {
+      if (item.id !== id) return item;
+      const nextItem = { ...item, [field]: value };
+
+      if (field === "quantity") {
+        nextItem.isManualQuantity = true;
+      } else if (field === "description" && !nextItem.isManualQuantity) {
+        const match = applyTradeRules(
+          nextItem.description,
+          calculationDimensions,
+          activeTradeCalculator,
+        );
+        if (match) {
+          nextItem.quantity = String(match.quantity);
+          nextItem.unit = match.unit;
+          nextItem.unitType = match.unitType;
+        } else {
+          nextItem.isManualQuantity = true;
+        }
+      }
+
+      return nextItem;
+    }));
+  }
+
+  function handleRestoreAutoQuantity(id: number) {
+    setLineItems((items) => items.map((item) => {
+      if (item.id !== id) return item;
+      const match = applyTradeRules(
+        item.description,
+        calculationDimensions,
+        activeTradeCalculator,
+      );
+      if (match) {
+        return { ...item, quantity: String(match.quantity), unit: match.unit, unitType: match.unitType, isManualQuantity: false };
+      }
+      return item;
+    }));
+  }
+
+  function handleSetTradeDimension(id: string, value: string) {
+    const next = {
+      ...calculationDimensions,
+      [id]: Math.max(0, parseFloat(value) || 0),
+    };
+    setTradeDimensions(next);
+    setLineItems((items) =>
+      items.map((item) => {
+        if (item.isManualQuantity) return item;
+        const match = applyTradeRules(
+          item.description,
+          next,
+          activeTradeCalculator,
+        );
+        if (match) {
+          return { ...item, quantity: String(match.quantity), unit: match.unit, unitType: match.unitType };
+        }
+        return { ...item, isManualQuantity: true };
+      }),
+    );
   }
 
   const matchingTemplates = useMemo(
@@ -323,18 +421,38 @@ function NewQuoteScreen() {
       setLineItems([]);
       return;
     }
-    setLineItems(template.defaultLineItems.map((item) => ({
-      id: nextLineItemId++,
-      description: item.description,
-      quantity: String(item.quantity),
-      unit: item.unit,
-      unitType: item.unitType,
-      unitCost: String(item.unitCost),
-      markupPercentage: String(item.markupPercentage),
-      wastagePercentage: String(item.wastagePercentage),
-      isBulkItem: item.isBulkItem,
-      saveToMyPresets: false,
-    })));
+    setLineItems(template.defaultLineItems.map((item) => {
+      let quantity = String(item.quantity);
+      let unit = item.unit;
+      let unitType = item.unitType;
+      let isManualQuantity = true;
+
+      const match = applyTradeRules(
+        item.description,
+        calculationDimensions,
+        activeTradeCalculator,
+      );
+      if (match) {
+        quantity = String(match.quantity);
+        unit = match.unit;
+        unitType = match.unitType as any;
+        isManualQuantity = false;
+      }
+
+      return {
+        id: nextLineItemId++,
+        description: item.description,
+        quantity,
+        unit,
+        unitType,
+        unitCost: String(item.unitCost),
+        markupPercentage: String(item.markupPercentage),
+        wastagePercentage: String(item.wastagePercentage),
+        isBulkItem: item.isBulkItem,
+        saveToMyPresets: false,
+        isManualQuantity,
+      };
+    }));
   }
 
   function addPresetItem(preset: TradeTemplatePreset) {
@@ -351,6 +469,7 @@ function NewQuoteScreen() {
         wastagePercentage: String(preset.wastagePercentage ?? 0),
         isBulkItem: preset.isBulkItem ?? false,
         saveToMyPresets: false,
+        isManualQuantity: true,
       },
     ]);
   }
@@ -376,21 +495,32 @@ function NewQuoteScreen() {
       );
       return;
     }
+    const quoteSpec = activeTradeCalculator
+      ? {
+          ...spec,
+          lengthM: calculationDimensions.lengthM ?? spec.lengthM,
+          widthM: calculationDimensions.widthM ?? 1,
+          heightM:
+            normaliseTradeKey(activeTradeType) === "concreter"
+              ? (calculationDimensions.depthMm ?? 0) / 1000
+              : (calculationDimensions.heightM ?? 0),
+        }
+      : spec;
     createMut.mutate(
       {
         data: {
           title,
           customerId,
-           tradeType: activeTradeType,
+          tradeType: activeTradeType,
           siteAddress: siteAddress || undefined,
-          lengthM: spec.lengthM,
-          widthM: spec.widthM,
-          heightM: spec.heightM,
-          boardWidthMm: spec.boardWidthMm,
-          joistSpacingMm: spec.joistSpacingMm,
-          bearerSpacingMm: spec.bearerSpacingMm,
-          postSpacingMm: spec.postSpacingMm,
-          wastageFactor: spec.wastageFactor,
+          lengthM: quoteSpec.lengthM,
+          widthM: quoteSpec.widthM,
+          heightM: quoteSpec.heightM,
+          boardWidthMm: quoteSpec.boardWidthMm,
+          joistSpacingMm: quoteSpec.joistSpacingMm,
+          bearerSpacingMm: quoteSpec.bearerSpacingMm,
+          postSpacingMm: quoteSpec.postSpacingMm,
+          wastageFactor: quoteSpec.wastageFactor,
           labourHours: Number(params.labourHours ?? 0),
           labourRate: Number(params.labourRate ?? 85),
           lineItems: lineItems.map((item) => ({
@@ -440,28 +570,99 @@ function NewQuoteScreen() {
         keyExtractor={(item) => String(item.id)}
         ListHeaderComponent={(
           <View style={{ gap: 14 }}>
-      <Card>
-        <Text
-          style={{
-            fontFamily: "Inter_700Bold",
-            fontSize: 11,
-            letterSpacing: 1.4,
-            color: colors.mutedForeground,
-            marginBottom: 4,
-          }}
-        >
-          DECK
-        </Text>
-        <Text
-          style={{
-            fontFamily: "Chivo_700Bold",
-            fontSize: 18,
-            color: colors.foreground,
-          }}
-        >
-          {spec.lengthM}m × {spec.widthM}m
-        </Text>
-      </Card>
+      {activeTradeCalculator ? (
+        <Card>
+          <Text
+            style={{
+              fontFamily: "Inter_700Bold",
+              fontSize: 11,
+              letterSpacing: 1.4,
+              color: colors.mutedForeground,
+              marginBottom: 10,
+            }}
+          >
+            JOB DIMENSIONS
+          </Text>
+          <View style={{ gap: 12 }}>
+            {activeTradeCalculator.inputs.map((input) => (
+              <View key={input.id} style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
+                <Text style={{ fontFamily: "Inter_600SemiBold", fontSize: 13, color: colors.foreground }}>
+                  {input.label} <Text style={{ color: colors.mutedForeground }}>({input.unit})</Text>
+                </Text>
+                <TextInputStyled
+                  style={{ width: 100, height: 40, paddingVertical: 0, textAlign: "right" }}
+                  keyboardType="decimal-pad"
+                  value={String(calculationDimensions[input.id] ?? "")}
+                  onChangeText={(val) => handleSetTradeDimension(input.id, val)}
+                />
+              </View>
+            ))}
+          </View>
+
+          <View style={{ marginTop: 16, paddingTop: 16, borderTopWidth: 1, borderTopColor: colors.border, gap: 8 }}>
+            <Text style={{ fontFamily: "Inter_700Bold", fontSize: 10, letterSpacing: 1.2, color: colors.primary, marginBottom: 4 }}>
+              CALCULATED OUTPUT
+            </Text>
+            {activeTradeCalculator.outputs(calculationDimensions).map((out, i) => (
+              <View key={i} style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "flex-end" }}>
+                <View>
+                  <Text style={{ fontFamily: "Inter_500Medium", fontSize: 13, color: colors.foreground }}>{out.label}</Text>
+                  {out.note ? <Text style={{ fontFamily: "Inter_400Regular", fontSize: 11, color: colors.mutedForeground }}>{out.note}</Text> : null}
+                </View>
+                <Text style={{ fontFamily: "Inter_700Bold", fontSize: 13, color: colors.foreground }}>
+                  {out.value.toLocaleString("en-AU", { maximumFractionDigits: 3 })} <Text style={{ color: colors.mutedForeground, fontFamily: "Inter_500Medium", fontSize: 11 }}>{out.unit}</Text>
+                </Text>
+              </View>
+            ))}
+          </View>
+        </Card>
+      ) : deckQuote ? (
+        <Card>
+          <Text
+            style={{
+              fontFamily: "Inter_700Bold",
+              fontSize: 11,
+              letterSpacing: 1.4,
+              color: colors.mutedForeground,
+              marginBottom: 4,
+            }}
+          >
+            DECK
+          </Text>
+          <Text
+            style={{
+              fontFamily: "Chivo_700Bold",
+              fontSize: 18,
+              color: colors.foreground,
+            }}
+          >
+            {spec.lengthM}m × {spec.widthM}m
+          </Text>
+        </Card>
+      ) : (
+        <Card>
+          <Text
+            style={{
+              color: colors.foreground,
+              fontFamily: "Chivo_700Bold",
+              fontSize: 16,
+            }}
+          >
+            {activeTradeType.toUpperCase()} QUOTE
+          </Text>
+          <Text
+            style={{
+              color: colors.mutedForeground,
+              fontFamily: "Inter_500Medium",
+              fontSize: 12,
+              lineHeight: 18,
+              marginTop: 6,
+            }}
+          >
+            Add work items below and enter the measured quantity for this job.
+          </Text>
+        </Card>
+      )}
 
       <LabeledInput label="Quote title">
         <TextInputStyled
@@ -749,13 +950,31 @@ function NewQuoteScreen() {
             </LabeledInput>
             <View style={{ flexDirection: "row", gap: 10 }}>
               <View style={{ flex: 1 }}>
-                <LabeledInput label="Quantity">
-                  <TextInputStyled
-                    value={item.quantity}
-                    onChangeText={(value) => updateLineItem(item.id, "quantity", value)}
-                    keyboardType="decimal-pad"
-                  />
-                </LabeledInput>
+                <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
+                  <Text style={{ fontFamily: "Inter_700Bold", fontSize: 10, letterSpacing: 1.2, color: colors.mutedForeground, marginBottom: 6 }}>
+                    QUANTITY
+                  </Text>
+                  {item.isManualQuantity && applyTradeRules(item.description, calculationDimensions, activeTradeCalculator) ? (
+                    <Pressable
+                      accessibilityLabel="Use calculated quantity"
+                      accessibilityRole="button"
+                      hitSlop={10}
+                      onPress={() => handleRestoreAutoQuantity(item.id)}
+                      style={{ alignItems: "center", flexDirection: "row", gap: 4, marginBottom: 4, padding: 2 }}
+                    >
+                      <Feather name="refresh-cw" size={12} color={colors.primary} />
+                      <Text style={{ color: colors.primary, fontFamily: "Inter_700Bold", fontSize: 9 }}>
+                        USE AUTO
+                      </Text>
+                    </Pressable>
+                  ) : null}
+                </View>
+                <TextInputStyled
+                  value={item.quantity}
+                  onChangeText={(value) => updateLineItem(item.id, "quantity", value)}
+                  keyboardType="decimal-pad"
+                  style={!item.isManualQuantity ? { backgroundColor: colors.primary + "10", borderColor: colors.primary + "33" } : undefined}
+                />
               </View>
               <View style={{ flex: 1 }}>
                 <LabeledInput label="Unit cost">

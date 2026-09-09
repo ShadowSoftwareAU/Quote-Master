@@ -57,8 +57,16 @@ import {
   Trash2,
   ArrowUp,
   ArrowDown,
+  RefreshCcw,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+
+import {
+  TRADE_CALCULATORS,
+  normaliseTradeKey,
+  applyTradeRules,
+  defaultTradeInputs,
+} from "@/components/calculator/trade-calculators";
 
 const COUNCIL_HEIGHT_M = 1.0;
 
@@ -114,6 +122,7 @@ interface CustomLineItemDraft {
   wastagePercentage: number;
   isBulkItem: boolean;
   saveToMyPresets: boolean;
+  isManualQuantity: boolean;
 }
 
 let nextLineItemId = 1;
@@ -251,6 +260,10 @@ const PLUMBER_STARTER_TEMPLATES: TradeTemplate[] = [
   },
 ];
 
+function usesDeckCalculator(tradeType: string | null | undefined) {
+  return normaliseTradeType(tradeType) === "carpenter / joiner";
+}
+
 function normaliseTradeType(tradeType: string | null | undefined) {
   const normalised = tradeType?.trim().toLowerCase() ?? "";
   if (["carpenter", "carpentry", "decking"].includes(normalised)) {
@@ -260,10 +273,6 @@ function normaliseTradeType(tradeType: string | null | undefined) {
     return "landscape / irrigation";
   }
   return normalised;
-}
-
-function usesDeckCalculator(tradeType: string | null | undefined) {
-  return normaliseTradeType(tradeType) === "carpenter / joiner";
 }
 
 function fallbackTemplatesForTrade(
@@ -279,6 +288,7 @@ const UNITS = [
   "linear metre",
   "square metre",
   "cubic metre",
+  "litre",
   "pack",
   "box",
   "bag",
@@ -354,6 +364,7 @@ export default function Calculator() {
   const { userId, isLoaded, isSignedIn } = useAuth();
   const queryClient = useQueryClient();
   const [spec, setSpec] = useState(DEFAULT_SPEC);
+  const [tradeDimensions, setTradeDimensions] = useState<Record<string, number>>({});
   const [advancedOpen, setAdvancedOpen] = useState(false);
 
   const estimate = useEstimateDeck();
@@ -391,6 +402,14 @@ export default function Calculator() {
   const [selectedTradeType, setSelectedTradeType] = useState("");
   const activeTradeType = selectedTradeType || profileTradeTypes[0] || "Trade";
   const deckCalculator = usesDeckCalculator(activeTradeType);
+  const activeTradeCalculator = TRADE_CALCULATORS[normaliseTradeKey(activeTradeType)];
+  const calculationDimensions = useMemo(
+    () => ({
+      ...defaultTradeInputs(activeTradeCalculator),
+      ...tradeDimensions,
+    }),
+    [activeTradeCalculator, tradeDimensions],
+  );
   const activeTradeCatalogueEntry = tradeCatalogue?.find(
     (entry) =>
       normaliseTradeType(entry.value) === normaliseTradeType(activeTradeType),
@@ -460,6 +479,32 @@ export default function Calculator() {
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) =>
     setNum(e.target.name, e.target.value);
+
+  const handleSetTradeDimension = (id: string, value: string) => {
+    const next = {
+      ...calculationDimensions,
+      [id]: Math.max(0, parseFloat(value) || 0),
+    };
+    setTradeDimensions(next);
+    setLineItems((items) =>
+      items.map((item) => {
+        if (item.isManualQuantity) return item;
+        const match = applyTradeRules(
+          item.description,
+          next,
+          activeTradeCalculator,
+        );
+        return match
+          ? {
+              ...item,
+              quantity: match.quantity,
+              unit: match.unit,
+              unitType: match.unitType,
+            }
+          : { ...item, isManualQuantity: true };
+      }),
+    );
+  };
 
   // ── Material lookup for supplier comparison ──
   const materialById = useMemo(() => {
@@ -569,24 +614,43 @@ export default function Calculator() {
         wastagePercentage: 0,
         isBulkItem: false,
         saveToMyPresets: false,
+        isManualQuantity: true,
       },
     ]);
   };
 
   const addScopeItem = (description: string) => {
+    let quantity = 1;
+    let unit = "each";
+    let unitType = "item";
+    let isManualQuantity = true;
+
+    const match = applyTradeRules(
+      description,
+      calculationDimensions,
+      activeTradeCalculator,
+    );
+    if (match) {
+      quantity = match.quantity;
+      unit = match.unit;
+      unitType = match.unitType;
+      isManualQuantity = false;
+    }
+
     setLineItems((items) => [
       ...items,
       {
         id: nextLineItemId++,
         description,
-        quantity: 1,
-        unit: "each",
-        unitType: "item",
+        quantity,
+        unit,
+        unitType,
         unitCost: 0,
         markupPercentage: 0,
         wastagePercentage: 0,
         isBulkItem: false,
         saveToMyPresets: false,
+        isManualQuantity,
       },
     ]);
   };
@@ -605,6 +669,12 @@ export default function Calculator() {
     setSelectedTemplateId("custom");
     autoAppliedTradeRef.current = null;
     setSelectedTradeType(nextTradeType);
+
+    setTradeDimensions(
+      defaultTradeInputs(
+        TRADE_CALCULATORS[normaliseTradeKey(nextTradeType)],
+      ),
+    );
   };
 
   const updateLineItem = (
@@ -613,20 +683,52 @@ export default function Calculator() {
     value: string | boolean,
   ) => {
     setLineItems((items) =>
-      items.map((item) =>
-        item.id === id
-          ? {
-              ...item,
-              [field]:
-                typeof value === "boolean" ||
-                field === "description" ||
-                field === "unit" ||
-                field === "unitType"
-                  ? value
-                  : Math.max(0, Number(value) || 0),
-            }
-          : item,
-      ),
+      items.map((item) => {
+        if (item.id !== id) return item;
+
+        const nextItem = { ...item };
+        if (typeof value === "boolean" || field === "description" || field === "unit" || field === "unitType") {
+          (nextItem as any)[field] = value;
+        } else {
+          (nextItem as any)[field] = Math.max(0, Number(value) || 0);
+        }
+
+        if (field === "quantity") {
+          nextItem.isManualQuantity = true;
+        } else if (field === "description" && !nextItem.isManualQuantity) {
+          const match = applyTradeRules(
+            nextItem.description,
+            calculationDimensions,
+            activeTradeCalculator,
+          );
+          if (match) {
+            nextItem.quantity = match.quantity;
+            nextItem.unit = match.unit;
+            nextItem.unitType = match.unitType;
+          } else {
+            nextItem.isManualQuantity = true;
+          }
+        }
+
+        return nextItem;
+      })
+    );
+  };
+
+  const handleRestoreAutoQuantity = (id: number) => {
+    setLineItems((items) =>
+      items.map((item) => {
+        if (item.id !== id) return item;
+        const match = applyTradeRules(
+          item.description,
+          calculationDimensions,
+          activeTradeCalculator,
+        );
+        if (match) {
+          return { ...item, quantity: match.quantity, unit: match.unit, unitType: match.unitType, isManualQuantity: false };
+        }
+        return item;
+      })
     );
   };
 
@@ -663,23 +765,43 @@ export default function Calculator() {
       return;
     }
     setLineItems(
-      template.defaultLineItems.map((item) => ({
-        id: nextLineItemId++,
-        description: item.description,
-        quantity: item.quantity,
-        unit: item.unit,
-        unitType: item.unitType,
-        unitCost: item.unitCost,
-        markupPercentage: item.markupPercentage,
-        wastagePercentage: item.wastagePercentage,
-        isBulkItem: item.isBulkItem,
-        saveToMyPresets: false,
-      })),
+      template.defaultLineItems.map((item) => {
+        let quantity = item.quantity;
+        let unit = item.unit;
+        let unitType = item.unitType;
+        let isManualQuantity = true;
+
+        const match = applyTradeRules(
+          item.description,
+          calculationDimensions,
+          activeTradeCalculator,
+        );
+        if (match) {
+          quantity = match.quantity;
+          unit = match.unit;
+          unitType = match.unitType as any;
+          isManualQuantity = false;
+        }
+
+        return {
+          id: nextLineItemId++,
+          description: item.description,
+          quantity,
+          unit,
+          unitType,
+          unitCost: item.unitCost,
+          markupPercentage: item.markupPercentage,
+          wastagePercentage: item.wastagePercentage,
+          isBulkItem: item.isBulkItem,
+          saveToMyPresets: false,
+          isManualQuantity,
+        };
+      })
     );
   };
 
   useEffect(() => {
-    const tradeKey = normaliseTradeType(activeTradeType);
+    const tradeKey = normaliseTradeKey(activeTradeType);
     if (
       deckCalculator ||
       !tradeKey ||
@@ -715,6 +837,7 @@ export default function Calculator() {
         wastagePercentage: preset.wastagePercentage ?? 0,
         isBulkItem: preset.isBulkItem ?? false,
         saveToMyPresets: false,
+        isManualQuantity: true,
       },
     ]);
   };
@@ -747,10 +870,21 @@ export default function Calculator() {
       });
       return;
     }
+    const quoteSpec = activeTradeCalculator
+      ? {
+          ...spec,
+          lengthM: calculationDimensions.lengthM ?? spec.lengthM,
+          widthM: calculationDimensions.widthM ?? 1,
+          heightM:
+            normaliseTradeKey(activeTradeType) === "concreter"
+              ? (calculationDimensions.depthMm ?? 0) / 1000
+              : (calculationDimensions.heightM ?? 0),
+        }
+      : spec;
     createQuote.mutate(
       {
         data: {
-          ...spec,
+          ...quoteSpec,
           title: quoteTitle,
           customerId: parseInt(customerId),
           tradeType: activeTradeType,
@@ -1497,6 +1631,57 @@ export default function Calculator() {
               : "lg:col-span-12 mx-auto w-full max-w-5xl space-y-4"
           }
         >
+          {!deckCalculator && activeTradeCalculator && (
+            <Card className="border-2 border-primary/20 bg-muted/10">
+              <CardHeader className="pb-3 px-5 border-b bg-card">
+                <CardTitle className="font-black uppercase text-sm tracking-wider">
+                  Job Dimensions
+                </CardTitle>
+                <p className="text-xs text-muted-foreground">
+                  Job measurements drive automatic quantities below.
+                </p>
+              </CardHeader>
+              <CardContent className="p-5 flex flex-col md:flex-row gap-6 items-start">
+                <div className="flex-1 flex flex-wrap gap-4">
+                  {activeTradeCalculator.inputs.map((input) => (
+                    <div key={input.id} className="w-28 space-y-1.5">
+                      <Label className="font-bold uppercase text-[10px] tracking-wide text-muted-foreground flex justify-between">
+                        <span>{input.label}</span>
+                        <span className="opacity-70">{input.unit}</span>
+                      </Label>
+                      <Input
+                        type="number"
+                        step={input.step ?? "0.1"}
+                        min="0"
+                        value={calculationDimensions[input.id] ?? ""}
+                        onChange={(e) => handleSetTradeDimension(input.id, e.target.value)}
+                        className="font-mono h-10 border-primary/20 bg-background focus-visible:ring-primary/50"
+                      />
+                    </div>
+                  ))}
+                </div>
+
+                <div className="md:w-64 shrink-0 bg-background rounded-lg border p-3 space-y-2 text-sm shadow-sm">
+                  <div className="font-bold uppercase text-[10px] text-primary tracking-widest mb-1 border-b pb-1">
+                    Calculated Output
+                  </div>
+                  {activeTradeCalculator.outputs(calculationDimensions).map((out, i) => (
+                    <div key={i} className="flex justify-between items-baseline">
+                      <div className="text-muted-foreground">
+                        <span className="font-semibold text-foreground">{out.label}</span>
+                        {out.note && <div className="text-[10px] leading-tight opacity-70">{out.note}</div>}
+                      </div>
+                      <div className="font-mono font-medium text-right">
+                        {out.value.toLocaleString("en-AU", { maximumFractionDigits: 3 })}
+                        <span className="text-[10px] ml-0.5 text-muted-foreground">{out.unit}</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
           {/* Total banner */}
           <Card className="border-2 border-primary/30 overflow-hidden">
             <div className="bg-primary p-6 text-primary-foreground">
@@ -1727,9 +1912,20 @@ export default function Calculator() {
                           placeholder="Skip bin hire"
                         />
                       </div>
-                      <div className="space-y-1">
-                        <Label htmlFor={`line-quantity-${item.id}`}>
-                          Quantity
+                      <div className="space-y-1 relative">
+                        <Label htmlFor={`line-quantity-${item.id}`} className="flex justify-between items-center">
+                          <span>Quantity</span>
+                          {item.isManualQuantity && applyTradeRules(item.description, calculationDimensions, activeTradeCalculator) && (
+                            <button
+                              type="button"
+                              onClick={() => handleRestoreAutoQuantity(item.id)}
+                              className="flex items-center gap-1 text-[10px] font-bold uppercase tracking-wide text-primary transition-colors hover:text-primary/80"
+                              title="Restore calculated quantity"
+                            >
+                              <RefreshCcw className="w-3 h-3" />
+                              Use calculated
+                            </button>
+                          )}
                         </Label>
                         <Input
                           id={`line-quantity-${item.id}`}
@@ -1744,6 +1940,7 @@ export default function Calculator() {
                               event.target.value,
                             )
                           }
+                          className={!item.isManualQuantity ? "bg-primary/5 border-primary/20" : ""}
                         />
                       </div>
                       <div className="space-y-1">
