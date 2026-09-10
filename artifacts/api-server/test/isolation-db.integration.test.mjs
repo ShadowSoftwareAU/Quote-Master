@@ -17,8 +17,17 @@ const unlinkedWorker = `${fixture}-unlinked-worker`;
 const demoOwner = `${fixture}-demo-owner`;
 const demoEmployee = `${fixture}-demo-employee`;
 const parametricUser = `${fixture}-parametric-user`;
+const quoteParityUser = `${fixture}-quote-parity-user`;
 const assignmentUsers = [assignmentOwner, linkedWorker, profilelessWorker, unlinkedWorker];
-const profileUsers = [userA, userB, demoOwner, demoEmployee, parametricUser, ...assignmentUsers];
+const profileUsers = [
+  userA,
+  userB,
+  demoOwner,
+  demoEmployee,
+  parametricUser,
+  quoteParityUser,
+  ...assignmentUsers,
+];
 let tempDir;
 let server;
 let baseUrl;
@@ -1214,6 +1223,183 @@ test("parametric quote snapshots survive create, read, and authenticated update 
   assert.equal(updatedCustom.response.status, 200);
   assert.deepEqual(updatedCustom.json.spec.customParameterDefinitions, populatedDefinitions);
   assert.deepEqual(updatedCustom.json.spec.parameterValues, { cabinetCount: 5 });
+});
+
+test("Carpenter previews match saved legacy and parametric totals", { skip: !hasDatabase }, async () => {
+  const onboarding = await api(quoteParityUser, "POST", "/onboarding", {
+    businessName: `${fixture} Quote Parity Carpentry`,
+    phoneNumber: "+61 400 000 039",
+    tradeType: "Carpenter / Joiner",
+    licenseNumber: "QBCC 390039",
+    role: "Owner",
+  });
+  assert.equal(onboarding.response.status, 201);
+  const customer = await api(quoteParityUser, "POST", "/customers", {
+    name: `${fixture}-quote-parity-customer`,
+  });
+  assert.equal(customer.response.status, 201);
+  createdCustomerIds.push(customer.json.id);
+
+  const legacyInput = {
+    lengthM: 3,
+    widthM: 2,
+    labourHours: 10,
+    labourRate: 100,
+  };
+  const legacyEstimate = await api(
+    quoteParityUser,
+    "POST",
+    "/quotes/estimate",
+    legacyInput,
+  );
+  assert.equal(legacyEstimate.response.status, 200);
+  const legacyAdditionalSubtotal = 250;
+  const legacyPreviewSubtotal =
+    legacyEstimate.json.materialsSubtotal +
+    legacyEstimate.json.labourCost +
+    legacyAdditionalSubtotal;
+  const legacyPreviewGst = roundMoney(legacyPreviewSubtotal * 0.1);
+  const legacyQuote = await api(quoteParityUser, "POST", "/quotes", {
+    title: `${fixture}-legacy-preview-parity`,
+    customerId: customer.json.id,
+    tradeType: "Carpenter / Joiner",
+    ...legacyInput,
+    lineItems: [
+      {
+        description: "Legacy additional item",
+        quantity: 2,
+        unitCost: 100,
+        markupPercentage: 25,
+        unit: "each",
+        unitType: "item",
+        wastagePercentage: 0,
+        isBulkItem: false,
+        isManualQuantity: true,
+      },
+    ],
+  });
+  assert.equal(legacyQuote.response.status, 201);
+  createdQuoteIds.push(legacyQuote.json.id);
+  assert.deepEqual(
+    {
+      materialsSubtotal: legacyQuote.json.materialsSubtotal,
+      labourCost: legacyQuote.json.labourCost,
+      gst: legacyQuote.json.gst,
+      total: legacyQuote.json.total,
+    },
+    {
+      materialsSubtotal:
+        legacyEstimate.json.materialsSubtotal + legacyAdditionalSubtotal,
+      labourCost: legacyEstimate.json.labourCost,
+      gst: legacyPreviewGst,
+      total: roundMoney(legacyPreviewSubtotal + legacyPreviewGst),
+    },
+  );
+
+  const templates = await api(quoteParityUser, "GET", "/trade-templates");
+  assert.equal(templates.response.status, 200);
+  const carpenterTemplate = templates.json.find(
+    (template) =>
+      template.tradeType === "Carpenter / Joiner" &&
+      template.slug === "decks-subframes",
+  );
+  assert.ok(carpenterTemplate);
+  const parameterValues = {
+    lengthM: 6,
+    widthM: 3,
+    elevationMm: 600,
+    joistSpacingMm: 450,
+    bearerSpanMm: 1800,
+    boardWidthMm: 90,
+  };
+  const previewQuantities = {
+    decking: 210,
+    joists: 48,
+    bearers: 15,
+    posts: 15,
+  };
+  const unitCosts = {
+    decking: 10,
+    joists: 20,
+    bearers: 30,
+    posts: 40,
+  };
+  const parametricLines = carpenterTemplate.defaultLineItems.map((line) => ({
+    lineKey: line.lineKey,
+    bomRuleId: carpenterTemplate.bomRules.find(
+      (rule) => rule.lineKey === line.lineKey,
+    ).bomRuleId,
+    isManualQuantity: line.lineKey === "decking",
+    description: line.description,
+    quantity: previewQuantities[line.lineKey],
+    unit: line.unit,
+    unitType: line.unitType,
+    unitCost: unitCosts[line.lineKey],
+    markupPercentage: 20,
+    wastagePercentage: line.wastagePercentage,
+    isBulkItem: line.isBulkItem,
+  }));
+  const previewMaterialsSubtotal = parametricLines.reduce(
+    (sum, line) =>
+      sum +
+      roundMoney(
+        line.quantity *
+          line.unitCost *
+          (1 + line.markupPercentage / 100),
+      ),
+    0,
+  );
+  const previewLabourCost = 8 * 95;
+  const previewSubtotal = previewMaterialsSubtotal + previewLabourCost;
+  const previewGst = roundMoney(previewSubtotal * 0.1);
+  const parametricQuote = await api(quoteParityUser, "POST", "/quotes", {
+    title: `${fixture}-parametric-preview-parity`,
+    customerId: customer.json.id,
+    tradeType: "Carpenter / Joiner",
+    templateId: carpenterTemplate.id,
+    templateSlug: carpenterTemplate.slug,
+    templateRevision: carpenterTemplate.templateRevision,
+    engineVersion: carpenterTemplate.engineVersion,
+    parameterValues,
+    lengthM: 6,
+    widthM: 3,
+    labourHours: 8,
+    labourRate: 95,
+    lineItems: parametricLines,
+  });
+  assert.equal(parametricQuote.response.status, 201);
+  createdQuoteIds.push(parametricQuote.json.id);
+  assert.deepEqual(
+    {
+      materialsSubtotal: parametricQuote.json.materialsSubtotal,
+      labourCost: parametricQuote.json.labourCost,
+      gst: parametricQuote.json.gst,
+      total: parametricQuote.json.total,
+    },
+    {
+      materialsSubtotal: previewMaterialsSubtotal,
+      labourCost: previewLabourCost,
+      gst: previewGst,
+      total: roundMoney(previewSubtotal + previewGst),
+    },
+  );
+  assert.deepEqual(
+    Object.fromEntries(
+      parametricQuote.json.lineItems.map((line) => [
+        line.lineKey,
+        {
+          quantity: line.quantity,
+          isManualQuantity: line.isManualQuantity,
+        },
+      ]),
+    ),
+    {
+      decking: { quantity: 210, isManualQuantity: true },
+      joists: { quantity: 48, isManualQuantity: false },
+      bearers: { quantity: 15, isManualQuantity: false },
+      posts: { quantity: 15, isManualQuantity: false },
+    },
+  );
 });
 
 test("linked workers only receive assigned work, including profileless linked accounts", { skip: !hasDatabase }, async () => {

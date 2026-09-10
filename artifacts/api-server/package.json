@@ -8,7 +8,7 @@
     "build": "node ./build.mjs",
     "start": "node --enable-source-maps ./dist/index.mjs",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "test:isolation": "node --test ./test/isolation-runtime.test.mjs ./test/isolation-db.integration.test.mjs ./test/profile-regression.test.mjs ./test/demo-seed-regression.test.mjs && node ./test/isolation-regression.mjs",
+    "test:isolation": "node --test ./test/isolation-runtime.test.mjs ./test/isolation-db.integration.test.mjs ./test/profile-regression.test.mjs ./test/demo-seed-regression.test.mjs ./test/quote-builder-parity.test.mjs && node ./test/isolation-regression.mjs",
     "test:cad": "node --test ./test/cad-from-text.test.mjs"
   },
   "dependencies": {

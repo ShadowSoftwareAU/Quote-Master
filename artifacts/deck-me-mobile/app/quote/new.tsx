@@ -8,6 +8,7 @@ import {
   getListTradeTemplatePresetsQueryKey,
   getListTradeTemplatesQueryKey,
   useCreateQuote,
+  useEstimateDeck,
   useListCustomers,
   useGetProfileSettings,
   useListTradeTemplatePresets,
@@ -221,6 +222,7 @@ function NewQuoteScreen() {
       },
     );
   const createMut = useCreateQuote();
+  const estimate = useEstimateDeck();
 
   const spec = useMemo(() => {
     try {
@@ -247,6 +249,20 @@ function NewQuoteScreen() {
     }),
     [activeTradeCalculator, tradeDimensions],
   );
+  const quoteSpec = useMemo(
+    () =>
+      activeTradeCalculator
+        ? {
+            ...spec,
+            ...mapTradeDimensionsToQuote(
+              activeTradeType,
+              calculationDimensions,
+              spec,
+            ),
+          }
+        : spec,
+    [activeTradeCalculator, activeTradeType, calculationDimensions, spec],
+  );
 
   useEffect(() => {
     if (
@@ -256,13 +272,6 @@ function NewQuoteScreen() {
       setSelectedTradeType(profileTradeTypes[0]);
     }
   }, [profileTradeTypes.join("|"), selectedTradeType]);
-
-  const additionalSubtotal = useMemo(
-    () => lineItems.reduce((sum, item) => sum + lineTotal(item), 0),
-    [lineItems],
-  );
-  const additionalGst = Math.round(additionalSubtotal * 0.1 * 100) / 100;
-  const additionalTotal = additionalSubtotal + additionalGst;
 
   function addLineItem() {
     setLineItems((items) => [
@@ -485,6 +494,31 @@ function NewQuoteScreen() {
     () => parametricTemplate ? calculateTemplateBom(parametricTemplate.bomRules as any, parameterValues) : [],
     [parametricTemplate, parameterValues],
   );
+  const parametricSelected = Boolean(parametricTemplate);
+  const labourHours = quoteSpec.labourHours ?? Number(params.labourHours ?? 0);
+  const labourRate = quoteSpec.labourRate ?? Number(params.labourRate ?? 85);
+  const lineItemsSubtotal = useMemo(
+    () => lineItems.reduce((sum, item) => sum + lineTotal(item), 0),
+    [lineItems],
+  );
+  const previewLabourCost = Math.round(labourHours * labourRate * 100) / 100;
+  const quoteSubtotal =
+    (parametricSelected ? 0 : (estimate.data?.materialsSubtotal ?? 0)) +
+    previewLabourCost +
+    lineItemsSubtotal;
+  const quoteGst = Math.round(quoteSubtotal * 0.1 * 100) / 100;
+  const quoteTotal = Math.round((quoteSubtotal + quoteGst) * 100) / 100;
+
+  useEffect(() => {
+    if (!deckQuote || parametricSelected) return;
+    estimate.mutate({
+      data: {
+        ...quoteSpec,
+        labourHours,
+        labourRate,
+      },
+    });
+  }, [deckQuote, parametricSelected, quoteSpec, labourHours, labourRate]);
 
   function applyTemplate(templateId: string) {
     setSelectedTemplateId(templateId);
@@ -589,16 +623,6 @@ function NewQuoteScreen() {
       Alert.alert("Check custom variables", "Each variable needs a label, unit and valid numeric value.");
       return;
     }
-    const quoteSpec = activeTradeCalculator
-      ? {
-          ...spec,
-          ...mapTradeDimensionsToQuote(
-            activeTradeType,
-            calculationDimensions,
-            spec,
-          ),
-        }
-      : spec;
     createMut.mutate(
       {
         data: {
@@ -1386,23 +1410,23 @@ function NewQuoteScreen() {
                 </Text>
               </View>
               <View style={{ flexDirection: "row", justifyContent: "space-between" }}>
-                <Text style={{ color: colors.mutedForeground, fontFamily: "Inter_500Medium" }}>Additional subtotal</Text>
-                <Text style={{ color: colors.foreground, fontFamily: "Inter_700Bold" }}>{currency(additionalSubtotal)}</Text>
+                <Text style={{ color: colors.mutedForeground, fontFamily: "Inter_500Medium" }}>Subtotal</Text>
+                <Text style={{ color: colors.foreground, fontFamily: "Inter_700Bold" }}>{currency(quoteSubtotal)}</Text>
               </View>
               <View style={{ flexDirection: "row", justifyContent: "space-between" }}>
                 <Text style={{ color: colors.mutedForeground, fontFamily: "Inter_500Medium" }}>Margin</Text>
                 <Text style={{ color: colors.foreground, fontFamily: "Inter_700Bold" }}>
-                  {currency(additionalSubtotal - lineItems.reduce((sum, item) => sum + lineCost(item), 0))}
+                  {currency(lineItemsSubtotal - lineItems.reduce((sum, item) => sum + lineCost(item), 0))}
                 </Text>
               </View>
               <View style={{ flexDirection: "row", justifyContent: "space-between" }}>
                 <Text style={{ color: colors.mutedForeground, fontFamily: "Inter_500Medium" }}>GST (10%)</Text>
-                <Text style={{ color: colors.foreground, fontFamily: "Inter_700Bold" }}>{currency(additionalGst)}</Text>
+                <Text style={{ color: colors.foreground, fontFamily: "Inter_700Bold" }}>{currency(quoteGst)}</Text>
               </View>
               <View style={{ height: 1, backgroundColor: colors.border }} />
               <View style={{ flexDirection: "row", justifyContent: "space-between" }}>
-                <Text style={{ color: colors.foreground, fontFamily: "Chivo_700Bold", fontSize: 16 }}>Additional total</Text>
-                <Text style={{ color: colors.primary, fontFamily: "Chivo_700Bold", fontSize: 18 }}>{currency(additionalTotal)}</Text>
+                <Text style={{ color: colors.foreground, fontFamily: "Chivo_700Bold", fontSize: 16 }}>Total</Text>
+                <Text style={{ color: colors.primary, fontFamily: "Chivo_700Bold", fontSize: 18 }}>{currency(quoteTotal)}</Text>
               </View>
             </View>
           </Card>
@@ -1411,6 +1435,7 @@ function NewQuoteScreen() {
         icon="save"
         onPress={save}
         loading={createMut.isPending}
+        disabled={deckQuote && !parametricSelected && !estimate.data}
       />
           </View>
         )}
