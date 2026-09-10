@@ -16,8 +16,9 @@ const profilelessWorker = `${fixture}-profileless-worker`;
 const unlinkedWorker = `${fixture}-unlinked-worker`;
 const demoOwner = `${fixture}-demo-owner`;
 const demoEmployee = `${fixture}-demo-employee`;
+const parametricUser = `${fixture}-parametric-user`;
 const assignmentUsers = [assignmentOwner, linkedWorker, profilelessWorker, unlinkedWorker];
-const profileUsers = [userA, userB, demoOwner, demoEmployee, ...assignmentUsers];
+const profileUsers = [userA, userB, demoOwner, demoEmployee, parametricUser, ...assignmentUsers];
 let tempDir;
 let server;
 let baseUrl;
@@ -29,6 +30,7 @@ const createdProjectIds = [];
 const createdMaterialIds = [];
 const createdBookingIds = [];
 const createdMemberIds = [];
+const createdTemplateIds = [];
 
 async function api(userId, method, pathname, body) {
   const response = await fetch(`${baseUrl}${pathname}`, {
@@ -202,6 +204,9 @@ after(async () => {
     }
     if (createdMaterialIds.length) {
       await pool.query("DELETE FROM materials WHERE id = ANY($1::int[])", [createdMaterialIds]);
+    }
+    if (createdTemplateIds.length) {
+      await pool.query("DELETE FROM trade_templates WHERE id = ANY($1::int[])", [createdTemplateIds]);
     }
     await pool.query(
       "DELETE FROM profile_metadata_outbox WHERE clerk_user_id = ANY($1::text[])",
@@ -990,6 +995,225 @@ test("database-backed customer and nested route isolation", { skip: !hasDatabase
     200,
   );
   assert.equal((await api(null, "GET", `/quote/${regenerated.json.portalToken}`)).response.status, 404);
+});
+
+test("parametric quote snapshots survive create, read, and authenticated update for every trade", { skip: !hasDatabase }, async () => {
+  const trades = [
+    "Cabinetmaker / Joinery",
+    "Carpenter / Joiner",
+    "Concreter",
+    "Plasterer / Gib Fixer",
+    "Roofer",
+    "Electrician",
+  ];
+  await pool.query(
+    `INSERT INTO business_profiles
+       (clerk_user_id, business_name, phone_number, trade_type, trade_types,
+        license_number, role, metadata_sync_status)
+     VALUES ($1, $2, $3, $4, $5::text[], $6, 'Owner', 'synced')`,
+    [
+      parametricUser,
+      `${fixture} Parametric Quotes`,
+      "+61 400 111 222",
+      trades[0],
+      trades,
+      "PARAMETRIC-TEST",
+    ],
+  );
+
+  const customer = await api(parametricUser, "POST", "/customers", {
+    name: `${fixture}-parametric-customer`,
+  });
+  assert.equal(customer.response.status, 201);
+  createdCustomerIds.push(customer.json.id);
+
+  const seeded = await pool.query(
+    `SELECT trade_type, name, slug, default_line_items, engine_version,
+            template_revision, parameter_definitions, bom_rules
+       FROM trade_templates
+      WHERE trade_type = ANY($1::text[])
+        AND engine_version = 1
+        AND parameter_definitions IS NOT NULL
+        AND bom_rules IS NOT NULL
+      ORDER BY trade_type, template_revision DESC`,
+    [trades],
+  );
+  const templatesByTrade = new Map();
+  for (const row of seeded.rows) {
+    if (!templatesByTrade.has(row.trade_type)) templatesByTrade.set(row.trade_type, row);
+  }
+  assert.equal(templatesByTrade.size, trades.length);
+
+  for (const [tradeIndex, tradeType] of trades.entries()) {
+    const source = templatesByTrade.get(tradeType);
+    const defaultLineItems = structuredClone(source.default_line_items);
+    if (tradeIndex === 0) {
+      defaultLineItems[0].description = "Duplicate BOM description";
+      defaultLineItems[1].description = "Duplicate BOM description";
+    }
+    const templateRevision = 10_000 + tradeIndex;
+    const insertedTemplate = await pool.query(
+      `INSERT INTO trade_templates
+         (trade_type, name, slug, default_line_items, engine_version,
+          template_revision, parameter_definitions, bom_rules)
+       VALUES ($1, $2, $3, $4::jsonb, $5, $6, $7::jsonb, $8::jsonb)
+       RETURNING id`,
+      [
+        tradeType,
+        `${source.name} regression fixture`,
+        `${source.slug}-${fixture}-${tradeIndex}`,
+        JSON.stringify(defaultLineItems),
+        source.engine_version,
+        templateRevision,
+        JSON.stringify(source.parameter_definitions),
+        JSON.stringify(source.bom_rules),
+      ],
+    );
+    const templateId = insertedTemplate.rows[0].id;
+    createdTemplateIds.push(templateId);
+    const templateSlug = `${source.slug}-${fixture}-${tradeIndex}`;
+    const parameterValues = Object.fromEntries(
+      source.parameter_definitions.map((definition) => [
+        definition.id,
+        tradeIndex === 1 ? 0 : definition.defaultValue,
+      ]),
+    );
+    const lineItems = defaultLineItems.map((line, lineIndex) => {
+      const rule = source.bom_rules.find(({ lineKey }) => lineKey === line.lineKey);
+      return {
+        lineKey: line.lineKey,
+        bomRuleId: rule.bomRuleId,
+        isManualQuantity: lineIndex === 0,
+        description: line.description,
+        quantity: lineIndex === 0 ? 7 : 1,
+        unitCost: 10 + lineIndex,
+        markupPercentage: line.markupPercentage,
+        unit: line.unit,
+        unitType: line.unitType,
+        wastagePercentage: line.wastagePercentage,
+        isBulkItem: line.isBulkItem,
+      };
+    });
+
+    const created = await api(parametricUser, "POST", "/quotes", {
+      title: `${fixture}-parametric-${tradeIndex}`,
+      customerId: customer.json.id,
+      tradeType,
+      templateId,
+      templateSlug,
+      engineVersion: source.engine_version,
+      templateRevision,
+      parameterValues,
+      labourHours: 3,
+      labourRate: 90,
+      lineItems,
+    });
+    assert.equal(created.response.status, 201, `${tradeType} create`);
+    createdQuoteIds.push(created.json.id);
+
+    const storedAfterCreate = await pool.query(
+      "SELECT spec_json FROM quotes WHERE id = $1",
+      [created.json.id],
+    );
+    const expectedSnapshot = storedAfterCreate.rows[0].spec_json;
+    assert.equal(expectedSnapshot.templateId, templateId);
+    assert.equal(expectedSnapshot.templateSlug, templateSlug);
+    assert.equal(expectedSnapshot.templateRevision, templateRevision);
+    assert.deepEqual(expectedSnapshot.parameterValues, parameterValues);
+    assert.deepEqual(expectedSnapshot.parameterDefinitions, source.parameter_definitions);
+    assert.deepEqual(expectedSnapshot.bomRules, source.bom_rules);
+    assert.equal(expectedSnapshot.lineSnapshot.length, defaultLineItems.length);
+    assert.equal(expectedSnapshot.lineSnapshot[0].quantity, 7);
+    assert.equal(expectedSnapshot.lineSnapshot[0].isManualQuantity, true);
+    assert.equal(expectedSnapshot.lineSnapshot[1].isManualQuantity, false);
+    assert.equal(typeof expectedSnapshot.lineSnapshot[1].calculatedQuantity, "number");
+
+    if (tradeIndex === 0) {
+      assert.equal(expectedSnapshot.lineSnapshot[0].description, "Duplicate BOM description");
+      assert.equal(expectedSnapshot.lineSnapshot[1].description, "Duplicate BOM description");
+      assert.notEqual(expectedSnapshot.lineSnapshot[0].lineKey, expectedSnapshot.lineSnapshot[1].lineKey);
+    }
+    if (tradeIndex === 1) {
+      assert.equal(
+        expectedSnapshot.lineSnapshot.some(({ calculatedQuantity }) => calculatedQuantity === 0),
+        true,
+      );
+      assert.equal(
+        created.json.lineItems.length < expectedSnapshot.lineSnapshot.length,
+        true,
+        "zero automatic outputs stay in evidence even when omitted from priced lines",
+      );
+    }
+
+    const reopened = await api(parametricUser, "GET", `/quotes/${created.json.id}`);
+    assert.equal(reopened.response.status, 200, `${tradeType} read`);
+    assert.deepEqual(reopened.json.spec.lineSnapshot, expectedSnapshot.lineSnapshot);
+
+    const updated = await api(parametricUser, "PATCH", `/quotes/${created.json.id}`, {
+      notes: `Reopened ${tradeType} without recalculation`,
+      labourHours: 4,
+    });
+    assert.equal(updated.response.status, 200, `${tradeType} update`);
+    assert.deepEqual(updated.json.spec.lineSnapshot, expectedSnapshot.lineSnapshot);
+    assert.deepEqual(
+      updated.json.lineItems.map(({ lineKey, bomRuleId, isManualQuantity, quantity }) => ({
+        lineKey,
+        bomRuleId,
+        isManualQuantity,
+        quantity,
+      })),
+      created.json.lineItems.map(({ lineKey, bomRuleId, isManualQuantity, quantity }) => ({
+        lineKey,
+        bomRuleId,
+        isManualQuantity,
+        quantity,
+      })),
+    );
+    const storedAfterUpdate = await pool.query(
+      "SELECT spec_json FROM quotes WHERE id = $1",
+      [created.json.id],
+    );
+    assert.deepEqual(storedAfterUpdate.rows[0].spec_json.lineSnapshot, expectedSnapshot.lineSnapshot);
+  }
+
+  const emptyCustom = await api(parametricUser, "POST", "/quotes", {
+    title: `${fixture}-empty-custom-snapshot`,
+    customerId: customer.json.id,
+    tradeType: trades[0],
+    customParameterDefinitions: [],
+    parameterValues: {},
+  });
+  assert.equal(emptyCustom.response.status, 201);
+  createdQuoteIds.push(emptyCustom.json.id);
+  assert.equal("customParameterDefinitions" in emptyCustom.json.spec, false);
+
+  const populatedDefinitions = [{
+    id: "cabinetCount",
+    label: "Cabinet count",
+    unit: "qty",
+    defaultValue: 1,
+    minimum: 0,
+  }];
+  const populatedCustom = await api(parametricUser, "POST", "/quotes", {
+    title: `${fixture}-populated-custom-snapshot`,
+    customerId: customer.json.id,
+    tradeType: trades[0],
+    customParameterDefinitions: populatedDefinitions,
+    parameterValues: { cabinetCount: 5 },
+  });
+  assert.equal(populatedCustom.response.status, 201);
+  createdQuoteIds.push(populatedCustom.json.id);
+  assert.deepEqual(populatedCustom.json.spec.customParameterDefinitions, populatedDefinitions);
+  assert.deepEqual(populatedCustom.json.spec.parameterValues, { cabinetCount: 5 });
+  const updatedCustom = await api(
+    parametricUser,
+    "PATCH",
+    `/quotes/${populatedCustom.json.id}`,
+    { notes: "Custom values remain a snapshot" },
+  );
+  assert.equal(updatedCustom.response.status, 200);
+  assert.deepEqual(updatedCustom.json.spec.customParameterDefinitions, populatedDefinitions);
+  assert.deepEqual(updatedCustom.json.spec.parameterValues, { cabinetCount: 5 });
 });
 
 test("linked workers only receive assigned work, including profileless linked accounts", { skip: !hasDatabase }, async () => {
