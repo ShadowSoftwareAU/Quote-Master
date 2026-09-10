@@ -34,10 +34,10 @@ export function hasMeaningfulCustomSnapshot(
   const snapshot = value as Partial<CustomParameterSnapshot>;
   return Boolean(
     Array.isArray(snapshot.customParameterDefinitions) &&
-      snapshot.customParameterDefinitions.length > 0 &&
-      snapshot.parameterValues &&
-      typeof snapshot.parameterValues === "object" &&
-      !Array.isArray(snapshot.parameterValues),
+    snapshot.customParameterDefinitions.length > 0 &&
+    snapshot.parameterValues &&
+    typeof snapshot.parameterValues === "object" &&
+    !Array.isArray(snapshot.parameterValues),
   );
 }
 
@@ -102,9 +102,11 @@ export type ParametricSnapshot = {
   bomRules: BomRule[];
   customParameterDefinitions?: CustomParameterDefinition[];
   lineSnapshot?: ParametricLineSnapshot[];
+  representationHistory?: ParametricRepresentationEvidence[];
 };
 
 export type ParametricLineSnapshot = {
+  materialId?: number | null;
   lineKey: string;
   bomRuleId: BomRuleId;
   quantity: number;
@@ -119,6 +121,228 @@ export type ParametricLineSnapshot = {
   wastagePercentage: number;
   isBulkItem: boolean;
 };
+
+export type ParametricRepresentationEvidence = {
+  representationVersion: number;
+  transformedAt: string;
+  transition: "public_decking_material_upgrade";
+  deckBoardType: string;
+  balustradeType: string;
+  parameterValues: Record<string, number>;
+  lineSnapshot: ParametricLineSnapshot[];
+  materialsSubtotal: number;
+  labourCost: number;
+  gst: number;
+  total: number;
+};
+
+export type ParametricTransformation = {
+  snapshot: ParametricSnapshot;
+  lines: ParametricLineSnapshot[];
+};
+
+export type ParametricLinePricingChange = {
+  lineKey: string;
+  materialId: number;
+  description: string;
+  unit: string;
+  unitType: string;
+  unitCost: number;
+};
+
+function cloneParametricLine(line: ParametricLineSnapshot): ParametricLineSnapshot {
+  return { ...line };
+}
+
+export function cloneParametricSnapshot(
+  snapshot: ParametricSnapshot,
+): ParametricSnapshot {
+  return {
+    templateId: snapshot.templateId,
+    templateSlug: snapshot.templateSlug,
+    engineVersion: snapshot.engineVersion,
+    templateRevision: snapshot.templateRevision,
+    parameterValues: { ...snapshot.parameterValues },
+    parameterDefinitions: snapshot.parameterDefinitions.map((item) => ({
+      ...item,
+    })),
+    bomRules: snapshot.bomRules.map((item) => ({ ...item })),
+    ...(snapshot.customParameterDefinitions
+      ? {
+          customParameterDefinitions: snapshot.customParameterDefinitions.map(
+            (item) => ({ ...item }),
+          ),
+        }
+      : {}),
+    ...(snapshot.lineSnapshot
+      ? { lineSnapshot: snapshot.lineSnapshot.map(cloneParametricLine) }
+      : {}),
+    ...(snapshot.representationHistory
+      ? {
+          representationHistory: snapshot.representationHistory.map(
+            (evidence) => ({
+              ...evidence,
+              parameterValues: { ...evidence.parameterValues },
+              lineSnapshot: evidence.lineSnapshot.map(cloneParametricLine),
+            }),
+          ),
+        }
+      : {}),
+  };
+}
+
+export function transformParametricLinePricing(
+  snapshot: ParametricSnapshot,
+  pricingChanges: readonly ParametricLinePricingChange[],
+  priorEvidence: Omit<
+    ParametricRepresentationEvidence,
+    "parameterValues" | "lineSnapshot" | "representationVersion"
+  >,
+): ParametricTransformation {
+  if (snapshot.engineVersion !== PARAMETRIC_ENGINE_VERSION) {
+    throw new Error("This quote uses an unsupported calculation engine version");
+  }
+  if (!snapshot.lineSnapshot?.length) {
+    throw new Error(
+      "This quote does not contain enough BOM evidence to transform safely",
+    );
+  }
+  const changesByLineKey = new Map(
+    pricingChanges.map((change) => [change.lineKey, change]),
+  );
+  if (
+    changesByLineKey.size !== pricingChanges.length ||
+    pricingChanges.some(
+      (change) =>
+        !Number.isFinite(change.unitCost) ||
+        change.unitCost < 0 ||
+        !snapshot.lineSnapshot?.some((line) => line.lineKey === change.lineKey),
+    )
+  ) {
+    throw new Error("The requested material upgrade cannot be priced safely");
+  }
+  const lines = snapshot.lineSnapshot.map((line) => {
+    const pricing = changesByLineKey.get(line.lineKey);
+    return pricing
+      ? {
+          ...line,
+          materialId: pricing.materialId,
+          description: pricing.description,
+          unit: pricing.unit,
+          unitType: pricing.unitType,
+          unitCost: pricing.unitCost,
+        }
+      : cloneParametricLine(line);
+  });
+  const history = snapshot.representationHistory ?? [];
+  return {
+    snapshot: {
+      ...cloneParametricSnapshot(snapshot),
+      lineSnapshot: lines,
+      representationHistory: [
+        ...history.map((evidence) => ({
+          ...evidence,
+          parameterValues: { ...evidence.parameterValues },
+          lineSnapshot: evidence.lineSnapshot.map(cloneParametricLine),
+        })),
+        {
+          ...priorEvidence,
+          representationVersion: history.length + 1,
+          parameterValues: { ...snapshot.parameterValues },
+          lineSnapshot: snapshot.lineSnapshot.map(cloneParametricLine),
+        },
+      ],
+    },
+    lines,
+  };
+}
+
+function effectiveQuantity(
+  quantity: number,
+  wastagePercentage: number,
+  isBulkItem: boolean,
+): number {
+  const withWastage = quantity * (1 + wastagePercentage / 100);
+  return isBulkItem
+    ? Math.ceil(withWastage)
+    : Math.round((withWastage + Number.EPSILON) * 1000) / 1000;
+}
+
+/**
+ * Creates a new calculation representation from a quote's frozen template
+ * revision. It never consults the current template and never changes manual
+ * quantities.
+ */
+export function transformParametricSnapshot(
+  snapshot: ParametricSnapshot,
+  parameterChanges: Record<string, number>,
+): ParametricTransformation {
+  if (snapshot.engineVersion !== PARAMETRIC_ENGINE_VERSION) {
+    throw new Error(
+      "This quote uses an unsupported calculation engine version",
+    );
+  }
+  if (!snapshot.lineSnapshot?.length) {
+    throw new Error(
+      "This quote does not contain enough BOM evidence to transform safely",
+    );
+  }
+  const definitionIds = new Set(
+    snapshot.parameterDefinitions.map(({ id }) => id),
+  );
+  const unsupported = Object.keys(parameterChanges).filter(
+    (id) => !definitionIds.has(id),
+  );
+  if (unsupported.length > 0) {
+    throw new Error(
+      `This template does not support changing: ${unsupported.join(", ")}`,
+    );
+  }
+  const parameterValues = validateParameterValues(
+    snapshot.parameterDefinitions,
+    {
+      ...snapshot.parameterValues,
+      ...parameterChanges,
+    },
+  );
+  validateBomRules(
+    snapshot.bomRules,
+    snapshot.lineSnapshot.map(({ lineKey }) => lineKey),
+  );
+  const calculated = new Map(
+    calculateTemplateBom(snapshot.bomRules, parameterValues).map((line) => [
+      line.lineKey,
+      line,
+    ]),
+  );
+  const lines = snapshot.lineSnapshot.map((line) => {
+    const next = calculated.get(line.lineKey);
+    if (!next || next.bomRuleId !== line.bomRuleId) {
+      throw new Error(
+        `Stored BOM evidence is incomplete for line ${line.lineKey}`,
+      );
+    }
+    return {
+      ...line,
+      calculatedQuantity: next.quantity,
+      quantity: line.isManualQuantity
+        ? line.quantity
+        : effectiveQuantity(
+            next.quantity,
+            line.wastagePercentage,
+            line.isBulkItem,
+          ),
+    };
+  });
+  return {
+    snapshot: {
+      ...cloneParametricSnapshot(snapshot),
+      parameterValues,
+      lineSnapshot: lines,
+    },
+    lines,
+  };
+}
 
 function number(input: Record<string, number>, key: string): number {
   const value = input[key];
@@ -162,8 +386,7 @@ export function calculateBomRule(
   const totalBoardArea =
     wallLength * ceilingHeight + number(input, "ceilingAreaM2");
   const bearerSpanM = number(input, "bearerSpanMm") / 1000;
-  const bearerRows =
-    bearerSpanM > 0 ? Math.ceil(length / bearerSpanM) + 1 : 0;
+  const bearerRows = bearerSpanM > 0 ? Math.ceil(length / bearerSpanM) + 1 : 0;
 
   switch (rule) {
     case BomRuleId.CabinetMelamineArea:
@@ -191,15 +414,15 @@ export function calculateBomRule(
     }
     case BomRuleId.DeckJoistsLinearMetres: {
       const spacingM = number(input, "joistSpacingMm") / 1000;
-      return rounded(spacingM > 0 ? (Math.ceil(width / spacingM) + 1) * length : 0);
+      return rounded(
+        spacingM > 0 ? (Math.ceil(width / spacingM) + 1) * length : 0,
+      );
     }
     case BomRuleId.DeckBearersLinearMetres:
       return rounded(bearerSpanM > 0 ? bearerRows * width : 0);
     case BomRuleId.DeckPosts:
       return rounded(
-        bearerSpanM > 0
-          ? bearerRows * (Math.ceil(width / bearerSpanM) + 1)
-          : 0,
+        bearerSpanM > 0 ? bearerRows * (Math.ceil(width / bearerSpanM) + 1) : 0,
       );
     case BomRuleId.ConcreteVolume: {
       const slabThicknessM = number(input, "slabThicknessMm") / 1000;
@@ -219,7 +442,9 @@ export function calculateBomRule(
     case BomRuleId.ConcreteSlabMesh:
       return rounded(area);
     case BomRuleId.ConcreteBarChairBoxes:
-      return rounded(area > 0 ? Math.ceil(area / BAR_CHAIR_BOX_COVERAGE_M2) : 0);
+      return rounded(
+        area > 0 ? Math.ceil(area / BAR_CHAIR_BOX_COVERAGE_M2) : 0,
+      );
     case BomRuleId.PlasterWallBoard:
       return rounded(wallLength * ceilingHeight);
     case BomRuleId.PlasterCeilingBoard:
@@ -326,7 +551,9 @@ export function validateParameterValues(
     valueIds.length !== definitionIds.length ||
     valueIds.some((id) => !definitionIds.includes(id))
   ) {
-    throw new Error("Parameter values must match the template definitions exactly");
+    throw new Error(
+      "Parameter values must match the template definitions exactly",
+    );
   }
   const result: Record<string, number> = {};
   for (const definition of definitions) {
@@ -379,8 +606,8 @@ export function hasParametricDefinition(
 ): boolean {
   return Boolean(
     template?.engineVersion === PARAMETRIC_ENGINE_VERSION &&
-      template.parameterDefinitions?.length &&
-      template.bomRules?.length,
+    template.parameterDefinitions?.length &&
+    template.bomRules?.length,
   );
 }
 

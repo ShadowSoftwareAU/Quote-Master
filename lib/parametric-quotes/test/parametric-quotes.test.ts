@@ -9,6 +9,8 @@ import {
   ROOF_MAX_PITCH_DEGREES,
   validateParameterValues,
   hasMeaningfulCustomSnapshot,
+  transformParametricLinePricing,
+  transformParametricSnapshot,
 } from "../src/index.ts";
 
 const calculate = (rule: BomRuleId, values: Record<string, number>) =>
@@ -146,15 +148,26 @@ test("template BOM mapping uses line keys, not descriptions", () => {
 
 test("strict parameter validation rejects missing, unknown and out-of-range values", () => {
   const definitions = [
-    { id: "length", label: "Length", unit: "m", defaultValue: 1, minimum: 0, maximum: 10 },
+    {
+      id: "length",
+      label: "Length",
+      unit: "m",
+      defaultValue: 1,
+      minimum: 0,
+      maximum: 10,
+    },
   ];
   assert.deepEqual(validateParameterValues(definitions, { length: 2 }), {
     length: 2,
   });
   assert.throws(() => validateParameterValues(definitions, {}));
-  assert.throws(() => validateParameterValues(definitions, { length: 2, other: 1 }));
+  assert.throws(() =>
+    validateParameterValues(definitions, { length: 2, other: 1 }),
+  );
   assert.throws(() => validateParameterValues(definitions, { length: 11 }));
-  assert.throws(() => validateParameterValues(definitions, { length: Number.NaN }));
+  assert.throws(() =>
+    validateParameterValues(definitions, { length: Number.NaN }),
+  );
 });
 
 test("zero automatic outputs can be omitted without affecting manual validation", () => {
@@ -173,7 +186,9 @@ test("parametric snapshots are immutable plain data and round-trip by value", ()
     engineVersion: 1,
     templateRevision: 1,
     parameterValues: { lengthM: 5 },
-    parameterDefinitions: [{ id: "lengthM", label: "Length", unit: "m", defaultValue: 5 }],
+    parameterDefinitions: [
+      { id: "lengthM", label: "Length", unit: "m", defaultValue: 5 },
+    ],
     bomRules: [{ lineKey: "concrete", bomRuleId: BomRuleId.ConcreteVolume }],
   };
   assert.deepEqual(JSON.parse(JSON.stringify(snapshot)), snapshot);
@@ -196,4 +211,179 @@ test("custom snapshots are meaningful only when variables are populated", () => 
     }),
     true,
   );
+});
+
+test("revision-aware transformations recalculate automatic lines and preserve overrides", () => {
+  const baseLine = {
+    bomRuleId: BomRuleId.DeckingLinearMetres,
+    calculatedQuantity: 20,
+    unitCost: 10,
+    markupPercentage: 25,
+    description: "Deck boards",
+    category: "materials",
+    unit: "metre",
+    unitType: "lm",
+    wastagePercentage: 10,
+    isBulkItem: false,
+  };
+  const result = transformParametricSnapshot(
+    {
+      templateId: 7,
+      templateSlug: "deck",
+      engineVersion: 1,
+      templateRevision: 3,
+      parameterDefinitions: [
+        { id: "lengthM", label: "Length", unit: "m", defaultValue: 2 },
+        { id: "widthM", label: "Width", unit: "m", defaultValue: 1 },
+        {
+          id: "boardWidthMm",
+          label: "Board width",
+          unit: "mm",
+          defaultValue: 100,
+        },
+      ],
+      parameterValues: { lengthM: 2, widthM: 1, boardWidthMm: 100 },
+      bomRules: [
+        { lineKey: "automatic", bomRuleId: BomRuleId.DeckingLinearMetres },
+        { lineKey: "manual", bomRuleId: BomRuleId.DeckingLinearMetres },
+      ],
+      lineSnapshot: [
+        {
+          ...baseLine,
+          lineKey: "automatic",
+          quantity: 22,
+          isManualQuantity: false,
+        },
+        {
+          ...baseLine,
+          lineKey: "manual",
+          quantity: 12,
+          isManualQuantity: true,
+        },
+      ],
+    },
+    { lengthM: 3 },
+  );
+  assert.equal(result.snapshot.templateRevision, 3);
+  assert.deepEqual(result.snapshot.parameterValues, {
+    lengthM: 3,
+    widthM: 1,
+    boardWidthMm: 100,
+  });
+  assert.equal(result.lines[0].calculatedQuantity, 30);
+  assert.equal(result.lines[0].quantity, 33);
+  assert.equal(result.lines[1].quantity, 12);
+  assert.equal(result.lines[1].calculatedQuantity, 30);
+});
+
+test("revision-aware transformations reject unsupported changes without mutation", () => {
+  const snapshot = {
+    templateId: 7,
+    templateSlug: "deck",
+    engineVersion: 1,
+    templateRevision: 3,
+    parameterDefinitions: [
+      { id: "lengthM", label: "Length", unit: "m", defaultValue: 2 },
+    ],
+    parameterValues: { lengthM: 2 },
+    bomRules: [{ lineKey: "boards", bomRuleId: BomRuleId.DeckingLinearMetres }],
+    lineSnapshot: [
+      {
+        lineKey: "boards",
+        bomRuleId: BomRuleId.DeckingLinearMetres,
+        quantity: 1,
+        calculatedQuantity: 1,
+        isManualQuantity: false,
+        unitCost: 1,
+        markupPercentage: 0,
+        description: "Boards",
+        category: "materials",
+        unit: "metre",
+        unitType: "lm",
+        wastagePercentage: 0,
+        isBulkItem: false,
+      },
+    ],
+  };
+  assert.throws(
+    () => transformParametricSnapshot(snapshot, { widthM: 4 }),
+    /does not support changing: widthM/,
+  );
+  assert.deepEqual(snapshot.parameterValues, { lengthM: 2 });
+});
+
+test("material upgrades reprice one frozen BOM line and retain prior evidence", () => {
+  const snapshot = {
+    templateId: 7,
+    templateSlug: "deck",
+    engineVersion: 1,
+    templateRevision: 3,
+    parameterDefinitions: [
+      { id: "lengthM", label: "Length", unit: "m", defaultValue: 2 },
+      { id: "widthM", label: "Width", unit: "m", defaultValue: 1 },
+      {
+        id: "boardWidthMm",
+        label: "Board width",
+        unit: "mm",
+        defaultValue: 100,
+      },
+    ],
+    parameterValues: { lengthM: 2, widthM: 1, boardWidthMm: 100 },
+    bomRules: [
+      { lineKey: "decking", bomRuleId: BomRuleId.DeckingLinearMetres },
+    ],
+    lineSnapshot: [
+      {
+        lineKey: "decking",
+        bomRuleId: BomRuleId.DeckingLinearMetres,
+        quantity: 22,
+        calculatedQuantity: 20,
+        isManualQuantity: false,
+        unitCost: 10,
+        markupPercentage: 25,
+        description: "Treated pine",
+        category: "decking",
+        unit: "metre",
+        unitType: "lm",
+        wastagePercentage: 10,
+        isBulkItem: false,
+      },
+    ],
+  };
+  const result = transformParametricLinePricing(
+    snapshot,
+    [
+      {
+        lineKey: "decking",
+        materialId: 42,
+        description: "Composite decking",
+        unit: "metre",
+        unitType: "lm",
+        unitCost: 18,
+      },
+    ],
+    {
+      transformedAt: "2026-09-09T12:00:00.000Z",
+      transition: "public_decking_material_upgrade",
+      deckBoardType: "treated_pine",
+      balustradeType: "timber",
+      materialsSubtotal: 275,
+      labourCost: 100,
+      gst: 37.5,
+      total: 412.5,
+    },
+  );
+  assert.equal(result.snapshot.templateRevision, 3);
+  assert.deepEqual(result.snapshot.parameterValues, snapshot.parameterValues);
+  assert.equal(result.lines[0].quantity, 22);
+  assert.equal(result.lines[0].calculatedQuantity, 20);
+  assert.equal(result.lines[0].bomRuleId, BomRuleId.DeckingLinearMetres);
+  assert.equal(result.lines[0].unitCost, 18);
+  assert.equal(result.lines[0].materialId, 42);
+  assert.equal(result.snapshot.representationHistory?.length, 1);
+  assert.equal(
+    result.snapshot.representationHistory?.[0].lineSnapshot[0].unitCost,
+    10,
+  );
+  assert.equal(snapshot.lineSnapshot[0].unitCost, 10);
 });

@@ -52,10 +52,14 @@ import {
 } from "../middlewares/businessRoleAuth";
 import {
   calculateTemplateBom,
+  BomRuleId,
+  cloneParametricSnapshot,
   hasParametricDefinition,
   hasMeaningfulCustomSnapshot,
   PARAMETRIC_ENGINE_VERSION,
   sanitiseParameterValues,
+  transformParametricLinePricing,
+  transformParametricSnapshot,
   validateBomRules,
   validateParameterValues,
   type ParametricSnapshot,
@@ -312,22 +316,29 @@ function storedSpecJson(
     : {};
 }
 
-function parametricSnapshotFromStored(
-  row: typeof quotesTable.$inferSelect,
+function parametricSnapshotFromValue(
+  stored: Record<string, unknown>,
 ): ParametricSnapshot | null {
-  const stored = storedSpecJson(row);
   if (
     typeof stored.templateId !== "number" ||
     typeof stored.templateSlug !== "string" ||
     typeof stored.engineVersion !== "number" ||
     typeof stored.templateRevision !== "number" ||
     !stored.parameterValues ||
-    !stored.parameterDefinitions ||
-    !stored.bomRules
+    typeof stored.parameterValues !== "object" ||
+    Array.isArray(stored.parameterValues) ||
+    !Array.isArray(stored.parameterDefinitions) ||
+    !Array.isArray(stored.bomRules)
   ) {
     return null;
   }
-  return stored as unknown as ParametricSnapshot;
+  return cloneParametricSnapshot(stored as unknown as ParametricSnapshot);
+}
+
+function parametricSnapshotFromStored(
+  row: typeof quotesTable.$inferSelect,
+): ParametricSnapshot | null {
+  return parametricSnapshotFromValue(storedSpecJson(row));
 }
 
 function customSnapshotFromStored(row: typeof quotesTable.$inferSelect) {
@@ -336,8 +347,7 @@ function customSnapshotFromStored(row: typeof quotesTable.$inferSelect) {
 }
 
 function specFromStoredQuote(row: typeof quotesTable.$inferSelect): DeckSpec {
-  const savedSpec =
-    storedSpecJson(row) as Partial<DeckSpec>;
+  const savedSpec = storedSpecJson(row) as Partial<DeckSpec>;
 
   return specFromQuoteInput({
     lengthM: Number(row.lengthM),
@@ -355,7 +365,10 @@ function specFromStoredQuote(row: typeof quotesTable.$inferSelect): DeckSpec {
 function serialiseSpec(
   spec: DeckSpec,
   snapshot?: ParametricSnapshot | null,
-  customSnapshot?: { customParameterDefinitions: unknown; parameterValues: unknown } | null,
+  customSnapshot?: {
+    customParameterDefinitions: unknown;
+    parameterValues: unknown;
+  } | null,
 ): Record<string, unknown> {
   return {
     ...spec,
@@ -541,11 +554,12 @@ async function loadQuoteJson(id: number, userId?: string) {
       unitType: l.unitType,
       lineKey: (l as { lineKey?: string | null }).lineKey ?? null,
       bomRuleId: (l as { bomRuleId?: string | null }).bomRuleId ?? null,
-      isManualQuantity: (l as { isManualQuantity?: boolean | null }).isManualQuantity ?? null,
+      isManualQuantity:
+        (l as { isManualQuantity?: boolean | null }).isManualQuantity ?? null,
       unitPrice:
         Number(l.quantity) > 0
           ? roundMoney(Number(l.lineTotal) / Number(l.quantity))
-          : Number(l.unitPrice),
+          : 0,
       unitCost: Number(l.unitPrice),
       markupPercentage: Number(l.markupPercentage),
       wastagePercentage: Number(l.wastagePercentage),
@@ -625,6 +639,41 @@ function publicQuoteResponse(quote: LoadedQuote) {
     createdAt: quote.createdAt,
     updatedAt: quote.updatedAt,
   };
+}
+
+function linesFromParametricTransformation(lines: ParametricLineSnapshot[]) {
+  return lines
+    .filter((line) => line.quantity > 0)
+    .map((line) => ({
+      materialId: line.materialId ?? null,
+      ...line,
+      unitPrice: line.unitCost,
+      lineTotal: roundMoney(
+        line.quantity * line.unitCost * (1 + line.markupPercentage / 100),
+      ),
+    }));
+}
+
+const PUBLIC_DECKING_OPTIONS = new Set([
+  "treated_pine",
+  "composite",
+  "hardwood",
+]);
+const PUBLIC_BALUSTRADE_OPTIONS = new Set(["timber", "stainless_cable"]);
+
+function materialNamePattern(deckBoardType: string): RegExp {
+  if (deckBoardType === "composite") return /composite/i;
+  if (deckBoardType === "hardwood") return /hardwood|spotted gum|merbau/i;
+  return /treated|pine/i;
+}
+
+function materialUnitType(unit: string): string | null {
+  const normalised = unit.trim().toLowerCase();
+  return ["m", "metre", "meter", "linear metre", "linear meter"].includes(
+    normalised,
+  )
+    ? "lm"
+    : null;
 }
 
 function isStrictPublicUpgrade(body: unknown): boolean {
@@ -832,7 +881,9 @@ router.post("/quotes", requireQuoteManager, async (req, res): Promise<void> => {
   let parameterValues: Record<string, number> = {};
   if (template) {
     if (!data.parameterValues) {
-      res.status(400).json({ error: "All template parameter values are required" });
+      res
+        .status(400)
+        .json({ error: "All template parameter values are required" });
       return;
     }
     try {
@@ -847,7 +898,11 @@ router.post("/quotes", requireQuoteManager, async (req, res): Promise<void> => {
         data.parameterValues,
       );
     } catch (error) {
-      res.status(400).json({ error: String(error instanceof Error ? error.message : error) });
+      res
+        .status(400)
+        .json({
+          error: String(error instanceof Error ? error.message : error),
+        });
       return;
     }
     const serverKeys = new Set(
@@ -862,7 +917,9 @@ router.post("/quotes", requireQuoteManager, async (req, res): Promise<void> => {
       new Set(submittedKeys).size !== submittedKeys.length ||
       submittedKeys.some((key) => !serverKeys.has(key))
     ) {
-      res.status(400).json({ error: "Invalid or duplicate template BOM line key" });
+      res
+        .status(400)
+        .json({ error: "Invalid or duplicate template BOM line key" });
       return;
     }
     for (const submitted of data.lineItems ?? []) {
@@ -871,19 +928,26 @@ router.post("/quotes", requireQuoteManager, async (req, res): Promise<void> => {
         res.status(400).json({ error: "BOM rule requires a server line key" });
         return;
       }
-      if (submitted.lineKey && (!rule || submitted.isManualQuantity === undefined)) {
+      if (
+        submitted.lineKey &&
+        (!rule || submitted.isManualQuantity === undefined)
+      ) {
         res.status(400).json({
-          error: "Parametric lines require exact BOM identity and override state",
+          error:
+            "Parametric lines require exact BOM identity and override state",
         });
         return;
       }
       if (
         submitted.lineKey &&
         rule &&
-        template.bomRules?.find((candidate) => candidate.lineKey === submitted.lineKey)
-          ?.bomRuleId !== rule
+        template.bomRules?.find(
+          (candidate) => candidate.lineKey === submitted.lineKey,
+        )?.bomRuleId !== rule
       ) {
-        res.status(400).json({ error: "BOM rule identity does not match template" });
+        res
+          .status(400)
+          .json({ error: "BOM rule identity does not match template" });
         return;
       }
     }
@@ -892,7 +956,9 @@ router.post("/quotes", requireQuoteManager, async (req, res): Promise<void> => {
     !template &&
     (data.lineItems ?? []).some((line) => line.bomRuleId || line.lineKey)
   ) {
-    res.status(400).json({ error: "BOM line metadata requires a parametric template" });
+    res
+      .status(400)
+      .json({ error: "BOM line metadata requires a parametric template" });
     return;
   }
   if (!template && data.customParameterDefinitions) {
@@ -907,14 +973,17 @@ router.post("/quotes", requireQuoteManager, async (req, res): Promise<void> => {
       );
       if (
         data.customParameterDefinitions.some(
-          (definition) =>
-            !definition.label.trim() || !definition.unit.trim(),
+          (definition) => !definition.label.trim() || !definition.unit.trim(),
         )
       ) {
         throw new Error("Custom parameter labels and units are required");
       }
     } catch (error) {
-      res.status(400).json({ error: String(error instanceof Error ? error.message : error) });
+      res
+        .status(400)
+        .json({
+          error: String(error instanceof Error ? error.message : error),
+        });
       return;
     }
   }
@@ -940,52 +1009,55 @@ router.post("/quotes", requireQuoteManager, async (req, res): Promise<void> => {
     ),
   );
   const parametricLines = template
-    ? template.defaultLineItems.flatMap((defaultLine) => {
-        if (!defaultLine.lineKey) return [];
-        const calculation = calculatedByLineKey.get(defaultLine.lineKey);
-        if (!calculation) return [];
-        const submitted = data.lineItems?.find(
-          (line) => line.lineKey === defaultLine.lineKey,
-        );
-        const rawQuantity =
-          submitted?.isManualQuantity === true
-            ? submitted.quantity
-            : calculation.quantity;
-        const wastagePercentage = defaultLine.wastagePercentage;
-        const isBulkItem = defaultLine.isBulkItem;
-        const quantity = calculateRequiredQuantity(
-          submitted?.isManualQuantity === true ? rawQuantity : calculation.quantity,
-          wastagePercentage,
-          isBulkItem,
-        );
-        const unitCost = roundMoney(
-          submitted?.unitCost ?? defaultLine.unitCost,
-        );
-        const markupPercentage = roundMoney(
-          submitted?.markupPercentage ?? defaultLine.markupPercentage,
-        );
-        return [
-          {
-            materialId: null,
-            lineKey: defaultLine.lineKey,
-            bomRuleId: calculation.bomRuleId,
-            isManualQuantity: submitted?.isManualQuantity === true,
-            description: defaultLine.description,
-            category: defaultLine.category,
-            quantity,
-            unit: defaultLine.unit,
-            unitType: defaultLine.unitType,
-            unitPrice: unitCost,
-            markupPercentage,
+    ? template.defaultLineItems
+        .flatMap((defaultLine) => {
+          if (!defaultLine.lineKey) return [];
+          const calculation = calculatedByLineKey.get(defaultLine.lineKey);
+          if (!calculation) return [];
+          const submitted = data.lineItems?.find(
+            (line) => line.lineKey === defaultLine.lineKey,
+          );
+          const rawQuantity =
+            submitted?.isManualQuantity === true
+              ? submitted.quantity
+              : calculation.quantity;
+          const wastagePercentage = defaultLine.wastagePercentage;
+          const isBulkItem = defaultLine.isBulkItem;
+          const quantity = calculateRequiredQuantity(
+            submitted?.isManualQuantity === true
+              ? rawQuantity
+              : calculation.quantity,
             wastagePercentage,
             isBulkItem,
-            lineTotal: roundMoney(
-              quantity * unitCost * (1 + markupPercentage / 100),
-            ),
-          },
-        ];
-      })
-      .filter((line) => line.quantity > 0)
+          );
+          const unitCost = roundMoney(
+            submitted?.unitCost ?? defaultLine.unitCost,
+          );
+          const markupPercentage = roundMoney(
+            submitted?.markupPercentage ?? defaultLine.markupPercentage,
+          );
+          return [
+            {
+              materialId: null,
+              lineKey: defaultLine.lineKey,
+              bomRuleId: calculation.bomRuleId,
+              isManualQuantity: submitted?.isManualQuantity === true,
+              description: defaultLine.description,
+              category: defaultLine.category,
+              quantity,
+              unit: defaultLine.unit,
+              unitType: defaultLine.unitType,
+              unitPrice: unitCost,
+              markupPercentage,
+              wastagePercentage,
+              isBulkItem,
+              lineTotal: roundMoney(
+                quantity * unitCost * (1 + markupPercentage / 100),
+              ),
+            },
+          ];
+        })
+        .filter((line) => line.quantity > 0)
     : [];
   const parametricLineSnapshot: ParametricLineSnapshot[] | undefined = template
     ? template.defaultLineItems.flatMap((defaultLine) => {
@@ -1001,23 +1073,25 @@ router.post("/quotes", requireQuoteManager, async (req, res): Promise<void> => {
           defaultLine.wastagePercentage,
           defaultLine.isBulkItem,
         );
-        return [{
-          lineKey: defaultLine.lineKey,
-          bomRuleId: calculation.bomRuleId,
-          quantity,
-          calculatedQuantity: calculation.quantity,
-          isManualQuantity,
-          unitCost: roundMoney(submitted?.unitCost ?? defaultLine.unitCost),
-          markupPercentage: roundMoney(
-            submitted?.markupPercentage ?? defaultLine.markupPercentage,
-          ),
-          description: defaultLine.description,
-          category: defaultLine.category,
-          unit: defaultLine.unit,
-          unitType: defaultLine.unitType,
-          wastagePercentage: defaultLine.wastagePercentage,
-          isBulkItem: defaultLine.isBulkItem,
-        }];
+        return [
+          {
+            lineKey: defaultLine.lineKey,
+            bomRuleId: calculation.bomRuleId,
+            quantity,
+            calculatedQuantity: calculation.quantity,
+            isManualQuantity,
+            unitCost: roundMoney(submitted?.unitCost ?? defaultLine.unitCost),
+            markupPercentage: roundMoney(
+              submitted?.markupPercentage ?? defaultLine.markupPercentage,
+            ),
+            description: defaultLine.description,
+            category: defaultLine.category,
+            unit: defaultLine.unit,
+            unitType: defaultLine.unitType,
+            wastagePercentage: defaultLine.wastagePercentage,
+            isBulkItem: defaultLine.isBulkItem,
+          },
+        ];
       })
     : undefined;
   const deckQuote = !template && usesDeckEstimator(selectedTradeType);
@@ -1101,8 +1175,7 @@ router.post("/quotes", requireQuoteManager, async (req, res): Promise<void> => {
                 lineSnapshot: parametricLineSnapshot,
               }
             : {}),
-          ...(!template &&
-          Boolean(data.customParameterDefinitions?.length)
+          ...(!template && Boolean(data.customParameterDefinitions?.length)
             ? {
                 customParameterDefinitions: data.customParameterDefinitions,
                 parameterValues,
@@ -1119,7 +1192,8 @@ router.post("/quotes", requireQuoteManager, async (req, res): Promise<void> => {
           lineKey: (l as { lineKey?: string | null }).lineKey ?? null,
           bomRuleId: (l as { bomRuleId?: string | null }).bomRuleId ?? null,
           isManualQuantity:
-            (l as { isManualQuantity?: boolean | null }).isManualQuantity ?? null,
+            (l as { isManualQuantity?: boolean | null }).isManualQuantity ??
+            null,
           description: l.description,
           category: l.category,
           quantity: String(l.quantity),
@@ -1342,6 +1416,29 @@ router.patch(
     });
 
     const updated = await db.transaction(async (tx) => {
+      const [lockedExisting] = await tx
+        .select({
+          id: quotesTable.id,
+          status: quotesTable.status,
+          updatedAt: quotesTable.updatedAt,
+        })
+        .from(quotesTable)
+        .where(
+          userId
+            ? and(
+                eq(quotesTable.id, params.data.id),
+                eq(quotesTable.clerkUserId, userId),
+              )
+            : eq(quotesTable.id, params.data.id),
+        )
+        .for("update");
+      if (
+        !lockedExisting ||
+        lockedExisting.status === "accepted" ||
+        lockedExisting.updatedAt.getTime() !== existing.updatedAt.getTime()
+      ) {
+        return null;
+      }
       if (userId && d.customerId !== undefined) {
         const [customer] = await tx
           .select({ id: customersTable.id })
@@ -1354,18 +1451,6 @@ router.patch(
           );
         if (!customer) return null;
       }
-      const [authorisedParent] = await tx
-        .select({ id: quotesTable.id })
-        .from(quotesTable)
-        .where(
-          userId
-            ? and(
-                eq(quotesTable.id, params.data.id),
-                eq(quotesTable.clerkUserId, userId),
-              )
-            : eq(quotesTable.id, params.data.id),
-        );
-      if (!authorisedParent) return null;
       const [row] = await tx
         .update(quotesTable)
         .set({
@@ -1414,15 +1499,17 @@ router.patch(
       if (!row) return null;
       await tx
         .delete(quoteLineItemsTable)
-        .where(eq(quoteLineItemsTable.quoteId, authorisedParent.id));
+        .where(eq(quoteLineItemsTable.quoteId, lockedExisting.id));
       if (lines.length > 0) {
         await tx.insert(quoteLineItemsTable).values(
           lines.map((l) => ({
-            quoteId: authorisedParent.id,
+            quoteId: lockedExisting.id,
             materialId: l.materialId,
             lineKey: (l as { lineKey?: string | null }).lineKey ?? null,
             bomRuleId: (l as { bomRuleId?: string | null }).bomRuleId ?? null,
-            isManualQuantity: (l as { isManualQuantity?: boolean | null }).isManualQuantity ?? null,
+            isManualQuantity:
+              (l as { isManualQuantity?: boolean | null }).isManualQuantity ??
+              null,
             description: l.description,
             category: l.category,
             quantity: String(l.quantity),
@@ -1447,9 +1534,9 @@ router.patch(
       return row;
     });
     if (!updated) {
-      res
-        .status(409)
-        .json({ error: "Quote was accepted before the update completed" });
+      res.status(409).json({
+        error: "Quote changed or was accepted before the update completed",
+      });
       return;
     }
     const json = await loadQuoteJson(params.data.id, userId ?? undefined);
@@ -1541,17 +1628,20 @@ router.patch("/quote/:token", async (req, res): Promise<void> => {
     res.status(404).json({ error: "Quote not found" });
     return;
   }
+  const d = body.data;
   if (
-    parametricSnapshotFromStored(existing) ||
-    customSnapshotFromStored(existing)
+    (d.deckBoardType !== undefined &&
+      !PUBLIC_DECKING_OPTIONS.has(d.deckBoardType)) ||
+    (d.balustradeType !== undefined &&
+      !PUBLIC_BALUSTRADE_OPTIONS.has(d.balustradeType))
   ) {
     res.status(409).json({
-      error:
-        "Public option upgrades are not supported for parametric or custom-variable quotes",
+      error: "That material option is not supported for this quote",
     });
     return;
   }
-  const d = body.data;
+  const existingParametricSnapshot = parametricSnapshotFromStored(existing);
+  const existingCustomSnapshot = customSnapshotFromStored(existing);
   const savedSpec = specFromStoredQuote(existing);
   const spec = specFromQuoteInput({
     ...savedSpec,
@@ -1559,14 +1649,116 @@ router.patch("/quote/:token", async (req, res): Promise<void> => {
     lengthM: savedSpec.lengthM,
     widthM: savedSpec.widthM,
   });
-  const materials = await ownedMaterials(existing.clerkUserId);
-  const customLines = await loadStoredCustomQuoteLines(existing.id);
-  const { lines, materialsSubtotal } = combineTradeEstimateAndCustomLines(
-    existing.tradeType,
-    spec,
-    materials,
-    customLines,
-  );
+  let lines;
+  let materialsSubtotal;
+  let transformedParametricSnapshot = existingParametricSnapshot;
+  let preserveStoredLines = false;
+  if (existingParametricSnapshot) {
+    const storedLines = await loadStoredQuoteLines(existing.id);
+    const deckBoardChanged =
+      d.deckBoardType !== undefined &&
+      d.deckBoardType !== savedSpec.deckBoardType;
+    const balustradeChanged =
+      d.balustradeType !== undefined &&
+      d.balustradeType !== savedSpec.balustradeType;
+    if (balustradeChanged) {
+      res.status(409).json({
+        error:
+          "Balustrade changes are not supported for this calculated quote because they change its BOM quantities",
+      });
+      return;
+    }
+    if (!deckBoardChanged) {
+      lines = storedLines;
+      materialsSubtotal = Number(existing.materialsSubtotal);
+      preserveStoredLines = true;
+    } else {
+      if (!usesDeckEstimator(existing.tradeType)) {
+        res.status(409).json({
+          error:
+            "Decking material changes are not supported by this quote template",
+        });
+        return;
+      }
+      const deckingLines = existingParametricSnapshot.lineSnapshot?.filter(
+        (line) =>
+          line.category === "decking" &&
+          line.bomRuleId === BomRuleId.DeckingLinearMetres &&
+          line.unitType === "lm",
+      );
+      if (deckingLines?.length !== 1) {
+        res.status(409).json({
+          error:
+            "This quote does not have one compatible decking BOM line to upgrade",
+        });
+        return;
+      }
+      const materials = await ownedMaterials(existing.clerkUserId);
+      const materialMatches = materials.filter(
+        (material) =>
+          material.category === "decking" &&
+          materialNamePattern(d.deckBoardType!).test(material.name),
+      );
+      if (materialMatches.length !== 1) {
+        res.status(409).json({
+          error:
+            "The selected decking material cannot be priced unambiguously from the builder's catalogue",
+        });
+        return;
+      }
+      const selectedMaterial = materialMatches[0];
+      const selectedUnitType = materialUnitType(selectedMaterial.unit);
+      if (selectedUnitType !== deckingLines[0].unitType) {
+        res.status(409).json({
+          error:
+            "The selected decking material uses an incompatible pricing unit",
+        });
+        return;
+      }
+      const transformed = transformParametricLinePricing(
+        existingParametricSnapshot,
+        [
+          {
+            lineKey: deckingLines[0].lineKey,
+            materialId: selectedMaterial.id,
+            description: selectedMaterial.name,
+            unit: selectedMaterial.unit,
+            unitType: selectedUnitType,
+            unitCost: Number(selectedMaterial.unitPrice),
+          },
+        ],
+        {
+          transformedAt: new Date().toISOString(),
+          transition: "public_decking_material_upgrade",
+          deckBoardType: savedSpec.deckBoardType,
+          balustradeType: savedSpec.balustradeType,
+          materialsSubtotal: Number(existing.materialsSubtotal),
+          labourCost: Number(existing.labourCost),
+          gst: Number(existing.gst),
+          total: Number(existing.total),
+        },
+      );
+      transformedParametricSnapshot = transformed.snapshot;
+      lines = [
+        ...linesFromParametricTransformation(transformed.lines),
+        ...storedLines.filter((line) => !line.lineKey),
+      ];
+      materialsSubtotal = roundMoney(
+        lines.reduce((sum, line) => sum + line.lineTotal, 0),
+      );
+    }
+  } else {
+    const materials = await ownedMaterials(existing.clerkUserId);
+    const customLines = await loadStoredCustomQuoteLines(existing.id);
+    const calculated = combineTradeEstimateAndCustomLines(
+      existing.tradeType,
+      spec,
+      materials,
+      customLines,
+    );
+    lines = calculated.lines;
+    materialsSubtotal = calculated.materialsSubtotal;
+  }
   const labourHours = Number(existing.labourHours);
   const labourRate = Number(existing.labourRate);
   const { labourCost, gst, total } = calcTotals({
@@ -1575,10 +1767,30 @@ router.patch("/quote/:token", async (req, res): Promise<void> => {
     labourRate,
   });
   const updated = await db.transaction(async (tx) => {
+    const [lockedQuote] = await tx
+      .select({
+        id: quotesTable.id,
+        status: quotesTable.status,
+        updatedAt: quotesTable.updatedAt,
+      })
+      .from(quotesTable)
+      .where(eq(quotesTable.portalToken, params.data.token))
+      .for("update");
+    if (
+      !lockedQuote ||
+      lockedQuote.status === "accepted" ||
+      lockedQuote.updatedAt.getTime() !== existing.updatedAt.getTime()
+    ) {
+      return null;
+    }
     const [row] = await tx
       .update(quotesTable)
       .set({
-        specJson: serialiseSpec(spec),
+        specJson: serialiseSpec(
+          spec,
+          transformedParametricSnapshot,
+          existingCustomSnapshot,
+        ),
         materialsSubtotal: String(materialsSubtotal),
         labourCost: String(labourCost),
         gst: String(gst),
@@ -1586,35 +1798,39 @@ router.patch("/quote/:token", async (req, res): Promise<void> => {
       })
       .where(
         and(
-          eq(quotesTable.portalToken, params.data.token),
+          eq(quotesTable.id, lockedQuote.id),
           ne(quotesTable.status, "accepted"),
         ),
       )
       .returning();
     if (!row) return null;
-    await tx
-      .delete(quoteLineItemsTable)
-      .where(eq(quoteLineItemsTable.quoteId, row.id));
-    if (lines.length > 0) {
-      await tx.insert(quoteLineItemsTable).values(
-        lines.map((l) => ({
-          quoteId: row.id,
-          materialId: l.materialId,
+    if (!preserveStoredLines) {
+      await tx
+        .delete(quoteLineItemsTable)
+        .where(eq(quoteLineItemsTable.quoteId, row.id));
+      if (lines.length > 0) {
+        await tx.insert(quoteLineItemsTable).values(
+          lines.map((l) => ({
+            quoteId: row.id,
+            materialId: l.materialId,
             lineKey: (l as { lineKey?: string | null }).lineKey ?? null,
             bomRuleId: (l as { bomRuleId?: string | null }).bomRuleId ?? null,
-            isManualQuantity: (l as { isManualQuantity?: boolean | null }).isManualQuantity ?? null,
-          description: l.description,
-          category: l.category,
-          quantity: String(l.quantity),
-          unit: l.unit,
-          unitType: l.unitType,
-          unitPrice: String(l.unitPrice),
-          markupPercentage: String(l.markupPercentage),
-          wastagePercentage: String(l.wastagePercentage),
-          isBulkItem: l.isBulkItem,
-          lineTotal: String(l.lineTotal),
-        })),
-      );
+            isManualQuantity:
+              (l as { isManualQuantity?: boolean | null }).isManualQuantity ??
+              null,
+            description: l.description,
+            category: l.category,
+            quantity: String(l.quantity),
+            unit: l.unit,
+            unitType: l.unitType,
+            unitPrice: String(l.unitPrice),
+            markupPercentage: String(l.markupPercentage),
+            wastagePercentage: String(l.wastagePercentage),
+            isBulkItem: l.isBulkItem,
+            lineTotal: String(l.lineTotal),
+          })),
+        );
+      }
     }
     if (row.masterProjectId && row.clerkUserId) {
       await recalculateMasterProjectTotals(
@@ -1628,7 +1844,10 @@ router.patch("/quote/:token", async (req, res): Promise<void> => {
   if (!updated) {
     res
       .status(409)
-      .json({ error: "Quote was accepted before the update completed" });
+      .json({
+        error:
+          "Quote changed or was accepted before the material update completed",
+      });
     return;
   }
   const json = await loadQuoteJson(updated.id);
@@ -1693,19 +1912,6 @@ router.post(
       res.status(404).json({ error: "Quote not found" });
       return;
     }
-    if (
-      original.spec.templateId != null ||
-      Object.prototype.hasOwnProperty.call(
-        original.spec,
-        "customParameterDefinitions",
-      )
-    ) {
-      res.status(409).json({
-        error:
-          "Variations are not supported for parametric or custom-variable quotes",
-      });
-      return;
-    }
     const b = body.data;
     const [profile] = await db
       .select()
@@ -1722,29 +1928,151 @@ router.post(
       ...original.spec,
       lengthM: b.lengthM ?? original.spec.lengthM,
       widthM: b.widthM ?? original.spec.widthM,
+      heightM: b.heightM ?? original.spec.heightM,
     });
-    const materials = await ownedMaterials(userId);
-    const customLines = original.lineItems
-      .filter((line) => line.category === "custom")
-      .map((line) => ({
-        materialId: null,
+    const originalParametricSnapshot = parametricSnapshotFromValue(
+      original.spec as Record<string, unknown>,
+    );
+    const originalCustomSnapshot = hasMeaningfulCustomSnapshot(original.spec)
+      ? {
+          customParameterDefinitions:
+            original.spec.customParameterDefinitions.map((definition) => ({
+              ...definition,
+            })),
+          parameterValues: { ...original.spec.parameterValues },
+        }
+      : null;
+    const changedDimensions = Object.fromEntries(
+      (["lengthM", "widthM", "heightM"] as const)
+        .filter((key) => b[key] !== undefined && b[key] !== original.spec[key])
+        .map((key) => [key, b[key] as number]),
+    );
+    let variationSnapshot = originalParametricSnapshot;
+    let lines: Array<{
+      materialId: number | null;
+      lineKey?: string | null;
+      bomRuleId?: string | null;
+      isManualQuantity?: boolean | null;
+      description: string;
+      category: string;
+      quantity: number;
+      unit: string;
+      unitType: string;
+      unitPrice: number;
+      markupPercentage: number;
+      wastagePercentage: number;
+      isBulkItem: boolean;
+      lineTotal: number;
+    }>;
+    let materialsSubtotal: number;
+    if (originalParametricSnapshot) {
+      try {
+        const transformed = transformParametricSnapshot(
+          originalParametricSnapshot,
+          changedDimensions,
+        );
+        variationSnapshot = transformed.snapshot;
+        lines = linesFromParametricTransformation(transformed.lines);
+        const nonParametricLines = original.lineItems.filter(
+          (line) => !line.lineKey,
+        );
+        lines.push(
+          ...nonParametricLines.map((line) => ({
+            materialId: line.materialId,
+            description: line.description,
+            category: line.category,
+            quantity: line.quantity,
+            unit: line.unit,
+            unitType: line.unitType,
+            unitPrice: line.unitCost,
+            markupPercentage: line.markupPercentage,
+            wastagePercentage: line.wastagePercentage,
+            isBulkItem: line.isBulkItem,
+            lineTotal: line.lineTotal,
+          })),
+        );
+        materialsSubtotal = roundMoney(
+          lines.reduce((sum, line) => sum + line.lineTotal, 0),
+        );
+      } catch (error) {
+        res.status(409).json({
+          error:
+            error instanceof Error
+              ? error.message
+              : "This variation cannot be calculated safely",
+        });
+        return;
+      }
+    } else if (originalCustomSnapshot) {
+      const definitionIds = new Set(
+        originalCustomSnapshot.customParameterDefinitions.map(({ id }) => id),
+      );
+      const unsupported = Object.keys(changedDimensions).filter(
+        (key) => !definitionIds.has(key),
+      );
+      if (unsupported.length > 0) {
+        res.status(409).json({
+          error: `This custom quote does not support changing: ${unsupported.join(", ")}`,
+        });
+        return;
+      }
+      try {
+        originalCustomSnapshot.parameterValues = validateParameterValues(
+          originalCustomSnapshot.customParameterDefinitions,
+          { ...originalCustomSnapshot.parameterValues, ...changedDimensions },
+        );
+      } catch (error) {
+        res.status(409).json({
+          error:
+            error instanceof Error
+              ? error.message
+              : "This variation cannot be calculated safely",
+        });
+        return;
+      }
+      lines = original.lineItems.map((line) => ({
+        materialId: line.materialId,
+        lineKey: line.lineKey,
+        bomRuleId: line.bomRuleId,
+        isManualQuantity: line.isManualQuantity,
         description: line.description,
-        category: "custom",
+        category: line.category,
         quantity: line.quantity,
         unit: line.unit,
         unitType: line.unitType,
-        unitPrice: line.unitCost ?? line.unitPrice,
-        markupPercentage: line.markupPercentage ?? 0,
-        wastagePercentage: line.wastagePercentage ?? 0,
-        isBulkItem: line.isBulkItem ?? false,
+        unitPrice: line.unitCost,
+        markupPercentage: line.markupPercentage,
+        wastagePercentage: line.wastagePercentage,
+        isBulkItem: line.isBulkItem,
         lineTotal: line.lineTotal,
       }));
-    const { lines, materialsSubtotal } = combineTradeEstimateAndCustomLines(
-      original.tradeType,
-      spec,
-      materials,
-      customLines,
-    );
+      materialsSubtotal = original.materialsSubtotal;
+    } else {
+      const materials = await ownedMaterials(userId);
+      const customLines = original.lineItems
+        .filter((line) => line.category === "custom")
+        .map((line) => ({
+          materialId: null,
+          description: line.description,
+          category: "custom",
+          quantity: line.quantity,
+          unit: line.unit,
+          unitType: line.unitType,
+          unitPrice: line.unitCost ?? line.unitPrice,
+          markupPercentage: line.markupPercentage ?? 0,
+          wastagePercentage: line.wastagePercentage ?? 0,
+          isBulkItem: line.isBulkItem ?? false,
+          lineTotal: line.lineTotal,
+        }));
+      const calculated = combineTradeEstimateAndCustomLines(
+        original.tradeType,
+        spec,
+        materials,
+        customLines,
+      );
+      lines = calculated.lines;
+      materialsSubtotal = calculated.materialsSubtotal;
+    }
     const labourHours = b.labourHours ?? original.labourHours;
     const labourRate = b.labourRate ?? original.labourRate;
     const { labourCost, gst, total } = calcTotals({
@@ -1755,15 +2083,25 @@ router.post(
 
     const created = await db.transaction(async (tx) => {
       const [authorisedOriginal] = await tx
-        .select({ id: quotesTable.id })
+        .select({
+          id: quotesTable.id,
+          updatedAt: quotesTable.updatedAt,
+        })
         .from(quotesTable)
         .where(
           and(
             eq(quotesTable.id, params.data.id),
             eq(quotesTable.clerkUserId, userId),
           ),
-        );
-      if (!authorisedOriginal) return null;
+        )
+        .for("update");
+      if (
+        !authorisedOriginal ||
+        authorisedOriginal.updatedAt.getTime() !==
+          new Date(original.updatedAt).getTime()
+      ) {
+        return null;
+      }
       const [row] = await tx
         .insert(quotesTable)
         .values({
@@ -1790,7 +2128,11 @@ router.post(
           labourCost: String(labourCost),
           gst: String(gst),
           total: String(total),
-          specJson: serialiseSpec(spec),
+          specJson: serialiseSpec(
+            spec,
+            variationSnapshot,
+            originalCustomSnapshot,
+          ),
         })
         .returning();
       if (lines.length > 0) {
@@ -1800,7 +2142,9 @@ router.post(
             materialId: l.materialId,
             lineKey: (l as { lineKey?: string | null }).lineKey ?? null,
             bomRuleId: (l as { bomRuleId?: string | null }).bomRuleId ?? null,
-            isManualQuantity: (l as { isManualQuantity?: boolean | null }).isManualQuantity ?? null,
+            isManualQuantity:
+              (l as { isManualQuantity?: boolean | null }).isManualQuantity ??
+              null,
             description: l.description,
             category: l.category,
             quantity: String(l.quantity),
@@ -1817,7 +2161,9 @@ router.post(
       return row;
     });
     if (!created) {
-      res.status(404).json({ error: "Quote not found" });
+      res.status(409).json({
+        error: "The original quote changed before the variation was saved",
+      });
       return;
     }
 
